@@ -1,0 +1,10 @@
+# Nectar system namespace. Rendered by deploy/install.sh (@@PLACEHOLDERS@@ are replaced).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: @@NAMESPACE@@
+  labels:
+    app.kubernetes.io/part-of: nectar
+    app.kubernetes.io/managed-by: nectar-apps
+    # the gateway needs hostNetwork, so this namespace cannot be "restricted"
+    pod-security.kubernetes.io/enforce: privileged

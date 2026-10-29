@@ -1,0 +1,2700 @@
+openapi: 3.1.0
+info:
+  title: Nectar Apps API
+  version: 0.13.1
+  description: |
+    Control-plane API of Nectar Apps. Single source of truth for the Flutter client (generated Dart client)
+    and the Go handlers. Auth: session cookie `nectar_session` (web) or `Authorization: Bearer <token>`
+    (mobile access tokens and API tokens). Every endpoint except health/version/setup/login requires auth;
+    the required permission is listed as `x-permission`.
+  license:
+    name: Nectar Source License 1.0
+servers:
+  - url: /api
+security:
+  - cookieAuth: []
+  - bearerAuth: []
+
+tags:
+  - name: system
+  - name: auth
+  - name: users
+  - name: roles
+  - name: server
+  - name: audit
+  - name: projects
+  - name: apps
+  - name: artifacts
+  - name: deploys
+  - name: observe
+    description: Usage history, events and logs
+  - name: alerts
+    description: Alert rules, notification channels and incidents
+  - name: housekeeping
+    description: Disk usage, retention and cleanup
+  - name: addons
+    description: Database add-ons (PostgreSQL, MySQL, MariaDB, Redis)
+  - name: backups
+    description: restic backups, restore and disaster recovery
+  - name: builds
+    description: Git builds (Kaniko → built-in registry → deploy), push webhooks, registry logins
+  - name: updates
+    description: Updates of the panel, nectar-gateway and k3s (checker, planner, updater Job, rollback)
+  - name: security
+    description: Two-factor authentication, sessions, IP allowlist, email, password reset
+  - name: gateway
+  - name: adopt
+    description: Migrating an existing k3s server
+
+paths:
+  /health:
+    get:
+      tags: [system]
+      summary: Liveness/readiness
+      security: []
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+  /version:
+    get:
+      tags: [system]
+      summary: Server version and API version (also used by clients to check compatibility)
+      security: []
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Version" } } } }
+
+  /setup:
+    get:
+      tags: [auth]
+      summary: Whether first-run setup is still required
+      security: []
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, required: [required], properties: { required: { type: boolean } } } } }
+    post:
+      tags: [auth]
+      summary: Create the first Owner account (only while no users exist; needs the setup token printed by install.sh)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, email, name, password]
+              properties:
+                token: { type: string }
+                email: { type: string, format: email }
+                name: { type: string }
+                password: { type: string, minLength: 10 }
+                client: { type: string, enum: [web, mobile], default: web, description: "mobile returns access + refresh tokens (native apps) instead of a session cookie" }
+      responses:
+        "201": { description: Owner created and logged in, content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Log in. Web clients get a session cookie; `client=mobile` returns access + refresh tokens. With two-factor authentication on, the answer is only mfa_required and mfa_token, and POST /auth/mfa completes the login.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+                client: { type: string, enum: [web, mobile], default: web }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Exchange a refresh token for a new access token (sliding expiry)
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [refresh_token], properties: { refresh_token: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: End the current session
+      responses:
+        "204": { description: Logged out }
+
+  /me:
+    get:
+      tags: [auth]
+      summary: Current user
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+  /me/permissions:
+    get:
+      tags: [auth]
+      summary: Effective permissions (global and per project) — the UI uses this to show/hide actions
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EffectivePermissions" } } } }
+  /me/sessions:
+    get:
+      tags: [auth]
+      summary: Active sessions of the current user
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Session" } } } } }
+  /me/sessions/{id}:
+    delete:
+      tags: [auth]
+      summary: Revoke one of my sessions
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: Revoked }
+
+  /users:
+    get:
+      tags: [users]
+      summary: List users
+      x-permission: user.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/User" } } } } }
+    post:
+      tags: [users]
+      summary: Create a user
+      x-permission: user.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, name, password]
+              properties:
+                email: { type: string }
+                name: { type: string }
+                password: { type: string, minLength: 10 }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /users/{id}:
+    patch:
+      tags: [users]
+      summary: Update name / disable a user / reset password
+      x-permission: user.manage
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                disabled: { type: boolean }
+                password: { type: string, minLength: 10 }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+    delete:
+      tags: [users]
+      summary: Delete a user (the last Owner cannot be deleted)
+      x-permission: user.manage
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: Deleted }
+  /users/{id}/bindings:
+    get:
+      tags: [users]
+      summary: Role bindings of a user
+      x-permission: user.manage
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/RoleBinding" } } } } }
+    put:
+      tags: [users]
+      summary: Replace all role bindings of a user
+      x-permission: user.manage
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: array, items: { $ref: "#/components/schemas/RoleBindingInput" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/RoleBinding" } } } } }
+
+  /permissions:
+    get:
+      tags: [roles]
+      summary: The permission catalog (grouped) — used by the role editor
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PermissionGroup" } } } } }
+  /roles:
+    get:
+      tags: [roles]
+      summary: List roles (built-in and custom)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Role" } } } } }
+    post:
+      tags: [roles]
+      summary: Create a custom role (optionally cloned from another)
+      x-permission: role.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/RoleInput" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Role" } } } }
+  /roles/{id}:
+    put:
+      tags: [roles]
+      summary: Update a custom role (built-in roles are read-only)
+      x-permission: role.manage
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/RoleInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Role" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [roles]
+      summary: Delete a custom role (fails while it is bound)
+      x-permission: role.manage
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /server/nodes:
+    get:
+      tags: [server]
+      summary: Cluster nodes with capacity, allocatable and current usage
+      x-permission: server.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Node" } } } } }
+        "503": { $ref: "#/components/responses/Error" }
+
+  /server/metrics:
+    get:
+      tags: [server]
+      summary: Usage history of every node (15 s points for 24h and less, 15 min averages beyond; at most ~300 points)
+      x-permission: server.view
+      parameters:
+        - { name: range, in: query, schema: { type: string, enum: ["1h", "6h", "24h", "7d", "30d"], default: 1h } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  range: { type: string }
+                  nodes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        cpu_alloc_m: { type: integer }
+                        mem_alloc_b: { type: integer }
+                        points: { type: array, items: { $ref: "#/components/schemas/MetricPoint" } }
+  /server/events:
+    get:
+      tags: [server]
+      summary: Recent Warning events of the cluster, newest first
+      x-permission: server.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/KubeEvent" } } } } }
+  /audit:
+    get:
+      tags: [audit]
+      summary: Audit log (newest first)
+      x-permission: audit.view
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 1000 } }
+        - { name: before, in: query, schema: { type: integer }, description: return entries with id < before }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AuditEntry" } } } } }
+
+  /runtimes:
+    get:
+      tags: [apps]
+      summary: Runtime catalog (app types, versions, defaults) for the New App wizard
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Runtime" } } } } }
+
+  /projects:
+    get:
+      tags: [projects]
+      summary: Projects the caller can see (project.view)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Project" } } } } }
+    post:
+      tags: [projects]
+      summary: Create a project and its namespace prj-<slug>
+      x-permission: project.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug, name]
+              properties:
+                slug: { type: string, pattern: "^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$" }
+                name: { type: string }
+                quota: { $ref: "#/components/schemas/Quota" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Project" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /projects/{pid}:
+    parameters: [{ $ref: "#/components/parameters/Pid" }]
+    get:
+      tags: [projects]
+      x-permission: project.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Project" } } } }
+    patch:
+      tags: [projects]
+      summary: Rename, or set/remove the quota (quota null = unlimited)
+      x-permission: project.edit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                quota: { oneOf: [{ $ref: "#/components/schemas/Quota" }, { type: "null" }] }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Project" } } } }
+    delete:
+      tags: [projects]
+      summary: Delete the project, its namespace and all its apps
+      x-permission: project.delete
+      responses:
+        "204": { description: Deleted }
+  /projects/{pid}/apps:
+    parameters: [{ $ref: "#/components/parameters/Pid" }]
+    get:
+      tags: [apps]
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/App" } } } } }
+    post:
+      tags: [apps]
+      summary: Create an app. Missing config fields get defaults from the runtime.
+      x-permission: app.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug, name, runtime]
+              properties:
+                slug: { type: string }
+                name: { type: string }
+                kind: { type: string, enum: [web, worker, cron, task], default: web }
+                runtime: { type: string, example: java }
+                runtime_version: { type: string, example: "21", description: empty = the runtime's default version }
+                config: { $ref: "#/components/schemas/AppConfig" }
+                source: { $ref: "#/components/schemas/AppSourceInput" }
+                build: { type: boolean, default: true, description: "with source: start the first build now (it deploys when done)" }
+      responses:
+        "201": { description: "Created: the App, or {app, build, warning} when created with a source", content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /apps/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [apps]
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+    patch:
+      tags: [apps]
+      summary: Change name, runtime version or config (config fields are merged). Takes effect on the next deploy.
+      x-permission: app.edit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                runtime_version: { type: string }
+                config: { $ref: "#/components/schemas/AppConfig" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+    delete:
+      tags: [apps]
+      x-permission: app.delete
+      responses:
+        "204": { description: Deleted }
+  /apps/{id}/status:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [apps]
+      summary: Stored status plus live state from Kubernetes (pods, replicas, assigned node ports)
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppStatus" } } } }
+  /apps/{id}/env:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [apps]
+      summary: Environment variables. Secret values are omitted unless reveal=1 (needs env.secrets.view, audited).
+      x-permission: env.view
+      parameters:
+        - { name: reveal, in: query, schema: { type: string, enum: ["1"] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EnvVar" } } } } }
+    put:
+      tags: [apps]
+      summary: Replace all variables. Omit value to keep an existing (secret) value.
+      x-permission: env.edit
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EnvVar" } } } }
+      responses:
+        "204": { description: Saved (applies on the next deploy) }
+  /apps/{id}/artifacts:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [artifacts]
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Artifact" } } } } }
+    post:
+      tags: [artifacts]
+      summary: Upload a file as the raw request body (curl --data-binary @app.jar). Inspected and stored by SHA-256.
+      x-permission: app.deploy
+      parameters:
+        - { name: filename, in: query, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/octet-stream: { schema: { type: string, format: binary } } }
+      responses:
+        "201": { description: Stored, content: { application/json: { schema: { $ref: "#/components/schemas/Artifact" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "413": { $ref: "#/components/responses/Error" }
+  /apps/{id}/uploads:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [artifacts]
+      summary: Start a resumable upload (tus 1.0 creation). Returns Location /api/uploads/{uid}.
+      x-permission: app.deploy
+      parameters:
+        - { name: Upload-Length, in: header, required: true, schema: { type: integer } }
+        - { name: Upload-Metadata, in: header, schema: { type: string }, description: "tus metadata, e.g. filename <base64>" }
+      responses:
+        "201": { description: Created }
+  /uploads/{uid}:
+    parameters: [{ name: uid, in: path, required: true, schema: { type: string } }]
+    head:
+      tags: [artifacts]
+      summary: Current offset of a resumable upload (Upload-Offset header)
+      responses:
+        "200": { description: OK }
+    patch:
+      tags: [artifacts]
+      summary: Append a chunk (Content-Type application/offset+octet-stream, Upload-Offset header). The last chunk returns Nectar-Artifact-Id.
+      responses:
+        "204": { description: Chunk stored }
+        "409": { description: Offset mismatch }
+    delete:
+      tags: [artifacts]
+      summary: Abort an upload
+      responses:
+        "204": { description: Deleted }
+  /apps/{id}/deploy:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [deploys]
+      summary: Deploy (async). Without artifact_id the live artifact is reused (config-only deploy), or the newest upload if nothing is live yet.
+      x-permission: app.deploy
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                artifact_id: { type: integer, format: int64 }
+                force: { type: boolean, description: skip the capacity / quota check }
+                image: { type: string, description: "image apps only: switch to this image first (CI deploys of a new tag; needs app.deploy, not app.edit)" }
+      responses:
+        "202": { description: Release started, content: { application/json: { schema: { $ref: "#/components/schemas/Release" } } } }
+        "409": { description: Capacity exceeded or a deploy is already running, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /apps/{id}/releases:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [deploys]
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Release" } } } } }
+  /apps/{id}/releases/{n}/rollback:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: n, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [deploys]
+      summary: Redeploy release n (its artifact, image and config) as a new release
+      x-permission: app.rollback
+      responses:
+        "202": { description: Release started, content: { application/json: { schema: { $ref: "#/components/schemas/Release" } } } }
+  /apps/{id}/scale:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [apps]
+      summary: Change the replicas right away (no new release); cron apps pause at 0
+      x-permission: app.restart
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [replicas], properties: { replicas: { type: integer, minimum: 0, maximum: 20 }, force: { type: boolean, description: skip the capacity check } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+        "409": { description: Not deployed yet, a deploy is running, or not enough capacity, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /apps/{id}/stop:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [apps]
+      summary: Scale to 0 (cron apps - pause the schedule), remembering the replicas for start
+      x-permission: app.restart
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /apps/{id}/start:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [apps]
+      summary: Scale back to the replicas before the stop (at least 1)
+      x-permission: app.restart
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { force: { type: boolean } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /apps/{id}/restart:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [apps]
+      summary: Rolling restart of a web app or worker (no new release)
+      x-permission: app.restart
+      responses:
+        "204": { description: Restarting }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /apps/{id}/volumes:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [apps]
+      summary: Configured volumes and the app's PVCs, with usage while mounted
+      x-permission: app.view
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name: { type: string }
+                    claim: { type: string }
+                    mount_path: { type: string }
+                    requested_mb: { type: integer }
+                    capacity_bytes: { type: integer }
+                    used_bytes: { type: integer }
+                    phase: { type: string, description: "Pending | Bound | Lost; empty = not created yet" }
+                    storage_class: { type: string }
+                    in_config: { type: boolean }
+                    mounted: { type: boolean, description: used by the live release }
+  /apps/{id}/volumes/{name}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    delete:
+      tags: [apps]
+      summary: Delete the data of a volume that is neither configured nor mounted
+      x-permission: volume.manage
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+  /apps/{id}/files:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [apps]
+      summary: Config files mounted into the containers; secret contents only with reveal=1
+      x-permission: env.view
+      parameters:
+        - { name: reveal, in: query, schema: { type: string, enum: ["1"] }, description: needs env.secrets.view (audited) }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AppFile" } } } } }
+    put:
+      tags: [apps]
+      summary: Replace all config files (omit content to keep a file's current content); applies with the next deploy
+      x-permission: env.edit
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: array, maxItems: 32, items: { $ref: "#/components/schemas/AppFile" } } } }
+      responses:
+        "204": { description: Saved }
+        "400": { $ref: "#/components/responses/Error" }
+  /apps/{id}/run:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [deploys]
+      summary: Start a one-off Job from the live release (task apps, or any app with an explicit command)
+      x-permission: app.deploy
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { command: { type: array, items: { type: string } } } } } }
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { type: object, properties: { job: { type: string } } } } } }
+
+  /onboarding:
+    get:
+      tags: [settings]
+      summary: First-run onboarding state plus what its steps need (base domain, server IPs, gateway, Let's Encrypt email)
+      x-permission: settings.manage
+      responses:
+        "200": { description: OK }
+    put:
+      tags: [settings]
+      summary: Mark onboarding finished (or skipped) / reopen it
+      x-permission: settings.manage
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { done: { type: boolean } } } } }
+      responses:
+        "200": { description: OK }
+  /settings/dns-check:
+    post:
+      tags: [settings]
+      summary: Check that *.<base_domain> resolves to this server (resolves a random name under it)
+      x-permission: settings.manage
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [base_domain], properties: { base_domain: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { ok: { type: boolean }, host: { type: string }, probe: { type: string }, resolves_to: { type: array, items: { type: string } }, expected: { type: array, items: { type: string } }, message: { type: string } } } } } }
+  /projects/{pid}/activity:
+    parameters: [{ $ref: "#/components/parameters/Pid" }]
+    get:
+      tags: [projects]
+      summary: Activity feed of the project and its apps (from the audit log)
+      x-permission: project.view
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 500 } }
+        - { name: before, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AuditEntry" } } } } }
+  /settings:
+    get:
+      tags: [settings]
+      summary: General settings plus gateway status and the server's IPs
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SettingsView" } } } }
+    put:
+      tags: [settings]
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } }
+      responses:
+        "200": { description: Saved, content: { application/json: { schema: { $ref: "#/components/schemas/Settings" } } } }
+  /apps/{id}/domains:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [domains]
+      x-permission: domain.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Domain" } } } } }
+    post:
+      tags: [domains]
+      summary: Add a domain (tls=true also needs domain.tls; wildcard hosts force tls off until DNS-01)
+      x-permission: domain.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DomainInput" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Domain" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /apps/{id}/domains/{did}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: did, in: path, required: true, schema: { type: integer, format: int64 } }
+    patch:
+      tags: [domains]
+      x-permission: domain.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DomainInput" } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Domain" } } } }
+    delete:
+      tags: [domains]
+      x-permission: domain.manage
+      responses:
+        "204": { description: Deleted }
+  /apps/{id}/domains/{did}/check:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: did, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [domains]
+      summary: Resolve the host and compare with the server's IPs
+      x-permission: domain.view
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  host: { type: string }
+                  ok: { type: boolean }
+                  message: { type: string }
+                  resolves_to: { type: array, items: { type: string } }
+                  expected: { type: array, items: { type: string } }
+  /apps/{id}/domains/{did}/certificate:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: did, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [domains]
+      summary: Issue (or renew) a Let's Encrypt certificate now via the gateway
+      x-permission: domain.tls
+      responses:
+        "200": { description: Issued, content: { application/json: { schema: { $ref: "#/components/schemas/Domain" } } } }
+
+  /apps/{id}/usage:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [observe]
+      summary: CPU and memory history of the app (sum over its pods) and what it requests
+      x-permission: app.metrics
+      parameters:
+        - { name: range, in: query, schema: { type: string, enum: ["1h", "6h", "24h", "7d", "30d"], default: 1h } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  range: { type: string }
+                  request_cpu_m: { type: integer, description: requests of one replica × replicas }
+                  request_mem_b: { type: integer }
+                  replicas: { type: integer }
+                  points: { type: array, items: { $ref: "#/components/schemas/MetricPoint" } }
+  /apps/{id}/alerts:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [alerts]
+      summary: Alert incidents of the app
+      x-permission: app.view
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [firing, resolved] } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Alert" } } } } }
+  /apps/{id}/events:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [observe]
+      summary: Kubernetes events of the app's objects, newest first
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/KubeEvent" } } } } }
+  /apps/{id}/pods:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [observe]
+      summary: Pods of the app (for the log pod picker)
+      x-permission: app.logs
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PodBrief" } } } } }
+  /apps/{id}/logs:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [observe]
+      summary: Recent log lines of all pods (or one), oldest first
+      x-permission: app.logs
+      parameters:
+        - { name: tail, in: query, schema: { type: integer, default: 500, maximum: 10000 }, description: lines per pod }
+        - { name: pod, in: query, schema: { type: string } }
+        - { name: previous, in: query, schema: { type: string, enum: ["1"] }, description: the previous container instance (output before the last crash) }
+        - { name: format, in: query, schema: { type: string, enum: [text] }, description: download as a text file }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LogLine" } } }
+            text/plain: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/Error" }
+  /apps/{id}/logs/ws:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [observe]
+      summary: Live logs over a WebSocket
+      description: |
+        Upgrade to a WebSocket. The server sends JSON text messages: `{"type":"line","pod","t","line"}`,
+        `{"type":"pods","pods":[PodBrief]}` when the set of pods changes (new pods are followed automatically
+        after deploys), and `{"type":"info","message"}`. Browsers using bearer tokens pass `access_token` as a
+        query parameter (accepted only on this endpoint); cross-origin upgrades are refused.
+      x-permission: app.logs
+      parameters:
+        - { name: tail, in: query, schema: { type: integer, default: 200, maximum: 2000 } }
+        - { name: pod, in: query, schema: { type: string } }
+        - { name: access_token, in: query, schema: { type: string } }
+      responses:
+        "101": { description: Switching protocols }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /apps/{id}/metrics:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [domains]
+      summary: Request statistics for the app's domains (from nectar-gateway, last 1–60 minutes)
+      x-permission: app.metrics
+      parameters:
+        - { name: minutes, in: query, schema: { type: integer, default: 60 } }
+        - { name: series, in: query, schema: { type: string, enum: ["1"] }, description: include per-minute points }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { minutes: { type: integer }, domains: { type: array, items: { $ref: "#/components/schemas/TrafficSummary" } } } } } } }
+  /apps/{id}/access-log:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [domains]
+      summary: Recent requests to the app's domains, newest first
+      x-permission: app.logs
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 500 } }
+        - { name: status, in: query, schema: { type: string, example: 5xx } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AccessLogEntry" } } } } }
+  /server/disk:
+    get:
+      tags: [housekeeping]
+      summary: Disk usage of the nodes (kubelet summary) and of the panel's data volume, recent image cleanups, retention settings
+      x-permission: server.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DiskReport" } } } }
+  /server/cleanup:
+    post:
+      tags: [housekeeping]
+      summary: Apply the retention settings now (also runs every hour)
+      x-permission: server.manage
+      responses:
+        "200":
+          description: What was removed; `warning` lists parts that failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+                    properties:
+                      artifacts: { type: integer }
+                      files: { type: integer }
+                      bytes_freed: { type: integer }
+                      uploads: { type: integer }
+                      audit_entries: { type: integer }
+                      resolved_alerts: { type: integer }
+                  warning: { type: string }
+  /server/image-cleanup:
+    post:
+      tags: [housekeeping]
+      summary: Remove container images no container uses (a Job per node runs the k3s crictl `rmi --prune`)
+      x-permission: server.manage
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { node: { type: string, description: empty = every node } } } } }
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { type: object, properties: { jobs: { type: array, items: { $ref: "#/components/schemas/ImageCleanup" } } } } } } }
+        "502": { $ref: "#/components/responses/Error" }
+  /settings/housekeeping:
+    put:
+      tags: [housekeeping]
+      summary: Change the retention settings
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/HousekeepingSettings" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HousekeepingSettings" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /alerts:
+    get:
+      tags: [alerts]
+      summary: Alert incidents, newest first
+      x-permission: server.view
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [firing, resolved] } }
+        - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 500 } }
+        - { name: before, in: query, schema: { type: integer }, description: id cursor }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Alert" } } } } }
+  /alerts/rules:
+    get:
+      tags: [alerts]
+      summary: The built-in rules and their configuration
+      x-permission: server.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AlertRules" } } } }
+    put:
+      tags: [alerts]
+      summary: Configure the rules (missing rules keep their defaults)
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AlertSettings" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AlertRules" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /alerts/channels:
+    get:
+      tags: [alerts]
+      summary: Notification channels (secrets masked as "••••••••")
+      x-permission: settings.manage
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channels: { type: array, items: { $ref: "#/components/schemas/AlertChannel" } }
+                  kinds: { type: array, items: { type: string } }
+    post:
+      tags: [alerts]
+      summary: Add a channel
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AlertChannelInput" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AlertChannel" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /alerts/channels/{cid}:
+    parameters: [{ name: cid, in: path, required: true, schema: { type: integer } }]
+    put:
+      tags: [alerts]
+      summary: Change a channel; secrets sent back as "••••••••" stay unchanged
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AlertChannelInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AlertChannel" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [alerts]
+      summary: Delete a channel
+      x-permission: settings.manage
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Error" }
+  /alerts/channels/{cid}/test:
+    parameters: [{ name: cid, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [alerts]
+      summary: Send a test notification; a delivery error is returned as 502 with the channel's message
+      x-permission: settings.manage
+      responses:
+        "200": { description: Sent }
+        "502": { $ref: "#/components/responses/Error" }
+  /auth/mfa:
+    post:
+      tags: [security]
+      summary: Second step of a two-factor login (authenticator code or a recovery code); answers like /auth/login
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [mfa_token, code], properties: { mfa_token: { type: string }, code: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/forgot:
+    post:
+      tags: [security]
+      summary: Email a password reset link (same answer whether the account exists or not)
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { email: { type: string } } } } }
+      responses:
+        "204": { description: Sent if the account exists }
+        "409": { description: The panel cannot send emails, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/Error" }
+  /auth/token:
+    get:
+      tags: [security]
+      summary: Check a reset or invitation link
+      security: []
+      parameters: [{ name: token, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { email: { type: string }, name: { type: string }, purpose: { type: string, enum: [reset, invite] } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /auth/reset:
+    post:
+      tags: [security]
+      summary: Set the password with a reset or invitation token (ends all sessions of the user)
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [token, password], properties: { token: { type: string }, password: { type: string } } } } }
+      responses:
+        "200": { description: OK }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /me/mfa:
+    get:
+      tags: [security]
+      summary: Two-factor status
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, recovery_codes_left: { type: integer } } } } } }
+  /me/mfa/setup:
+    post:
+      tags: [security]
+      summary: Create a new TOTP secret (active after /me/mfa/enable)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { secret: { type: string }, otpauth_url: { type: string } } } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /me/mfa/enable:
+    post:
+      tags: [security]
+      summary: Confirm the setup with a code; returns 10 one-time recovery codes (shown once)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { code: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { recovery_codes: { type: array, items: { type: string } } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /me/mfa/disable:
+    post:
+      tags: [security]
+      summary: Turn two-factor authentication off (needs the password)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { password: { type: string } } } } }
+      responses:
+        "204": { description: Off }
+        "403": { $ref: "#/components/responses/Error" }
+  /me/mfa/recovery-codes:
+    post:
+      tags: [security]
+      summary: Replace the recovery codes (needs the password)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { password: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { recovery_codes: { type: array, items: { type: string } } } } } } }
+  /users/{id}/mfa:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    delete:
+      tags: [security]
+      summary: Reset another user's two-factor authentication (lost phone); owners only for owners. Also nectar-apps admin reset-mfa.
+      x-permission: user.manage
+      responses:
+        "204": { description: Reset }
+  /users/{id}/invite:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [security]
+      summary: (Re)send the invitation email; without email settings the link is returned to share by hand
+      x-permission: user.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { emailed: { type: boolean }, invite_url: { type: string } } } } } }
+  /settings/smtp:
+    get:
+      tags: [security]
+      summary: The panel's SMTP server (password masked)
+      x-permission: settings.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { settings: { $ref: "#/components/schemas/SMTPSettings" }, configured: { type: boolean } } } } } }
+    put:
+      tags: [security]
+      summary: Change the SMTP server (empty host and from = off)
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SMTPSettings" } } }
+      responses:
+        "200": { description: OK }
+        "400": { $ref: "#/components/responses/Error" }
+  /settings/smtp/test:
+    post:
+      tags: [security]
+      summary: Send a test email (default to yourself)
+      x-permission: settings.manage
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { to: { type: string } } } } }
+      responses:
+        "200": { description: OK }
+        "502": { $ref: "#/components/responses/Error" }
+  /settings/access:
+    get:
+      tags: [security]
+      summary: The IP allowlist, your address as the panel sees it
+      x-permission: settings.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { ip_allowlist: { type: array, items: { type: string } }, your_ip: { type: string }, direct: { type: boolean } } } } } }
+    put:
+      tags: [security]
+      summary: Set the IP allowlist (IPs or CIDRs; empty = everyone). Refused when it would lock the caller out. Direct connections from private addresses (SSH tunnel) always pass; nectar-apps admin clear-ip-allowlist resets it.
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { ip_allowlist: { type: array, items: { type: string } } } } } }
+      responses:
+        "200": { description: OK }
+        "400": { $ref: "#/components/responses/Error" }
+  /apps/{id}/exec/ws:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [apps]
+      summary: Web terminal (WebSocket)
+      description: |
+        A shell (bash, else sh) in a running container ("app") of the newest pod or of ?pod=. JSON text messages:
+        browser → panel `{"t":"i","d":"keys"}`, `{"t":"r","c":cols,"r":rows}`; panel → browser `{"t":"s","pod":…}` (connected),
+        `{"t":"o","b":"<base64 output>"}`, `{"t":"x","code":n,"msg":…}` (ended). Audited as app.exec.
+      x-permission: app.exec
+      parameters:
+        - { name: pod, in: query, schema: { type: string } }
+        - { name: access_token, in: query, schema: { type: string } }
+      responses:
+        "101": { description: Switching protocols }
+        "409": { description: No running pod, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /addon-kinds:
+    get:
+      tags: [addons]
+      summary: The databases the panel can run, with versions
+      responses:
+        "200": { description: OK }
+  /projects/{pid}/addons:
+    parameters: [{ $ref: "#/components/parameters/Pid" }]
+    get:
+      tags: [addons]
+      summary: Databases of a project, with live state and links
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Addon" } } } } }
+    post:
+      tags: [addons]
+      summary: Create a database (a StatefulSet with a volume; credentials are generated)
+      x-permission: app.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind]
+              properties:
+                kind: { type: string, enum: [postgres, mysql, mariadb, redis] }
+                slug: { type: string, description: also the host name apps use; default = kind }
+                name: { type: string }
+                version: { type: string, description: default = newest }
+                size_mb: { type: integer, default: 2048 }
+                cpu_millicores: { type: integer, default: 250 }
+                memory_mb: { type: integer }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Addon" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /addons/{aid}:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [addons]
+      summary: One database
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Addon" } } } }
+    patch:
+      tags: [addons]
+      summary: Change name, CPU, memory or storage (grow only)
+      x-permission: app.edit
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { name: { type: string }, size_mb: { type: integer }, cpu_millicores: { type: integer }, memory_mb: { type: integer } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Addon" } } } }
+    delete:
+      tags: [addons]
+      summary: Delete the database and its data; linked apps lose the variables with their next deploy
+      x-permission: app.delete
+      responses:
+        "204": { description: Deleted }
+  /addons/{aid}/stop:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [addons]
+      summary: Stop (scale to 0, data kept)
+      x-permission: app.restart
+      responses:
+        "200": { description: OK }
+  /addons/{aid}/start:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [addons]
+      summary: Start again
+      x-permission: app.restart
+      responses:
+        "200": { description: OK }
+  /addons/{aid}/credentials:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [addons]
+      summary: Host, user, password, database and the variables a link provides (audited)
+      x-permission: env.secrets.view
+      responses:
+        "200": { description: OK }
+  /addons/{aid}/links:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [addons]
+      summary: Link an app of the same project; it gets DATABASE_URL/PG*/MYSQL_*/REDIS_* (optionally prefixed) with its next deploy
+      x-permission: env.edit
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [app_id], properties: { app_id: { type: integer }, prefix: { type: string, example: CACHE_ } } } } }
+      responses:
+        "200": { description: OK }
+        "400": { $ref: "#/components/responses/Error" }
+  /addons/{aid}/links/{app}:
+    parameters:
+      - { name: aid, in: path, required: true, schema: { type: integer } }
+      - { name: app, in: path, required: true, schema: { type: integer } }
+    delete:
+      tags: [addons]
+      summary: Unlink an app
+      x-permission: env.edit
+      responses:
+        "204": { description: Unlinked }
+  /apps/{id}/addons:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [addons]
+      summary: Databases linked to an app and the variables they provide
+      x-permission: app.view
+      responses:
+        "200": { description: OK }
+  /backup/targets:
+    get:
+      tags: [backups]
+      summary: Where backups go (secrets masked)
+      x-permission: backup.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BackupTarget" } } } } }
+    post:
+      tags: [backups]
+      summary: Add a target (s3 covers AWS, Backblaze B2, R2, MinIO; sftp; local = a folder served by a rest-server)
+      x-permission: backup.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [name, kind, config], properties: { name: { type: string }, kind: { type: string, enum: [s3, sftp, local] }, config: { $ref: "#/components/schemas/BackupTargetConfig" } } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BackupTarget" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /backup/targets/{tid}:
+    parameters: [{ name: tid, in: path, required: true, schema: { type: integer } }]
+    put:
+      tags: [backups]
+      summary: Change a target ("••••••••" keeps a secret; the repository password never changes)
+      x-permission: backup.manage
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [backups]
+      summary: Remove a target without plans (the backups stay where they are)
+      x-permission: backup.manage
+      responses:
+        "204": { description: Removed }
+        "409": { $ref: "#/components/responses/Error" }
+  /backup/targets/{tid}/check:
+    parameters: [{ name: tid, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [backups]
+      summary: Open (or create) the repository and count its snapshots
+      x-permission: backup.manage
+      responses:
+        "200": { description: OK }
+        "502": { $ref: "#/components/responses/Error" }
+  /backup/targets/{tid}/recovery-kit:
+    parameters: [{ name: tid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [backups]
+      summary: Everything install.sh --restore-kit needs (repository, password, keys); audited. The master key is not included.
+      x-permission: backup.manage
+      responses:
+        "200": { description: OK }
+  /backup/plans:
+    get:
+      tags: [backups]
+      summary: What is backed up where and when, with the last run and the next one
+      x-permission: backup.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BackupPlan" } } } } }
+    post:
+      tags: [backups]
+      summary: Add a plan
+      x-permission: backup.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/BackupPlan" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BackupPlan" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /backup/plans/{bid}:
+    parameters: [{ name: bid, in: path, required: true, schema: { type: integer } }]
+    put:
+      tags: [backups]
+      summary: Change schedule, retention or pause it
+      x-permission: backup.manage
+      responses:
+        "200": { description: OK }
+    delete:
+      tags: [backups]
+      summary: Delete a plan (snapshots stay in the repository)
+      x-permission: backup.manage
+      responses:
+        "204": { description: Deleted }
+  /backup/plans/{bid}/run:
+    parameters: [{ name: bid, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [backups]
+      summary: Back up now
+      x-permission: backup.manage
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { $ref: "#/components/schemas/BackupRun" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /backup/plans/{bid}/snapshots:
+    parameters: [{ name: bid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [backups]
+      summary: Snapshots of the plan's subject, newest first (read by a short Job, cached 30 s)
+      x-permission: backup.manage
+      responses:
+        "200": { description: OK }
+  /backup/plans/{bid}/restore:
+    parameters: [{ name: bid, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [backups]
+      summary: Restore a snapshot (apps and Redis are stopped meanwhile); the panel itself is restored with install.sh --restore-kit
+      x-permission: backup.restore
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { snapshot: { type: string, description: 'id (or its first 8+ characters) of one of the plan''s snapshots, or "latest" (the newest of them)' } } } } }
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { $ref: "#/components/schemas/BackupRun" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { description: Not a snapshot of this plan's app or database, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /backup/runs:
+    get:
+      tags: [backups]
+      summary: Backup and restore history, newest first
+      x-permission: backup.manage
+      parameters:
+        - { name: plan, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string, enum: [running, succeeded, failed] } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BackupRun" } } } } }
+  /updates:
+    get:
+      tags: [updates]
+      summary: Settings, the last check per component, releases that failed, the history and the running update
+      x-permission: server.view
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: "#/components/schemas/UpdateSettings" }
+                  state: { $ref: "#/components/schemas/UpdateState" }
+                  bad: { type: object, additionalProperties: { type: string }, description: "component@version → why it is not installed automatically again" }
+                  runs: { type: array, items: { $ref: "#/components/schemas/UpdateRun" } }
+                  active: { $ref: "#/components/schemas/UpdateRun" }
+                  next_check: { type: string, format: date-time }
+                  window_open: { type: boolean }
+        "503": { $ref: "#/components/responses/Error" }
+  /updates/settings:
+    put:
+      tags: [updates]
+      summary: Change policies, channels, the maintenance window, the check interval and the feeds (also re-applies the k3s upgrade plans)
+      x-permission: server.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateSettings" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateSettings" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /updates/check:
+    post:
+      tags: [updates]
+      summary: Check now (feeds, GitHub fallback, the k3s channel)
+      x-permission: server.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateState" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /updates/plan:
+    post:
+      tags: [updates]
+      summary: What "Update now" would do; adds the other component when compatibility needs it and orders the steps safely
+      x-permission: server.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateRequest" } } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plan: { $ref: "#/components/schemas/UpdatePlan" }
+                  summary: { type: string, example: "gateway 1.2.1 → 1.3.0, panel 0.6.0 → 0.7.0" }
+                  releases: { type: array, items: { $ref: "#/components/schemas/ComponentRelease" } }
+                  warnings: { type: array, items: { type: string } }
+        "409": { description: No compatible plan yet, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /updates/apply:
+    post:
+      tags: [updates]
+      summary: Start the update (updater Job nectar-updater-<id> with the newest panel image of the plan)
+      description: |
+        Per step: database snapshot (VACUUM INTO, last 3 kept on the component's volume) → image digest switched →
+        health gate (rollout, /api/version, gateway canary /__nectar/canary and route count; 3 min) → next step.
+        A failed check rolls back every applied step in reverse (restoring the snapshot when the step had migrations)
+        and marks the release so it is not installed automatically again. The panel restarts during its own step.
+      x-permission: server.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateRequest" } } }
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateRun" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /updates/rollback:
+    post:
+      tags: [updates]
+      summary: Return the components of a successful update (default the newest) to their previous versions; databases with migrations are restored from the pre-update snapshot
+      x-permission: server.manage
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { run_id: { type: integer } } } } }
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateRun" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /updates/runs:
+    get:
+      tags: [updates]
+      summary: Update history, newest first
+      x-permission: server.view
+      parameters: [{ name: limit, in: query, schema: { type: integer } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/UpdateRun" } } } } }
+  /updates/runs/{rid}:
+    parameters: [{ name: rid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [updates]
+      summary: One update with its steps and log
+      x-permission: server.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/UpdateRun" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /updates/bad/{key}:
+    parameters: [{ name: key, in: path, required: true, schema: { type: string, example: gateway@1.3.0 } }]
+    delete:
+      tags: [updates]
+      summary: Allow a release that failed to be installed automatically again
+      x-permission: server.manage
+      responses:
+        "204": { description: Allowed }
+  /updates/k3s:
+    post:
+      tags: [updates]
+      summary: Upgrade k3s to a version now (pins the system-upgrade-controller plans; needs install.sh --k3s-upgrades)
+      x-permission: server.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [version], properties: { version: { type: string, example: v1.31.5+k3s1 } } } } }
+      responses:
+        "202": { description: OK }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /me/tokens:
+    get:
+      tags: [auth]
+      summary: Your API tokens (never the token itself)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ApiToken" } } } } }
+    post:
+      tags: [auth]
+      summary: Create an API token (nat_…, shown once). It acts as you, limited to role_id and/or project_id when given. Not allowed with an API token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, example: "GitHub Actions: shop" }
+                role_id: { type: integer, description: "only this role's permissions (intersected with yours)" }
+                project_id: { type: integer, description: only this project }
+                expires_in_days: { type: integer, description: "0 = never", maximum: 3650 }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { token: { type: string }, api_token: { $ref: "#/components/schemas/ApiToken" } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /me/tokens/{tid}:
+    parameters: [{ name: tid, in: path, required: true, schema: { type: integer } }]
+    delete:
+      tags: [auth]
+      summary: Revoke one of your tokens
+      responses:
+        "204": { description: Revoked }
+        "404": { $ref: "#/components/responses/Error" }
+  /tokens:
+    get:
+      tags: [users]
+      summary: Every user's API tokens
+      x-permission: token.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ApiToken" } } } } }
+  /tokens/{tid}:
+    parameters: [{ name: tid, in: path, required: true, schema: { type: integer } }]
+    delete:
+      tags: [users]
+      summary: Revoke anyone's token
+      x-permission: token.manage
+      responses:
+        "204": { description: Revoked }
+  /users/directory:
+    get:
+      tags: [users]
+      summary: Active users (id, name, email) for adding project members
+      description: Needs project.members in some project, or user.manage.
+      responses:
+        "200": { description: OK }
+        "403": { $ref: "#/components/responses/Error" }
+  /projects/{pid}/members:
+    parameters: [{ $ref: "#/components/parameters/Pid" }]
+    get:
+      tags: [projects]
+      summary: Who has access (owners, roles everywhere, roles in this project)
+      x-permission: project.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ProjectMember" } } } } }
+  /projects/{pid}/members/{uid}:
+    parameters:
+      - { $ref: "#/components/parameters/Pid" }
+      - { name: uid, in: path, required: true, schema: { type: integer } }
+    put:
+      tags: [projects]
+      summary: Set the roles a user holds in this project (roles everywhere stay); you can only grant what you hold here
+      x-permission: project.members
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { role_ids: { type: array, items: { type: integer } } } } } }
+      responses:
+        "204": { description: Saved }
+        "403": { $ref: "#/components/responses/Error" }
+    delete:
+      tags: [projects]
+      summary: Remove the user's roles in this project
+      x-permission: project.members
+      responses:
+        "204": { description: Removed }
+  /apps/{id}/source:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [builds]
+      summary: The Git repository an image app is built from (404 = not built from Git); webhook_secret only with app.edit
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppSource" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      tags: [builds]
+      summary: Build this image app from Git (checks that the repository and branch can be read)
+      x-permission: app.edit
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AppSourceInput" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppSource" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "503": { description: No built-in registry, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    delete:
+      tags: [builds]
+      summary: Stop building from Git (the current image stays)
+      x-permission: app.edit
+      responses:
+        "204": { description: Removed }
+  /apps/{id}/source/webhook-secret:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [builds]
+      summary: New webhook secret (the old one stops working)
+      x-permission: app.edit
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppSource" } } } }
+  /apps/{id}/builds:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [builds]
+      summary: Builds of the app, newest first
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Build" } } } } }
+    post:
+      tags: [builds]
+      summary: Build the head of the branch (and deploy it when done unless deploy is false)
+      x-permission: app.deploy
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { deploy: { type: boolean, default: true } } } } }
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { $ref: "#/components/schemas/Build" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { description: A build is already running, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /apps/{id}/builds/{n}:
+    parameters: [{ $ref: "#/components/parameters/Id" }, { name: n, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [builds]
+      summary: One build with its output (live while it runs)
+      x-permission: app.logs
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { build: { $ref: "#/components/schemas/Build" }, log: { type: string } } } } } }
+  /apps/{id}/builds/{n}/cancel:
+    parameters: [{ $ref: "#/components/parameters/Id" }, { name: n, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [builds]
+      summary: Cancel a running build
+      x-permission: app.deploy
+      responses:
+        "202": { description: Canceling }
+        "409": { $ref: "#/components/responses/Error" }
+  /hooks/git/{app}:
+    post:
+      tags: [builds]
+      summary: Push webhook (GitHub, GitLab, Gitea/Forgejo; others with ?token=<secret> and a GitHub-shaped body)
+      description: |
+        Verified with the app's webhook secret (X-Hub-Signature-256, X-Gitlab-Token or X-Gitea-Signature). A push to the
+        configured branch builds that commit and deploys it when automatic builds are on. Not limited by the IP allowlist.
+      security: []
+      parameters: [{ name: app, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200": { description: Ignored (ping, other branch, automatic builds off) }
+        "202": { description: Build started }
+        "401": { description: Bad signature }
+        "409": { description: A build is already running }
+  /settings/registries:
+    get:
+      tags: [builds]
+      summary: Private registry logins (passwords never returned) and the built-in registry
+      x-permission: settings.manage
+      responses:
+        "200": { description: OK }
+    put:
+      tags: [builds]
+      summary: Add or replace the login of a registry host (applied to every project as an image pull secret)
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [host, username, password], properties: { host: { type: string, example: ghcr.io }, username: { type: string }, password: { type: string } } } } }
+      responses:
+        "200": { description: OK }
+        "400": { $ref: "#/components/responses/Error" }
+  /settings/registries/{rid}:
+    parameters: [{ name: rid, in: path, required: true, schema: { type: integer } }]
+    delete:
+      tags: [builds]
+      x-permission: settings.manage
+      responses:
+        "204": { description: Removed }
+  /server/join:
+    get:
+      tags: [server]
+      summary: The command that joins another machine as a k3s agent (contains the cluster token; audited)
+      x-permission: server.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { url: { type: string }, command: { type: string }, requirements: { type: array, items: { type: string } } } } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /server/nodes/{name}/{action}:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: action, in: path, required: true, schema: { type: string, enum: [cordon, uncordon, drain] } }
+    post:
+      tags: [server]
+      summary: Cordon / uncordon a node, or drain it (cordon + evict its pods; DaemonSet pods stay, disruption budgets are respected)
+      description: Drain is refused (409) on the edge node (nectar-gateway, all app traffic, runs there) and when no other ready, schedulable node can take the pods; `force=true` drains anyway.
+      x-permission: server.manage
+      parameters:
+        - { name: force, in: query, schema: { type: string, enum: ["true"] }, description: drain even when it takes things offline }
+      responses:
+        "200": { description: OK }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /server/nodes/{name}:
+    parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+    delete:
+      tags: [server]
+      summary: Remove a drained worker node (not the control plane or the edge node)
+      x-permission: server.manage
+      responses:
+        "200": { description: Removed }
+        "409": { $ref: "#/components/responses/Error" }
+  /gateway/metrics:
+    get:
+      tags: [gateway]
+      summary: Per-domain request statistics of the whole gateway
+      x-permission: server.view
+      parameters:
+        - { name: minutes, in: query, schema: { type: integer } }
+        - { name: domain, in: query, schema: { type: string } }
+        - { name: series, in: query, schema: { type: string, enum: ["1"] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, domains: { type: array, items: { $ref: "#/components/schemas/TrafficSummary" } } } } } } }
+  /gateway/access-log:
+    get:
+      tags: [gateway]
+      summary: Gateway access log (ring buffer, newest first)
+      x-permission: server.view
+      parameters:
+        - { name: domain, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, example: 5xx } }
+        - { name: ip, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AccessLogEntry" } } } } }
+  /gateway/health:
+    get:
+      tags: [gateway]
+      summary: Backend health-check status per route
+      x-permission: server.view
+      responses:
+        "200": { description: OK }
+  /gateway/blocked:
+    get:
+      tags: [gateway]
+      summary: IPs blocked by the gateway (scanners, rate limits)
+      x-permission: server.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, properties: { ip: { type: string }, reason: { type: string }, blocked_at: { type: string, format: date-time }, expires_at: { type: string, format: date-time } } } } } } }
+    post:
+      tags: [gateway]
+      summary: Block a client IP (private addresses and your own are refused); audited
+      x-permission: server.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [ip], properties: { ip: { type: string }, reason: { type: string }, ttl_seconds: { type: integer, description: "0 = until unblocked" } } } } }
+      responses:
+        "204": { description: Blocked }
+        "400": { $ref: "#/components/responses/Error" }
+  /gateway/routes:
+    get:
+      tags: [gateway]
+      summary: Every route the gateway serves (domain, target, TLS, rate limit, health check, managed_by)
+      x-permission: server.view
+      parameters: [{ name: managed_by, in: query, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+
+    delete:
+      tags: [gateway]
+      x-permission: server.manage
+      parameters: [{ name: ip, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Unblocked }
+  /gateway/settings:
+    get:
+      tags: [gateway]
+      summary: Gateway runtime settings
+      x-permission: settings.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GatewaySettings" } } } }
+    put:
+      tags: [gateway]
+      summary: Change the fallback upstream (unknown hosts) and SNI passthrough target (used while migrating from another proxy)
+      x-permission: settings.manage
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/GatewaySettings" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GatewaySettings" } } } }
+
+  /adopt:
+    get:
+      tags: [adopt]
+      summary: Migration of an existing k3s server (adopt mode) — phase, discovery report, Ingress sync result and hosts still served by the old proxy
+      x-permission: settings.manage
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state: { type: object, nullable: true, description: "written by `nectar-apps adopt` (phase, strategy, backups, cutover time)" }
+                  report: { type: object, nullable: true, description: discovery report (JSON) }
+                  report_markdown: { type: string }
+                  ingress_sync: { type: object, nullable: true, description: Ingress / IngressRoute / HTTPRoute objects synced to gateway routes, with a verdict per host }
+                  fallback_hits: { type: array, items: { type: object, properties: { host: { type: string }, http: { type: integer }, tls: { type: integer }, first_seen: { type: string, format: date-time }, last_seen: { type: string, format: date-time } } } }
+  /adopt/fallback-hits:
+    delete:
+      tags: [adopt]
+      summary: Reset the per-host fallback counters (start a new soak period)
+      x-permission: settings.manage
+      responses:
+        "204": { description: Reset }
+  /external/namespaces:
+    get:
+      tags: [adopt]
+      summary: Namespaces the panel did not create (read-only), with their workloads and Ingress hosts
+      x-permission: server.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, properties: { name: { type: string }, workloads: { type: array, items: { type: object } }, hosts: { type: array, items: { type: string } } } } } } } }
+  /external/namespaces/{ns}/adopt:
+    post:
+      tags: [adopt]
+      summary: Turn an existing namespace into a project. Existing workloads are left alone; deleting the project never deletes the namespace
+      x-permission: project.create
+      parameters: [{ name: ns, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { slug: { type: string }, name: { type: string } } } } }
+      responses:
+        "201": { description: Created }
+        "409": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    cookieAuth: { type: apiKey, in: cookie, name: nectar_session }
+    bearerAuth: { type: http, scheme: bearer, description: "mobile access tokens (nxa_…) or API tokens (nat_…, Settings → API tokens)" }
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    Pid: { name: pid, in: path, required: true, schema: { type: integer, format: int64 } }
+  responses:
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    AppSourceInput:
+      type: object
+      required: [repo_url]
+      properties:
+        repo_url: { type: string, example: "https://github.com/acme/api.git" }
+        branch: { type: string, default: main }
+        context_dir: { type: string, description: folder with the build context ("" = repository root) }
+        dockerfile: { type: string, default: Dockerfile }
+        token: { type: string, description: 'access token for private repositories; omit = keep, "" = remove' }
+        auto_deploy: { type: boolean, default: true }
+        build_cpu_millicores: { type: integer, default: 2000 }
+        build_memory_mb: { type: integer, default: 2048 }
+    AppSource:
+      type: object
+      properties:
+        app_id: { type: integer }
+        repo_url: { type: string }
+        branch: { type: string }
+        context_dir: { type: string }
+        dockerfile: { type: string }
+        auto_deploy: { type: boolean }
+        build_cpu_millicores: { type: integer }
+        build_memory_mb: { type: integer }
+        has_token: { type: boolean }
+        webhook_url: { type: string }
+        webhook_secret: { type: string }
+        updated_at: { type: string, format: date-time }
+    Build:
+      type: object
+      properties:
+        id: { type: integer }
+        app_id: { type: integer }
+        number: { type: integer }
+        trigger: { type: string, enum: [manual, webhook, api] }
+        branch: { type: string }
+        commit_sha: { type: string }
+        commit_message: { type: string }
+        status: { type: string, enum: [running, succeeded, failed, canceled] }
+        image: { type: string, example: "registry.nectar.local/prj-shop/api:build-3" }
+        deploy: { type: boolean }
+        release: { type: integer, description: release number the build started }
+        message: { type: string }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+    ApiToken:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        user_email: { type: string }
+        name: { type: string }
+        role_id: { type: integer }
+        role_name: { type: string }
+        project_id: { type: integer }
+        project_name: { type: string }
+        created_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+    ProjectMember:
+      type: object
+      properties:
+        user_id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        is_owner: { type: boolean }
+        disabled: { type: boolean }
+        roles: { type: array, items: { type: object, properties: { role_id: { type: integer }, role_name: { type: string } } } }
+        global_roles: { type: array, items: { type: object, properties: { role_id: { type: integer }, role_name: { type: string } } } }
+    UpdateComponentSettings:
+      type: object
+      properties:
+        policy: { type: string, enum: ["off", notify, patch, minor, auto], description: "panel/gateway: off | notify | patch | minor; k3s: off | notify | auto" }
+        channel: { type: string, description: "stable | beta (k3s: stable | latest | v1.31 …)" }
+        feed_url: { type: string, description: '"" = the official updates.json' }
+    UpdateSettings:
+      type: object
+      properties:
+        panel: { $ref: "#/components/schemas/UpdateComponentSettings" }
+        gateway: { $ref: "#/components/schemas/UpdateComponentSettings" }
+        k3s: { $ref: "#/components/schemas/UpdateComponentSettings" }
+        window:
+          type: object
+          description: maintenance window for automatic updates (empty = any time; 22:00–02:00 crosses midnight)
+          properties:
+            days: { type: array, items: { type: string, enum: [mon, tue, wed, thu, fri, sat, sun] } }
+            start: { type: string, example: "03:00" }
+            end: { type: string, example: "05:00" }
+            timezone: { type: string, example: Europe/Kyiv }
+        interval_hours: { type: integer, minimum: 1, maximum: 24, default: 6 }
+    ComponentRelease:
+      type: object
+      description: one entry of release.json / updates.json
+      properties:
+        component: { type: string, enum: [panel, gateway, k3s] }
+        version: { type: string }
+        channel: { type: string }
+        image: { type: string, description: pinned digest }
+        kind: { type: string, enum: [patch, minor, major] }
+        security: { type: boolean }
+        breaking: { type: boolean }
+        api_version: { type: integer }
+        requires: { type: object, properties: { gateway_api: { type: array, items: { type: integer } }, min_gateway: { type: string }, panel_api: { type: array, items: { type: integer } }, panel: { type: string } } }
+        migrations: { type: boolean }
+        notes: { type: string }
+        published_at: { type: string, format: date-time }
+    UpdateComponentState:
+      type: object
+      properties:
+        installed: { type: object, properties: { version: { type: string }, image: { type: string }, api_version: { type: integer } } }
+        available: { type: array, items: { $ref: "#/components/schemas/ComponentRelease" } }
+        latest: { $ref: "#/components/schemas/ComponentRelease" }
+        current: { $ref: "#/components/schemas/ComponentRelease" }
+        auto: { $ref: "#/components/schemas/ComponentRelease" }
+        waiting: { type: string, description: why an available update is not installed automatically now }
+        source: { type: string, description: "feed | github | k3s channel …" }
+        error: { type: string }
+        extra: { type: object, description: "k3s: {controller, nodes[{name, version, control_plane}], plans}" }
+        checked_at: { type: string, format: date-time }
+    UpdateState:
+      type: object
+      properties:
+        checked_at: { type: string, format: date-time }
+        components: { type: object, additionalProperties: { $ref: "#/components/schemas/UpdateComponentState" } }
+    UpdateRequest:
+      type: object
+      properties:
+        panel: { type: string, description: target version ("" = keep) }
+        gateway: { type: string }
+    UpdateStep:
+      type: object
+      properties:
+        component: { type: string }
+        from: { type: string }
+        to: { type: string }
+        from_image: { type: string }
+        to_image: { type: string }
+        migrations: { type: boolean }
+        state: { type: string, enum: [pending, running, done, skipped, failed, rolled_back] }
+        snapshot: { type: string }
+        message: { type: string }
+    UpdatePlan:
+      type: object
+      properties:
+        steps: { type: array, items: { $ref: "#/components/schemas/UpdateStep" } }
+        notes: { type: array, items: { type: string } }
+    UpdateRun:
+      type: object
+      properties:
+        id: { type: integer }
+        trigger: { type: string, enum: [manual, auto, rollback] }
+        state: { type: string, enum: [pending, running, succeeded, failed, rolled_back, rollback_failed] }
+        summary: { type: string }
+        plan: { $ref: "#/components/schemas/UpdatePlan" }
+        status:
+          type: object
+          description: written by the updater Job (ConfigMap nectar-update-<id>)
+          properties:
+            steps: { type: array, items: { $ref: "#/components/schemas/UpdateStep" } }
+            log: { type: array, items: { type: object, properties: { t: { type: string, format: date-time }, m: { type: string } } } }
+            bad: { type: array, items: { type: string } }
+        error: { type: string }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+    SMTPSettings:
+      type: object
+      properties:
+        host: { type: string }
+        port: { type: integer }
+        security: { type: string, enum: [starttls, tls, none] }
+        username: { type: string }
+        password: { type: string }
+        from: { type: string, example: "Nectar Apps <panel@example.com>" }
+        panel_url: { type: string, description: public panel address for links in emails }
+    Addon:
+      type: object
+      properties:
+        id: { type: integer }
+        project_id: { type: integer }
+        slug: { type: string }
+        name: { type: string }
+        kind: { type: string, enum: [postgres, mysql, mariadb, redis] }
+        kind_name: { type: string }
+        version: { type: string }
+        size_mb: { type: integer }
+        cpu_millicores: { type: integer }
+        memory_mb: { type: integer }
+        stopped: { type: boolean }
+        status: { type: string }
+        host: { type: string }
+        port: { type: integer }
+        live: { type: object, properties: { ready: { type: boolean }, phase: { type: string }, restarts: { type: integer }, problem: { type: string }, volume: { type: string } } }
+        links: { type: array, items: { type: object, properties: { app_id: { type: integer }, prefix: { type: string } } } }
+        env_names: { type: array, items: { type: string } }
+    BackupTargetConfig:
+      type: object
+      description: "s3: endpoint, bucket, prefix, region, access_key, secret_key. sftp: host, port, user, path, private_key. local: path. All: password (restic repository password, generated when empty)."
+      properties:
+        endpoint: { type: string }
+        bucket: { type: string }
+        prefix: { type: string }
+        region: { type: string }
+        access_key: { type: string }
+        secret_key: { type: string }
+        host: { type: string }
+        port: { type: integer }
+        user: { type: string }
+        path: { type: string }
+        private_key: { type: string }
+        password: { type: string }
+    BackupTarget:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        kind: { type: string }
+        repository: { type: string }
+        config: { $ref: "#/components/schemas/BackupTargetConfig" }
+        plans: { type: integer }
+    BackupPlan:
+      type: object
+      properties:
+        id: { type: integer, readOnly: true }
+        target_id: { type: integer }
+        scope: { type: string, enum: [app, addon, panel], description: "app = its volumes, addon = a database dump, panel = the panel database and uploads (disaster recovery)" }
+        subject_id: { type: integer, description: app or add-on id; 0 for panel }
+        schedule: { type: string, description: 'cron in UTC or @hourly/@daily/@weekly/@monthly; "" = manual only' }
+        keep_daily: { type: integer, default: 7 }
+        keep_weekly: { type: integer, default: 4 }
+        keep_monthly: { type: integer, default: 6 }
+        enabled: { type: boolean }
+        subject: { type: string, readOnly: true }
+        target_name: { type: string, readOnly: true }
+        next_run: { type: string, format: date-time, readOnly: true }
+        last_run: { $ref: "#/components/schemas/BackupRun" }
+    BackupRun:
+      type: object
+      properties:
+        id: { type: integer }
+        plan_id: { type: integer }
+        kind: { type: string, enum: [backup, restore] }
+        scope: { type: string }
+        subject: { type: string }
+        status: { type: string, enum: [running, succeeded, failed] }
+        message: { type: string }
+        snapshot: { type: string }
+        bytes_added: { type: integer }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+    Alert:
+      type: object
+      properties:
+        id: { type: integer }
+        rule: { type: string, enum: [app_down, addon_down, app_crashloop, app_oom, node_not_ready, node_cpu, node_memory, node_disk, cert_expiry, backup_failed, update_available, update_failed, deploy_failed, deploy_succeeded, gateway_down] }
+        key: { type: string, example: "app_down:12" }
+        subject: { type: string, example: shop/api }
+        severity: { type: string, enum: [warning, critical] }
+        message: { type: string }
+        app_id: { type: integer }
+        state: { type: string, enum: [firing, resolved] }
+        started_at: { type: string, format: date-time }
+        resolved_at: { type: string, format: date-time }
+        notified: { type: integer, description: channels that accepted the notification when it fired }
+    AlertRule:
+      type: object
+      properties:
+        kind: { type: string }
+        enabled: { type: boolean }
+        threshold: { type: number, description: "% for node_cpu/node_memory/node_disk, days for cert_expiry" }
+        for: { type: integer, description: seconds the condition must hold }
+    AlertSettings:
+      type: object
+      properties:
+        rules: { type: array, items: { $ref: "#/components/schemas/AlertRule" } }
+        panel_url: { type: string, description: base of the links in notifications }
+        repeat_hours: { type: integer, description: "re-send firing alerts every N hours, 0 = never" }
+    AlertRules:
+      type: object
+      properties:
+        catalog:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string }
+              title: { type: string }
+              description: { type: string }
+              severity: { type: string }
+              unit: { type: string, enum: ["%", days] }
+              default_threshold: { type: number }
+              default_for: { type: integer }
+        settings: { $ref: "#/components/schemas/AlertSettings" }
+    AlertChannelConfig:
+      type: object
+      description: |
+        ntfy: url (default https://ntfy.sh), topic, token. telegram: bot_token, chat_id. email: host, port,
+        security (starttls | tls | none), username, password, from, to (comma-separated). webhook: url, secret
+        (X-Nectar-Signature: sha256=HMAC of the body).
+      properties:
+        url: { type: string }
+        topic: { type: string }
+        token: { type: string }
+        bot_token: { type: string }
+        chat_id: { type: string }
+        host: { type: string }
+        port: { type: integer }
+        security: { type: string }
+        username: { type: string }
+        password: { type: string }
+        from: { type: string }
+        to: { type: string }
+        secret: { type: string }
+        use_panel_smtp: { type: boolean, description: "email: send with the panel's SMTP settings (only to is needed)" }
+    AlertChannelInput:
+      type: object
+      properties:
+        kind: { type: string, enum: [ntfy, telegram, email, webhook], description: required on create, fixed afterwards }
+        name: { type: string }
+        enabled: { type: boolean }
+        config: { $ref: "#/components/schemas/AlertChannelConfig" }
+    AlertChannel:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string }
+        name: { type: string }
+        enabled: { type: boolean }
+        config: { $ref: "#/components/schemas/AlertChannelConfig" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    HousekeepingSettings:
+      type: object
+      properties:
+        keep_artifacts: { type: integer, default: 10 }
+        audit_days: { type: integer, default: 365 }
+        alert_days: { type: integer, default: 90 }
+        k3s_data_dir: { type: string, default: /var/lib/rancher/k3s }
+    ImageCleanup:
+      type: object
+      properties:
+        name: { type: string }
+        node: { type: string }
+        status: { type: string, enum: [running, succeeded, failed] }
+        started: { type: string, format: date-time }
+        finished: { type: string, format: date-time }
+        removed: { type: integer }
+        message: { type: string }
+    DiskReport:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              fs_used: { type: integer }
+              fs_total: { type: integer }
+              images_used: { type: integer }
+              images_total: { type: integer }
+              error: { type: string }
+        panel:
+          type: object
+          properties:
+            volume_total: { type: integer }
+            volume_free: { type: integer }
+            database_bytes: { type: integer }
+            artifact_bytes: { type: integer }
+            artifact_files: { type: integer }
+            upload_bytes: { type: integer }
+        image_cleanups: { type: array, items: { $ref: "#/components/schemas/ImageCleanup" } }
+        settings: { $ref: "#/components/schemas/HousekeepingSettings" }
+    MetricPoint:
+      type: object
+      properties:
+        t: { type: string, format: date-time }
+        cpu_m: { type: integer, description: millicores }
+        mem_b: { type: integer, description: bytes }
+        disk_used: { type: integer, description: nodes only }
+        disk_total: { type: integer }
+        rx_bps: { type: integer, description: bytes per second, nodes only }
+        tx_bps: { type: integer }
+    KubeEvent:
+      type: object
+      properties:
+        type: { type: string, enum: [Normal, Warning] }
+        reason: { type: string, example: BackOff }
+        message: { type: string }
+        object: { type: string, example: Pod/api-7c9d8f6b5-x2k4p }
+        namespace: { type: string }
+        count: { type: integer }
+        first: { type: string, format: date-time }
+        last: { type: string, format: date-time }
+    LogLine:
+      type: object
+      properties:
+        pod: { type: string }
+        t: { type: string, format: date-time }
+        line: { type: string }
+    PodBrief:
+      type: object
+      properties:
+        name: { type: string }
+        phase: { type: string }
+        restarts: { type: integer }
+        role: { type: string }
+        started_at: { type: string, format: date-time }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ok] }
+        kubernetes: { type: string, enum: [ok, unavailable] }
+    Version:
+      type: object
+      required: [version, api_version]
+      properties:
+        version: { type: string, example: 0.1.0 }
+        commit: { type: string }
+        api_version: { type: integer, example: 1 }
+        min_client_version: { type: string }
+    User:
+      type: object
+      required: [id, email, name, is_owner, disabled, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        email: { type: string }
+        name: { type: string }
+        is_owner: { type: boolean }
+        disabled: { type: boolean }
+        mfa_enabled: { type: boolean }
+        created_at: { type: string, format: date-time }
+    LoginResponse:
+      type: object
+      description: user (and tokens), or only mfa_required + mfa_token when the second factor is still needed
+      properties:
+        mfa_required: { type: boolean }
+        mfa_token: { type: string, description: valid 5 minutes, for POST /auth/mfa }
+        user: { $ref: "#/components/schemas/User" }
+        access_token: { type: string, description: mobile only }
+        access_expires_at: { type: string, format: date-time }
+        refresh_token: { type: string, description: mobile only }
+    Session:
+      type: object
+      required: [id, kind, created_at, last_seen_at, expires_at, current]
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { type: string, enum: [web, mobile] }
+        user_agent: { type: string }
+        ip: { type: string }
+        created_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        current: { type: boolean }
+    PermissionGroup:
+      type: object
+      required: [group, permissions]
+      properties:
+        group: { type: string, example: Apps }
+        permissions:
+          type: array
+          items:
+            type: object
+            required: [key, description, scope]
+            properties:
+              key: { type: string, example: app.deploy }
+              description: { type: string }
+              scope: { type: string, enum: [project, global], description: "global permissions are ignored in per-project bindings" }
+    Role:
+      type: object
+      required: [id, name, builtin, permissions]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        description: { type: string }
+        builtin: { type: boolean }
+        permissions: { type: array, items: { type: string } }
+        bindings: { type: integer, description: number of bindings using this role }
+    RoleInput:
+      type: object
+      required: [name, permissions]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        permissions: { type: array, items: { type: string } }
+    RoleBinding:
+      type: object
+      required: [id, role_id, role_name]
+      properties:
+        id: { type: integer, format: int64 }
+        role_id: { type: integer, format: int64 }
+        role_name: { type: string }
+        project_id: { type: [integer, "null"], format: int64, description: null = all projects (global) }
+    RoleBindingInput:
+      type: object
+      required: [role_id]
+      properties:
+        role_id: { type: integer, format: int64 }
+        project_id: { type: [integer, "null"], format: int64 }
+    EffectivePermissions:
+      type: object
+      required: [owner, global, projects]
+      properties:
+        owner: { type: boolean }
+        global: { type: array, items: { type: string }, description: permissions valid everywhere }
+        projects:
+          type: object
+          additionalProperties: { type: array, items: { type: string } }
+          description: project id → extra permissions granted only in that project
+    Node:
+      type: object
+      required: [name, ready, roles, capacity, allocatable]
+      properties:
+        name: { type: string }
+        ready: { type: boolean }
+        roles: { type: array, items: { type: string } }
+        internal_ip: { type: string }
+        os_image: { type: string }
+        kernel: { type: string }
+        arch: { type: string }
+        kubelet_version: { type: string }
+        capacity: { $ref: "#/components/schemas/Resources" }
+        allocatable: { $ref: "#/components/schemas/Resources" }
+        usage: { $ref: "#/components/schemas/Resources" }
+    Resources:
+      type: object
+      properties:
+        cpu_millicores: { type: integer, format: int64 }
+        memory_bytes: { type: integer, format: int64 }
+        ephemeral_storage_bytes: { type: integer, format: int64 }
+        pods: { type: integer }
+    AuditEntry:
+      type: object
+      required: [id, action, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        user_id: { type: [integer, "null"], format: int64 }
+        user_email: { type: string }
+        action: { type: string, example: role.update }
+        target: { type: string }
+        ip: { type: string }
+        created_at: { type: string, format: date-time }
+    Quota:
+      type: object
+      description: Zero / missing fields = no limit for that resource
+      properties:
+        cpu_millicores: { type: integer, format: int64 }
+        memory_mb: { type: integer, format: int64 }
+        storage_gb: { type: integer, format: int64 }
+        pods: { type: integer, format: int64 }
+        apps: { type: integer, format: int64 }
+    Project:
+      type: object
+      required: [id, slug, name, namespace, apps, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        slug: { type: string }
+        name: { type: string }
+        namespace: { type: string, example: prj-shop }
+        quota: { oneOf: [{ $ref: "#/components/schemas/Quota" }, { type: "null" }], description: null = unlimited }
+        apps: { type: integer }
+        created_at: { type: string, format: date-time }
+    Runtime:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        icon: { type: string }
+        kinds: { type: array, items: { type: string } }
+        artifact: { type: object, properties: { kind: { type: string, enum: [file, archive, none] }, accept: { type: array, items: { type: string } }, path: { type: string } } }
+        versions: { type: array, items: { type: object, properties: { id: { type: string }, label: { type: string }, image: { type: string }, default: { type: boolean } } } }
+        port: { type: integer }
+        health: { type: object, properties: { type: { type: string }, path: { type: string } } }
+        options: { type: object, additionalProperties: { type: object } }
+    AppConfig:
+      type: object
+      properties:
+        image: { type: string, description: image runtime only }
+        port: { type: integer }
+        command: { type: array, items: { type: string } }
+        args: { type: string, description: passed as $APP_ARGS }
+        replicas: { type: integer, minimum: 0, maximum: 20 }
+        resources:
+          type: object
+          properties:
+            cpu_millicores: { type: integer, format: int64 }
+            memory_mb: { type: integer, format: int64 }
+            no_limit: { type: boolean, description: requests only }
+        health:
+          type: object
+          properties:
+            type: { type: string, enum: [tcp, http, none] }
+            path: { type: string }
+            initial_delay_seconds: { type: integer }
+        schedule: { type: string, description: cron apps, e.g. "*/15 * * * *" }
+        release_command: { type: string, description: runs before each release goes live (sh -c) }
+        expose:
+          type: array
+          items:
+            type: object
+            properties:
+              port: { type: integer }
+              protocol: { type: string, enum: [TCP, UDP] }
+              node_port: { type: integer, description: 30000-32767, 0 = automatic }
+        options: { type: object, additionalProperties: true }
+        volumes:
+          type: array
+          maxItems: 10
+          description: persistent disks (PVC "<app>-<name>"); removing one keeps its data until DELETE /apps/{id}/volumes/{name}; sizes can only grow
+          items:
+            type: object
+            properties:
+              name: { type: string, pattern: "^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$" }
+              mount_path: { type: string, example: /data }
+              size_mb: { type: integer, minimum: 64 }
+        resume_replicas: { type: integer, readOnly: true, description: replicas before the last stop }
+    App:
+      type: object
+      required: [id, project_id, slug, name, kind, runtime, config, status]
+      properties:
+        id: { type: integer, format: int64 }
+        project_id: { type: integer, format: int64 }
+        slug: { type: string }
+        name: { type: string }
+        kind: { type: string, enum: [web, worker, cron, task] }
+        runtime: { type: string }
+        runtime_version: { type: string }
+        config: { $ref: "#/components/schemas/AppConfig" }
+        status: { type: string, enum: [new, deploying, running, stopped, failed, degraded, scheduled, ready] }
+        status_message: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    AppFile:
+      type: object
+      properties:
+        path: { type: string, example: /app/config/application.yml }
+        content: { type: string, description: "max 256 KiB, 900 KiB for all files" }
+        secret: { type: boolean }
+        size: { type: integer, readOnly: true }
+    AppStatus:
+      type: object
+      properties:
+        status: { type: string }
+        message: { type: string }
+        pending:
+          type: array
+          description: changes since the live release that need a deploy
+          items: { type: string, enum: [settings, image, environment] }
+        live:
+          type: object
+          properties:
+            replicas: { type: integer }
+            ready: { type: integer }
+            updated: { type: integer }
+            pods:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  phase: { type: string }
+                  ready: { type: boolean }
+                  restarts: { type: integer }
+                  release: { type: string }
+                  role: { type: string }
+                  node: { type: string }
+                  problem: { type: string }
+                  started_at: { type: string, format: date-time }
+            node_ports:
+              type: array
+              items: { type: object, properties: { port: { type: integer }, protocol: { type: string }, node_port: { type: integer } } }
+    EnvVar:
+      type: object
+      required: [key]
+      properties:
+        key: { type: string }
+        value: { type: string, description: omitted for secrets unless revealed; omit on PUT to keep }
+        secret: { type: boolean }
+    Artifact:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        app_id: { type: integer, format: int64 }
+        sha256: { type: string }
+        filename: { type: string }
+        size: { type: integer, format: int64 }
+        detect:
+          type: object
+          description: what the panel learned from the file (suggested runtime/version, Java version, ELF arch/libc, archive markers, warnings)
+        created_at: { type: string, format: date-time }
+    Release:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        app_id: { type: integer, format: int64 }
+        number: { type: integer }
+        artifact_id: { type: [integer, "null"], format: int64 }
+        image: { type: string }
+        config: { $ref: "#/components/schemas/AppConfig" }
+        status: { type: string, enum: [pending, deploying, live, failed, superseded] }
+        message: { type: string }
+        created_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+    Settings:
+      type: object
+      properties:
+        base_domain: { type: string, description: "apps get <app>-<project>.<base_domain>" }
+        public_ips: { type: array, items: { type: string }, description: "where DNS must point; empty = node addresses" }
+    SettingsView:
+      allOf:
+        - { $ref: "#/components/schemas/Settings" }
+        - type: object
+          properties:
+            gateway: { type: object, properties: { configured: { type: boolean }, reachable: { type: boolean }, version: { type: string }, api_version: { type: integer }, error: { type: string } } }
+            server_ips: { type: array, items: { type: string } }
+    DomainInput:
+      type: object
+      properties:
+        host: { type: string, example: shop.example.com }
+        path_prefix: { type: string, default: / }
+        target_port: { type: integer, description: 0 = the app's port }
+        tls: { type: boolean }
+        force_https: { type: boolean }
+        kind: { type: string, enum: [app, redirect], default: app }
+        redirect_to: { type: string, description: "kind=redirect: target domain or URL (example.com → https://example.com); path and query are kept unless the URL has its own path" }
+        redirect_code: { type: integer, enum: [301, 302, 307, 308], default: 301 }
+        backend_protocol: { type: string, enum: [http1, h2c], default: http1, description: h2c = cleartext HTTP/2 to the app (gRPC) }
+        timeout_seconds: { type: integer, minimum: 0, maximum: 3600, description: response-header timeout, 0 = 60 s }
+        max_body_mb: { type: integer, minimum: 0, description: request body limit, 0 = unlimited }
+        rate_limit: { type: integer, minimum: 0, maximum: 100000, description: "requests per second per client IP, 0 = unlimited, otherwise at least 10. A client over it is blocked by nectar-gateway for 24 hours on every domain (see GET /api/gateway/blocked)" }
+        basic_auth_users:
+          type: array
+          description: replaces the basic-auth users; omit password to keep a user's current one; [] removes basic auth
+          items: { type: object, required: [user], properties: { user: { type: string }, password: { type: string, minLength: 8 } } }
+        with_www: { type: boolean, description: "create only: also add www.<host> redirecting to https://<host>" }
+    Domain:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        app_id: { type: integer, format: int64 }
+        host: { type: string }
+        path_prefix: { type: string }
+        target_port: { type: integer }
+        tls: { type: boolean }
+        force_https: { type: boolean }
+        is_default: { type: boolean }
+        status: { type: string, enum: [pending, active, waiting, error] }
+        status_message: { type: string }
+        gateway_route_id: { type: integer, format: int64 }
+        cert_not_after: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        kind: { type: string, enum: [app, redirect], default: app }
+        redirect_to: { type: string, description: "kind=redirect: target domain or URL (example.com → https://example.com); path and query are kept unless the URL has its own path" }
+        redirect_code: { type: integer, enum: [301, 302, 307, 308], default: 301 }
+        backend_protocol: { type: string, enum: [http1, h2c], default: http1, description: h2c = cleartext HTTP/2 to the app (gRPC) }
+        timeout_seconds: { type: integer, minimum: 0, maximum: 3600, description: response-header timeout, 0 = 60 s }
+        max_body_mb: { type: integer, minimum: 0, description: request body limit, 0 = unlimited }
+        rate_limit: { type: integer, minimum: 0, maximum: 100000, description: "requests per second per client IP, 0 = unlimited, otherwise at least 10. A client over it is blocked by nectar-gateway for 24 hours on every domain (see GET /api/gateway/blocked)" }
+        auth_users: { type: array, items: { type: string }, description: basic-auth user names (hashes are never returned) }
+    TrafficSummary:
+      type: object
+      properties:
+        domain: { type: string }
+        minutes: { type: integer }
+        requests: { type: integer, format: int64 }
+        rps: { type: number }
+        status: { type: object, properties: { 2xx: { type: integer }, 3xx: { type: integer }, 4xx: { type: integer }, 5xx: { type: integer } } }
+        error_rate: { type: number, description: share of 5xx }
+        bytes_out: { type: integer, format: int64 }
+        bytes_in: { type: integer, format: int64 }
+        p50_ms: { type: integer }
+        p95_ms: { type: integer }
+        p99_ms: { type: integer }
+        last_seen: { type: string, format: date-time }
+        series:
+          type: array
+          items: { type: object, properties: { time: { type: string, format: date-time }, requests: { type: integer }, errors: { type: integer }, bytes_out: { type: integer }, p50_ms: { type: integer }, p95_ms: { type: integer } } }
+    AccessLogEntry:
+      type: object
+      properties:
+        time: { type: string, format: date-time }
+        ip: { type: string }
+        method: { type: string }
+        host: { type: string }
+        path: { type: string }
+        status: { type: integer }
+        bytes_out: { type: integer, format: int64 }
+        bytes_in: { type: integer, format: int64 }
+        ms: { type: integer }
+        user_agent: { type: string }
+        domain: { type: string }
+    GatewaySettings:
+      type: object
+      properties:
+        fallback_http: { type: string, description: "host:port for hosts without a route ('' = 410)", example: traefik.kube-system.svc.cluster.local:80 }
+        fallback_tls: { type: string, description: "host:port receiving raw TLS for hosts without a local certificate ('' = off)", example: traefik.kube-system.svc.cluster.local:443 }
+        acme_email: { type: string, format: email, description: "Let's Encrypt account contact ('' = none); changes apply immediately" }

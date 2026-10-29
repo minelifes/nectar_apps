@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: vet
+        run: go vet ./...
+      - name: test
+        run: go test -race -count=1 ./...
+      - name: build (amd64 + arm64)
+        run: |
+          CGO_ENABLED=0 GOARCH=amd64 go build -o /dev/null ./cmd/nectar-apps
+          CGO_ENABLED=0 GOARCH=arm64 go build -o /dev/null ./cmd/nectar-apps
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /dev/null ./cmd/nectar
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o /dev/null ./cmd/nectar
+
+  ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/fvm
+          key: fvm-${{ runner.os }}-${{ hashFiles('ui/.fvmrc') }}
+      - name: fvm + Flutter pinned in ui/.fvmrc
+        run: echo "FVM=$(../scripts/ensure-fvm.sh)" >> "$GITHUB_ENV"
+      - run: $FVM flutter pub get
+      - name: analyze
+        run: $FVM flutter analyze
+      - name: test
+        run: $FVM flutter test
+      - name: build web (embedded into the panel binary)
+        run: $FVM flutter build web --release --no-web-resources-cdn
+
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck -s sh deploy/install.sh scripts/*.sh
+      - name: dry run
+        run: sudo sh deploy/install.sh --dry-run -y --skip-firewall --manifests deploy/manifests --base-domain apps.example.com
+
+  # Real k3s on the runner: install k3s, apply manifests with locally built images comes in M1
+  # (needs the gateway image from nectar_gateway G5). Tracked in PROGRESS.md.

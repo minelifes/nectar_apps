@@ -1,0 +1,29 @@
+# Build a Spring Boot JAR and deploy it to Nectar Apps on every push to main.
+# Secrets: NECTAR_URL (https://panel.apps.example.com) and NECTAR_TOKEN (Settings → API tokens,
+# role Deployer, limited to the project).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency: deploy-production   # one deploy at a time
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - run: ./mvnw -B package -DskipTests
+
+      - uses: minelifes/nectar_apps@v0
+        with:
+          url: ${{ secrets.NECTAR_URL }}
+          token: ${{ secrets.NECTAR_TOKEN }}
+          app: shop/api
+          file: target/api-0.0.1-SNAPSHOT.jar

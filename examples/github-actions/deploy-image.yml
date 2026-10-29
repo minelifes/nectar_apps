@@ -1,0 +1,34 @@
+# Build a container image, push it to GHCR and deploy that exact tag to an app of the
+# "Docker image" type on Nectar Apps.
+name: Deploy image
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      # the panel pulls the image as-is: make the package public (private registries are not supported yet)
+      - uses: minelifes/nectar_apps@v0
+        with:
+          url: ${{ secrets.NECTAR_URL }}
+          token: ${{ secrets.NECTAR_TOKEN }}
+          app: shop/web
+          image: ghcr.io/${{ github.repository }}:${{ github.sha }}

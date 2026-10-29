@@ -1,0 +1,36 @@
+# private planning notes (not published)
+CLAUDE.md
+PLAN.md
+PROGRESS.md
+
+# build output
+/bin/
+/dist/
+# local runtime data (SQLite DB, artifacts)
+/.data/
+.data/
+*.db
+*.db-shm
+*.db-wal
+# Flutter
+/ui/build/
+/ui/.dart_tool/
+/ui/.fvm/
+/ui/.flutter-plugins*
+/ui/**/Pods/
+/ui/**/.symlinks/
+/ui/**/ephemeral/
+/ui/android/.gradle/
+/ui/android/local.properties
+/ui/ios/Flutter/Generated.xcconfig
+/ui/macos/Flutter/GeneratedPluginRegistrant.swift
+# web UI build output (make ui); the .keep file keeps go:embed working without it
+/web/dist/*
+!/web/dist/.keep
+# editors / OS
+.idea/workspace.xml
+.idea/shelf/
+.idea
+.DS_Store
+*.swp
+examples/**/*.jar

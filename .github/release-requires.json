@@ -1,0 +1,4 @@
+{
+  "gateway_api": [1],
+  "min_gateway": "0.2.0"
+}

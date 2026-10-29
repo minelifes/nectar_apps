@@ -1,0 +1,15 @@
+analyzer:
+  exclude:
+    - build/**
+    - web/**
+    - android/**
+    - ios/**
+    - macos/**
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    - prefer_single_quotes
+    - prefer_final_locals
+    - always_declare_return_types
+    - avoid_print

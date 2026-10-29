@@ -1,0 +1,95 @@
+# Deploy to a Nectar Apps panel from GitHub Actions.
+#
+#   - uses: minelifes/nectar_apps@v0
+#     with:
+#       url: ${{ secrets.NECTAR_URL }}          # https://panel.apps.example.com
+#       token: ${{ secrets.NECTAR_TOKEN }}      # Settings → API tokens (role Deployer, one project)
+#       app: shop/api                           # project/app or the app id
+#       file: target/app.jar                    # or: image: ghcr.io/acme/api:${{ github.sha }}
+name: Deploy to Nectar Apps
+description: Upload an artifact (or switch the image) and deploy it to a Nectar Apps panel; waits until the release is live.
+author: TechBrain LLC
+branding:
+  icon: upload-cloud
+  color: orange
+
+inputs:
+  url:
+    description: Panel address, e.g. https://panel.apps.example.com
+    required: true
+  token:
+    description: API token (nat_…) with app.deploy on the app's project
+    required: true
+  app:
+    description: The app, as project/app (e.g. shop/api) or its id
+    required: true
+  file:
+    description: Artifact to upload (JAR, binary, zip/tarball of a site or app)
+    required: false
+    default: ""
+  image:
+    description: Container image for apps of the Docker image type (e.g. ghcr.io/acme/api:1.4.2)
+    required: false
+    default: ""
+  wait:
+    description: Wait until the release is live (fails the job when it fails)
+    required: false
+    default: "true"
+  timeout:
+    description: How long to wait for the release
+    required: false
+    default: 15m
+  version:
+    description: nectar CLI version to use ("latest" or e.g. 0.12.0)
+    required: false
+    default: latest
+
+outputs:
+  release:
+    description: Number of the release that was deployed
+    value: ${{ steps.deploy.outputs.release }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install the nectar CLI
+      shell: bash
+      env:
+        NECTAR_CLI_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        case "$(uname -s)" in Linux) os=linux ;; Darwin) os=darwin ;; *) os=windows ;; esac
+        case "$(uname -m)" in x86_64|amd64) arch=amd64 ;; arm64|aarch64) arch=arm64 ;; *) echo "::error::unsupported architecture $(uname -m)"; exit 1 ;; esac
+        ext=""; [ "$os" = windows ] && ext=".exe"
+        if [ "$NECTAR_CLI_VERSION" = latest ]; then
+          base="https://github.com/minelifes/nectar_apps/releases/latest/download"
+        else
+          base="https://github.com/minelifes/nectar_apps/releases/download/v${NECTAR_CLI_VERSION#v}"
+        fi
+        dir="$RUNNER_TEMP/nectar-cli"; mkdir -p "$dir"
+        curl -fsSL --retry 3 -o "$dir/nectar$ext" "$base/nectar_${os}_${arch}${ext}"
+        curl -fsSL --retry 3 -o "$dir/nectar.sha256" "$base/nectar_${os}_${arch}${ext}.sha256"
+        (cd "$dir" && echo "$(cut -d' ' -f1 nectar.sha256)  nectar$ext" | sha256sum -c -)
+        chmod +x "$dir/nectar$ext"
+        echo "$dir" >> "$GITHUB_PATH"
+
+    - name: Deploy
+      id: deploy
+      shell: bash
+      env:
+        NECTAR_URL: ${{ inputs.url }}
+        NECTAR_TOKEN: ${{ inputs.token }}
+        IN_APP: ${{ inputs.app }}
+        IN_FILE: ${{ inputs.file }}
+        IN_IMAGE: ${{ inputs.image }}
+        IN_WAIT: ${{ inputs.wait }}
+        IN_TIMEOUT: ${{ inputs.timeout }}
+      run: |
+        set -euo pipefail
+        args=(deploy "$IN_APP" --timeout "$IN_TIMEOUT")
+        [ -n "$IN_FILE" ] && args+=(--file "$IN_FILE")
+        [ -n "$IN_IMAGE" ] && args+=(--image "$IN_IMAGE")
+        [ "$IN_WAIT" = "true" ] || args+=(--no-wait)
+        nectar "${args[@]}" | tee "$RUNNER_TEMP/nectar-deploy.log"
+        rel=$(sed -n 's/^Release #\([0-9]*\) of .* started$/\1/p' "$RUNNER_TEMP/nectar-deploy.log" | tail -1)
+        echo "release=$rel" >> "$GITHUB_OUTPUT"

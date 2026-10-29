@@ -1,0 +1,15 @@
+.git
+.github
+.data
+bin
+dist
+*.db
+ui/build
+ui/.dart_tool
+ui/.fvm
+ui/ios
+ui/android
+ui/macos
+web/dist/*
+!web/dist/.keep
+examples/**/*.jar

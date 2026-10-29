@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Nectar Apps — deploy any app to your own server.">
+  <meta name="theme-color" content="#0E0F12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Nectar Apps">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>Nectar Apps</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0E0F12; }
+    /* shown until Flutter paints its first frame */
+    #splash { position: fixed; inset: 0; display: grid; place-items: center; transition: opacity .25s; }
+    #splash .hex { width: 46px; height: 52px; background: #2A2E37; position: relative; overflow: hidden;
+      clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+    #splash .hex::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: #F5A524;
+      animation: fill 1.4s ease-in-out infinite; }
+    @keyframes fill { 0% { height: 0 } 60% { height: 100% } 100% { height: 100%; opacity: 0 } }
+    @media (prefers-color-scheme: light) { html, body { background: #F6F6F3; } #splash .hex { background: #E4E2DC; } }
+  </style>
+</head>
+<body>
+  <div id="splash" aria-label="Loading Nectar Apps"><div class="hex"></div></div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var s = document.getElementById('splash');
+      if (s) { s.style.opacity = '0'; setTimeout(function () { s.remove(); }, 300); }
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
