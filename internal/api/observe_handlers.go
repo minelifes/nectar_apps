@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"nectar_apps/internal/kube"
+	"nectar_apps/internal/logstore"
 	"nectar_apps/internal/observe"
 	"nectar_apps/internal/store"
 	"nectar_apps/internal/wsock"
@@ -312,4 +313,41 @@ func wsToken(r *http.Request) (string, bool) {
 	}
 	t := r.URL.Query().Get("access_token")
 	return t, t != ""
+}
+
+// appLogHistory: GET /api/apps/{id}/logs/history — stored log lines, newest first (q, regex=1, pod, from, to
+// as RFC 3339, limit). Ask again with to=<next> for older lines while more is true.
+func (s *Server) appLogHistory(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, _ store.Project) {
+	if s.logs == nil {
+		writeError(w, http.StatusNotFound, "log history is not available")
+		return
+	}
+	q := r.URL.Query()
+	query := logstore.Query{Text: q.Get("q"), Regex: q.Get("regex") == "1" || q.Get("regex") == "true", Pod: q.Get("pod")}
+	for _, f := range []struct {
+		name string
+		dst  *time.Time
+	}{{"from", &query.From}, {"to", &query.To}} {
+		if v := q.Get(f.name); v != "" {
+			t, err := time.Parse(time.RFC3339Nano, v)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, f.name+" must be an RFC 3339 time")
+				return
+			}
+			*f.dst = t
+		}
+	}
+	if v := q.Get("limit"); v != "" {
+		query.Limit, _ = strconv.Atoi(v)
+	}
+	if len(query.Text) > 500 {
+		writeError(w, http.StatusBadRequest, "the search is too long")
+		return
+	}
+	res, err := s.logs.Search(app.ID, query)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }

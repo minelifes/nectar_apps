@@ -37,6 +37,11 @@ Usage:
   nectar releases APP                                             release history
   nectar rollback APP [--to N]                                    redeploy release N (default: the previous one)
   nectar logs APP [--tail 200]                                    the latest log lines
+  nectar export --project SLUG [> nectar.yaml]                    the project's apps, databases, variables, volumes
+  nectar apply -f nectar.yaml --project SLUG [--no-deploy]        create what is missing, update what exists (never deletes)
+  nectar import-compose -f docker-compose.yml --project SLUG [--dry-run] [--no-deploy]
+  nectar templates                                                one-click apps
+  nectar install TEMPLATE --project SLUG [--name NAME] [--set key=value]…
   nectar version
 
 APP is the app id or project/app (e.g. shop/api). NECTAR_URL and NECTAR_TOKEN override the saved login,
@@ -349,6 +354,125 @@ func run(ctx context.Context, cmd string, args []string, env Env) error {
 			return err
 		}
 		return c.Logs(ctx, app.ID, *tail, env.Stdout)
+
+	case "export":
+		project := fs.String("project", "", "project slug")
+		if _, err := parse(fs, args); err != nil {
+			return err
+		}
+		p, err := c.ResolveProject(ctx, *project)
+		if err != nil {
+			return err
+		}
+		return c.do(ctx, "GET", fmt.Sprintf("/projects/%d/export", p.ID), nil, "", env.Stdout)
+
+	case "apply", "import-compose":
+		file := fs.String("f", "", "the file (- = stdin)")
+		project := fs.String("project", "", "project slug")
+		noDeploy := fs.Bool("no-deploy", false, "only save the settings, do not deploy")
+		dryRun := fs.Bool("dry-run", false, "only check the file (import-compose: show the converted nectar.yaml and the notes)")
+		if _, err := parse(fs, args); err != nil {
+			return err
+		}
+		if *file == "" {
+			return fmt.Errorf("usage: nectar %s -f FILE --project SLUG", cmd)
+		}
+		data, err := readFileArg(*file, env.Stdin)
+		if err != nil {
+			return err
+		}
+		p, err := c.ResolveProject(ctx, *project)
+		if err != nil {
+			return err
+		}
+		key, path := "blueprint", fmt.Sprintf("/projects/%d/apply", p.ID)
+		if cmd == "import-compose" {
+			key, path = "compose", fmt.Sprintf("/projects/%d/import/compose", p.ID)
+		}
+		var res struct {
+			Steps []struct {
+				Kind, Name, Action, Message string
+			} `json:"steps"`
+			Failed int      `json:"failed"`
+			Notes  []string `json:"notes"`
+			YAML   string   `json:"yaml"`
+		}
+		if err := c.postJSON(ctx, path, map[string]any{key: string(data), "deploy": !*noDeploy, "dry_run": *dryRun}, &res); err != nil {
+			return err
+		}
+		if *dryRun {
+			if res.YAML != "" {
+				fmt.Fprint(env.Stdout, res.YAML)
+			} else {
+				fmt.Fprintln(env.Stdout, "The file is valid.")
+			}
+		}
+		for _, st := range res.Steps {
+			line := fmt.Sprintf("  %-8s %-7s %s", st.Action, st.Kind, st.Name)
+			if st.Message != "" {
+				line += "  — " + st.Message
+			}
+			fmt.Fprintln(env.Stdout, line)
+		}
+		for _, n := range res.Notes {
+			fmt.Fprintln(env.Stderr, "note:", n)
+		}
+		if res.Failed > 0 {
+			return fmt.Errorf("%d steps failed", res.Failed)
+		}
+		return nil
+
+	case "templates":
+		var ts []struct {
+			ID, Name, Category, Description string
+		}
+		if err := c.getJSON(ctx, "/templates", &ts); err != nil {
+			return err
+		}
+		tw := tabwriter.NewWriter(env.Stdout, 2, 4, 2, ' ', 0)
+		fmt.Fprintln(tw, "TEMPLATE\tCATEGORY\tDESCRIPTION")
+		for _, t := range ts {
+			fmt.Fprintf(tw, "%s\t%s\t%s\n", t.ID, t.Category, t.Description)
+		}
+		return tw.Flush()
+
+	case "install":
+		project := fs.String("project", "", "project slug")
+		name := fs.String("name", "", "name of the installation (default: the template id)")
+		var sets multiFlag
+		fs.Var(&sets, "set", "an input, key=value (repeatable)")
+		pos, err := parse(fs, args)
+		if err != nil {
+			return err
+		}
+		if len(pos) != 1 {
+			return errors.New("usage: nectar install TEMPLATE --project SLUG [--name NAME] [--set key=value]")
+		}
+		p, err := c.ResolveProject(ctx, *project)
+		if err != nil {
+			return err
+		}
+		inputs := map[string]string{}
+		for _, kv := range sets {
+			k, v, ok := strings.Cut(kv, "=")
+			if !ok {
+				return fmt.Errorf("--set %q: use key=value", kv)
+			}
+			inputs[k] = v
+		}
+		var res struct {
+			Failed int    `json:"failed"`
+			AppID  int64  `json:"app_id"`
+			Notes  string `json:"notes"`
+		}
+		if err := c.postJSON(ctx, fmt.Sprintf("/projects/%d/templates/%s", p.ID, pos[0]), map[string]any{"name": *name, "inputs": inputs}, &res); err != nil {
+			return err
+		}
+		fmt.Fprintf(env.Stdout, "Installed %s (app %d). %s\n", pos[0], res.AppID, res.Notes)
+		if res.Failed > 0 {
+			return fmt.Errorf("%d steps failed — see the app page", res.Failed)
+		}
+		return nil
 	}
 	fmt.Fprint(env.Stderr, usage)
 	return fmt.Errorf("unknown command %q", cmd)
@@ -403,4 +527,17 @@ func humanSize(n int64) string {
 		return fmt.Sprintf("%.1f KiB", float64(n)/(1<<10))
 	}
 	return fmt.Sprintf("%d B", n)
+}
+
+// multiFlag collects a repeatable flag.
+type multiFlag []string
+
+func (m *multiFlag) String() string     { return strings.Join(*m, ",") }
+func (m *multiFlag) Set(v string) error { *m = append(*m, v); return nil }
+
+func readFileArg(name string, stdin io.Reader) ([]byte, error) {
+	if name == "-" {
+		return io.ReadAll(io.LimitReader(stdin, 1<<20))
+	}
+	return os.ReadFile(name)
 }

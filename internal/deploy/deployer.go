@@ -427,12 +427,30 @@ func (d *Deployer) spec(ctx context.Context, a store.App, rel store.Release) (Ap
 	if err != nil {
 		return AppSpec{}, err
 	}
+	if len(rel.Config.EnvGroups) > 0 { // shared variables: after the add-ons, before the app's own
+		groups, err := d.EnvGroups(ctx, p.ID)
+		if err != nil {
+			return AppSpec{}, err
+		}
+		for _, name := range rel.Config.EnvGroups {
+			g, ok := groups[name]
+			if !ok {
+				return AppSpec{}, fmt.Errorf("env group %q does not exist in the project", name)
+			}
+			for k, v := range g {
+				env[k] = v
+			}
+		}
+	}
 	own, err := d.DecryptEnv(ctx, a.ID)
 	if err != nil {
 		return AppSpec{}, err
 	}
 	for k, v := range own {
 		env[k] = v
+	}
+	if err := d.ResolveRefs(ctx, p, env); err != nil {
+		return AppSpec{}, err
 	}
 	files, err := d.DecryptFiles(ctx, a.ID)
 	if err != nil {

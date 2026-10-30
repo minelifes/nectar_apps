@@ -56,6 +56,10 @@ CLI_BIN="${CLI_BIN:-}"                    # --cli-binary: a local nectar binary 
 JOIN_URL=""                               # --join: add this machine to an existing Nectar server as a k3s agent
 JOIN_TOKEN=""
 SUC_VERSION="${SUC_VERSION:-v0.14.2}"
+LONGHORN=0                                # --longhorn: replicated volumes across nodes (storage class "longhorn")
+LONGHORN_VERSION="${LONGHORN_VERSION:-v1.7.2}"
+NFS=""                                    # --nfs SERVER:/export: storage class "nfs" (shared, ReadWriteMany)
+NFS_PROVISIONER_IMAGE="${NFS_PROVISIONER_IMAGE:-registry.k8s.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2}"
 
 # ------------------------------------------------------------------ output --
 if [ -t 1 ]; then
@@ -99,6 +103,10 @@ Usage: install.sh [options]
   --registry             set up the built-in image registry for Git builds (default on new installs;
                          on an existing server this restarts k3s once to load the registry mirror)
   --no-registry          do not set up the registry
+  --longhorn             install Longhorn: volumes replicated across nodes (storage class "longhorn"; needs
+                         open-iscsi on every node — installed here, and by --join with --longhorn)
+  --nfs SERVER:/EXPORT   storage class "nfs" on an NFS server (shared volumes, ReadWriteMany; the NFS
+                         client is installed here, and by --join with --nfs)
 
 Add a node (run on the NEW machine; the panel shows this command under Server → Add node):
   --join URL --token T   join the cluster at URL (https://<server>:6443) as a k3s agent
@@ -149,6 +157,8 @@ while [ $# -gt 0 ]; do
 		--registry) REGISTRY=1; shift ;;
 		--no-registry) REGISTRY=0; shift ;;
 		--registry-password) REGISTRY_PASSWORD="${2:?}"; shift 2 ;;
+		--longhorn) LONGHORN=1; shift ;;
+		--nfs) NFS="${2:?}"; shift 2 ;;
 		--join) MODE="join"; JOIN_URL="${2:?}"; shift 2 ;;
 		--token) JOIN_TOKEN="${2:?}"; shift 2 ;;
 		--restore-kit) RESTORE_KIT="${2:?}"; shift 2 ;;
@@ -460,6 +470,7 @@ do_adopt() {
 		info "Check later which hosts still use it:  sh install.sh --status     undo:  sh install.sh --rollback"
 		info "When nothing uses it any more:         sh install.sh --finalize"
 	fi
+	setup_storage
 	print_summary
 }
 
@@ -642,6 +653,133 @@ deploy_stack() {
 	echo "$NECTAR_VERSION" >"$STATE_DIR/installed-version"
 }
 
+# ---------------------------------------------------------------- storage --
+# Volumes use k3s's local-path storage by default (a folder on the node, no size limit, tied to that node).
+# --longhorn and --nfs add storage classes that apps can pick per volume (app → Settings → Volumes).
+
+storage_packages() {
+	pk=""
+	if [ "$LONGHORN" -eq 1 ]; then
+		case "$FAMILY" in
+			rhel) pk="$pk iscsi-initiator-utils" ;;
+			*) pk="$pk open-iscsi" ;;
+		esac
+	fi
+	if [ "$LONGHORN" -eq 1 ] || [ -n "$NFS" ]; then
+		case "$FAMILY" in
+			debian) pk="$pk nfs-common" ;;
+			*) pk="$pk nfs-utils" ;;
+		esac
+	fi
+	[ -n "$pk" ] || return 0
+	info "Installing storage clients:$pk"
+	# shellcheck disable=SC2086
+	pkg_install $pk
+	if [ "$LONGHORN" -eq 1 ]; then
+		case "$INIT" in
+			openrc) run rc-update add iscsid default; run rc-service iscsid start ;;
+			*) run systemctl enable --now iscsid ;;
+		esac
+	fi
+}
+
+setup_storage() {
+	[ "$LONGHORN" -eq 1 ] || [ -n "$NFS" ] || return 0
+	storage_packages
+	if [ "$LONGHORN" -eq 1 ]; then
+		info "Installing Longhorn $LONGHORN_VERSION (replicated volumes)"
+		run kc apply -f "https://raw.githubusercontent.com/longhorn/longhorn/$LONGHORN_VERSION/deploy/longhorn.yaml"
+		ok "Storage class \"longhorn\" — pick it per volume (app → Settings → Volumes); Longhorn's own UI: kubectl -n longhorn-system port-forward svc/longhorn-frontend 8000:80"
+	fi
+	if [ -n "$NFS" ]; then
+		nfs_server="${NFS%%:*}"
+		nfs_path="${NFS#*:}"
+		case "$NFS" in *:/*) ;; *) die "--nfs needs SERVER:/export, e.g. 10.0.0.5:/srv/nectar" ;; esac
+		info "Setting up the NFS storage class ($nfs_server:$nfs_path)"
+		if [ "$DRY_RUN" -eq 1 ]; then
+			run kc apply -f "<nfs provisioner manifests>"
+		else
+			nfs_manifest "$nfs_server" "$nfs_path" | kc apply -f - >/dev/null
+		fi
+		ok "Storage class \"nfs\" (ReadWriteMany) — pick it per volume; data of deleted volumes is kept as archived-* folders on the server"
+	fi
+}
+
+# nfs_manifest SERVER PATH: nfs-subdir-external-provisioner (one folder per volume on the export)
+nfs_manifest() {
+	cat <<EOF2
+apiVersion: v1
+kind: Namespace
+metadata: { name: nectar-storage, labels: { pod-security.kubernetes.io/enforce: privileged } }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: nfs-provisioner, namespace: nectar-storage }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: nectar-nfs-provisioner }
+rules:
+  - { apiGroups: [""], resources: [persistentvolumes], verbs: [get, list, watch, create, delete] }
+  - { apiGroups: [""], resources: [persistentvolumeclaims], verbs: [get, list, watch, update] }
+  - { apiGroups: [storage.k8s.io], resources: [storageclasses], verbs: [get, list, watch] }
+  - { apiGroups: [""], resources: [events], verbs: [create, update, patch] }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: nectar-nfs-provisioner }
+subjects: [{ kind: ServiceAccount, name: nfs-provisioner, namespace: nectar-storage }]
+roleRef: { kind: ClusterRole, name: nectar-nfs-provisioner, apiGroup: rbac.authorization.k8s.io }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: nfs-provisioner-leader, namespace: nectar-storage }
+rules:
+  - { apiGroups: [""], resources: [endpoints], verbs: [get, list, watch, create, update, patch] }
+  - { apiGroups: [coordination.k8s.io], resources: [leases], verbs: [get, list, watch, create, update, patch] }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: nfs-provisioner-leader, namespace: nectar-storage }
+subjects: [{ kind: ServiceAccount, name: nfs-provisioner, namespace: nectar-storage }]
+roleRef: { kind: Role, name: nfs-provisioner-leader, apiGroup: rbac.authorization.k8s.io }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: nfs-provisioner, namespace: nectar-storage, labels: { app.kubernetes.io/name: nfs-provisioner } }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app.kubernetes.io/name: nfs-provisioner } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: nfs-provisioner } }
+    spec:
+      serviceAccountName: nfs-provisioner
+      containers:
+        - name: provisioner
+          image: $NFS_PROVISIONER_IMAGE
+          env:
+            - { name: PROVISIONER_NAME, value: nectar.dev/nfs }
+            - { name: NFS_SERVER, value: "$1" }
+            - { name: NFS_PATH, value: "$2" }
+          resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 128Mi } }
+          volumeMounts: [{ name: root, mountPath: /persistentvolumes }]
+      volumes:
+        - name: root
+          nfs: { server: "$1", path: "$2" }
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata: { name: nfs, labels: { app.kubernetes.io/managed-by: nectar-apps } }
+provisioner: nectar.dev/nfs
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+parameters:
+  archiveOnDelete: "true"
+  pathPattern: "\${.PVC.namespace}-\${.PVC.name}"
+EOF2
+}
+
 # k3s updates from the panel: the upgrade controller only acts on Plans, which the panel creates
 # when Settings → Updates → k3s is set to "auto" or "update now" is pressed.
 install_upgrade_controller() {
@@ -803,6 +941,7 @@ do_join() {
 	if [ -n "$REGISTRY_PASSWORD" ]; then
 		write_registries_yaml
 	fi
+	storage_packages # --longhorn / --nfs: the node needs the storage clients too
 	if [ "$DRY_RUN" -eq 1 ]; then
 		run sh -c "curl -sfL https://get.k3s.io | K3S_URL='$JOIN_URL' K3S_TOKEN=<token> INSTALL_K3S_VERSION='$K3S_VERSION' sh -"
 		return
@@ -885,6 +1024,7 @@ do_install() {
 		keep_existing_settings
 		setup_registry
 		deploy_stack
+		setup_storage
 		install_cli
 		print_summary
 		exit 0
@@ -903,6 +1043,7 @@ do_install() {
 	install_k3s
 	keep_existing_settings
 	deploy_stack
+	setup_storage
 	install_cli
 	print_summary
 }

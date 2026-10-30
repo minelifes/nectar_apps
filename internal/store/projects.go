@@ -33,15 +33,22 @@ type Project struct {
 	// there (no isolation policy, no Pod Security labels) and never deletes the namespace.
 	Adopted   bool      `json:"adopted"`
 	CreatedAt time.Time `json:"created_at"`
+	// Environment labels copies of a project ("staging", "production", …); OriginID is the project it was
+	// copied from (apps of the same name in both can be promoted).
+	Environment string `json:"environment,omitempty"`
+	OriginID    *int64 `json:"origin_id,omitempty"`
 }
 
-const projectCols = `p.id, p.slug, p.name, p.namespace, p.quota_json, p.created_at, (SELECT COUNT(*) FROM apps a WHERE a.project_id = p.id), p.adopted`
+const projectCols = `p.id, p.slug, p.name, p.namespace, p.quota_json, p.created_at, (SELECT COUNT(*) FROM apps a WHERE a.project_id = p.id), p.adopted,
+	p.environment, p.origin_id`
 
 func scanProject(r scanner) (Project, error) {
 	var p Project
 	var quota sql.NullString
 	var created int64
-	err := r.Scan(&p.ID, &p.Slug, &p.Name, &p.Namespace, &quota, &created, &p.Apps, &p.Adopted)
+	var origin sql.NullInt64
+	err := r.Scan(&p.ID, &p.Slug, &p.Name, &p.Namespace, &quota, &created, &p.Apps, &p.Adopted, &p.Environment, &origin)
+	p.OriginID = intPtr(origin)
 	if errors.Is(err, sql.ErrNoRows) {
 		return p, ErrNotFound
 	}

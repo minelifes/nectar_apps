@@ -28,6 +28,7 @@ import (
 	"nectar_apps/internal/gateway"
 	"nectar_apps/internal/housekeep"
 	"nectar_apps/internal/kube"
+	"nectar_apps/internal/logstore"
 	"nectar_apps/internal/mail"
 	"nectar_apps/internal/registry"
 	"nectar_apps/internal/routing"
@@ -82,6 +83,8 @@ type Deps struct {
 	Registry *registry.Registry
 	// RegistryBox encrypts registry logins (default EnvBox).
 	RegistryBox *secretbox.Box
+	// LogStore keeps app log history (nil = off).
+	LogStore *logstore.Store
 }
 
 // Server holds the API dependencies.
@@ -114,6 +117,8 @@ type Server struct {
 	registryBox *secretbox.Box
 	mfa         mfaState
 	access      allowlist
+	logs        *logstore.Store
+	mux         *http.ServeMux
 }
 
 // New creates the API server.
@@ -154,7 +159,7 @@ func New(d Deps) *Server {
 		artifacts: d.Artifacts, artKey: d.ArtifactKey, envBox: d.EnvBox, gateway: d.Gateway, syncer: d.Syncer, ingSync: d.IngressSync,
 		cluster: d.Cluster, log: d.Log, limiter: newLoginLimiter(10, 15*time.Minute), web: d.Web,
 		alertBox: d.AlertBox, alertSender: d.AlertSender, keeper: d.Keeper, backups: d.Backups, mfaBox: d.MFABox, mailer: d.Mailer, updates: d.Updates,
-		builder: d.Builder, registry: d.Registry, registryBox: d.RegistryBox}
+		builder: d.Builder, registry: d.Registry, registryBox: d.RegistryBox, logs: d.LogStore}
 }
 
 // SyncBuiltinRoles writes the built-in roles from the authz catalog into the database.
@@ -294,6 +299,18 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("DELETE /api/projects/{pid}", s.inProject("project.delete", s.deleteProject))
 	mux.Handle("GET /api/projects/{pid}/apps", s.inProject("app.view", s.listApps))
 	mux.Handle("POST /api/projects/{pid}/apps", s.inProject("app.create", s.createApp))
+	mux.Handle("POST /api/projects/{pid}/apply", s.inProject("app.create", s.applyProject))
+	mux.Handle("GET /api/projects/{pid}/export", s.inProject("project.view", s.exportProject))
+	mux.Handle("POST /api/projects/{pid}/templates/{tid}", s.inProject("app.create", s.installTemplate))
+	mux.Handle("POST /api/projects/{pid}/import/compose", s.inProject("app.create", s.importCompose))
+	mux.Handle("GET /api/templates", s.authed(s.listTemplates))
+	mux.Handle("GET /api/projects/{pid}/env-groups", s.inProject("project.view", s.listEnvGroups))
+	mux.Handle("PUT /api/projects/{pid}/env-groups/{name}", s.inProject("env.edit", s.putEnvGroup))
+	mux.Handle("DELETE /api/projects/{pid}/env-groups/{name}", s.inProject("env.edit", s.deleteEnvGroup))
+	mux.Handle("PUT /api/apps/{id}/env-groups", s.onApp("env.edit", s.putAppEnvGroups))
+	mux.Handle("POST /api/apps/{id}/clone", s.onApp("app.view", s.cloneApp))
+	mux.Handle("POST /api/apps/{id}/promote", s.onApp("app.view", s.promoteApp))
+	mux.Handle("POST /api/projects/{pid}/clone", s.inProject("project.view", s.cloneProject))
 
 	mux.Handle("GET /api/apps/{id}", s.onApp("app.view", s.getApp))
 	mux.Handle("PATCH /api/apps/{id}", s.onApp("app.edit", s.updateApp))
@@ -305,6 +322,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/apps/{id}/pods", s.onApp("app.logs", s.appPods))
 	mux.Handle("GET /api/apps/{id}/logs", s.onApp("app.logs", s.appLogs))
 	mux.Handle("GET /api/apps/{id}/logs/ws", s.onApp("app.logs", s.appLogsWS))
+	mux.Handle("GET /api/apps/{id}/logs/history", s.onApp("app.logs", s.appLogHistory))
 	mux.Handle("GET /api/apps/{id}/exec/ws", s.onApp("app.exec", s.appExecWS))
 	mux.Handle("GET /api/apps/{id}/env", s.onApp("env.view", s.getEnv))
 	mux.Handle("PUT /api/apps/{id}/env", s.onApp("env.edit", s.putEnv))
@@ -325,6 +343,14 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/apps/{id}/restart", s.onApp("app.restart", s.restartApp))
 	mux.Handle("GET /api/apps/{id}/volumes", s.onApp("app.view", s.listVolumes))
 	mux.Handle("DELETE /api/apps/{id}/volumes/{name}", s.onApp("volume.manage", s.deleteVolume))
+	mux.Handle("GET /api/apps/{id}/volumes/{name}/files", s.onApp("volume.manage", s.listFiles))
+	mux.Handle("GET /api/apps/{id}/volumes/{name}/files/content", s.onApp("volume.manage", s.downloadFile))
+	mux.Handle("PUT /api/apps/{id}/volumes/{name}/files/content", s.onApp("volume.manage", s.uploadFile))
+	mux.Handle("POST /api/apps/{id}/volumes/{name}/files/content", s.onApp("volume.manage", s.uploadFile)) // clients that stream with POST
+	mux.Handle("POST /api/apps/{id}/volumes/{name}/files", s.onApp("volume.manage", s.fileAction))
+	mux.Handle("POST /api/apps/{id}/volumes/{name}/files/close", s.onApp("volume.manage", s.closeFiles))
+	mux.Handle("GET /api/server/volumes", s.can("server.view", s.serverVolumes))
+	mux.Handle("GET /api/server/storage-classes", s.authed(s.storageClasses))
 	mux.Handle("GET /api/apps/{id}/addons", s.onApp("app.view", s.appAddons))
 	mux.Handle("GET /api/addon-kinds", s.authed(s.addonCatalog))
 	mux.Handle("GET /api/projects/{pid}/addons", s.inProject("app.view", s.listAddons))
@@ -353,6 +379,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("DELETE /api/apps/{id}/domains/{did}", s.onApp("domain.manage", s.deleteDomain))
 	mux.Handle("POST /api/apps/{id}/domains/{did}/check", s.onApp("domain.view", s.checkDomain))
 	mux.Handle("POST /api/apps/{id}/domains/{did}/certificate", s.onApp("domain.tls", s.issueDomainCert))
+	mux.Handle("POST /api/apps/{id}/domains/{did}/dns", s.onApp("domain.manage", s.createDomainDNS))
+	mux.Handle("GET /api/domains", s.authed(s.listAllDomains))
 	mux.Handle("GET /api/apps/{id}/metrics", s.onApp("app.metrics", s.appMetrics))
 	mux.Handle("GET /api/apps/{id}/access-log", s.onApp("app.logs", s.appAccessLog))
 
@@ -387,6 +415,7 @@ func (s *Server) Handler() http.Handler {
 		mux.Handle("/", s.web)
 	}
 
+	s.mux = mux // blueprints apply themselves through the API (internal calls)
 	var h http.Handler = securityHeaders(s.ipAllowlist(mux))
 	if s.cfg.Dev {
 		h = devCORS(h)

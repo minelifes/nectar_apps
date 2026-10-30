@@ -7,6 +7,7 @@ import '../../api/session.dart';
 import '../../data/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import 'web_options_editor.dart';
 
 /// Add a domain to an app, or change its gateway options (HTTPS, rate limit, body size, timeout).
 Future<void> showDomainDialog(BuildContext context, {required int appId, Domain? domain}) =>
@@ -29,6 +30,7 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
   late final _timeout = TextEditingController(text: '${widget.domain?.timeoutSeconds ?? 0}');
   late bool _tls = widget.domain?.tls ?? true;
   late bool _force = widget.domain?.forceHttps ?? true;
+  late final _web = WebOptionsForm(widget.domain?.web);
   bool _www = false;
   bool _busy = false;
 
@@ -37,6 +39,7 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
     for (final c in [_host, _rate, _body, _timeout]) {
       c.dispose();
     }
+    _web.dispose();
     super.dispose();
   }
 
@@ -51,6 +54,7 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
       'tls': _tls,
       'force_https': _tls && _force,
       if (d == null || d.kind == 'app') ...{'rate_limit': _num(_rate), 'max_body_mb': _num(_body), 'timeout_seconds': _num(_timeout)},
+      if ((d == null && !_web.value.isEmpty) || (d != null && _web.changed)) 'web': _web.value.toJson(),
     };
     try {
       final api = ref.read(apiProvider);
@@ -142,6 +146,21 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
                 ),
                 const SizedBox(height: 6),
                 Text('0 = no limit (timeout: 60 s). Above the rate limit a client gets 429 (Too Many Requests); one that keeps going is blocked for a while (Gateway → Blocked IPs). One page load can make dozens of requests. Older gateways block for 24 h at once and need at least 10.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                const SizedBox(height: 6),
+                Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: EdgeInsets.zero,
+                    initiallyExpanded: !(d?.web?.isEmpty ?? true),
+                    title: const Text('Redirects, access, headers'),
+                    subtitle: Text(
+                      _web.value.isEmpty ? 'Redirect rules, IP allowlist, headers, CORS, gzip, HSTS' : _web.value.summary,
+                      style: TextStyle(color: c.muted, fontSize: 12.5),
+                    ),
+                    children: [WebOptionsFields(form: _web, onChanged: () => setState(() {}))],
+                  ),
+                ),
               ],
             ],
           ),

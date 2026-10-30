@@ -25,6 +25,9 @@ import (
 type Settings struct {
 	BaseDomain string   `json:"base_domain"` // apps get <app>-<project>.<base_domain>
 	PublicIPs  []string `json:"public_ips"`  // where DNS records must point (empty = node addresses)
+	// DNSAuto: create DNS records of new domains through nectar-gateway's DNS provider (one *.<base>
+	// record for hosts under the base domain).
+	DNSAuto bool `json:"dns_auto"`
 }
 
 const settingsKey = "general"
@@ -51,13 +54,13 @@ func (s *Server) getSettings(w http.ResponseWriter, r *http.Request, p *principa
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"base_domain": st.BaseDomain, "public_ips": st.PublicIPs, "gateway": gw,
-		"server_ips": s.serverIPs(r.Context(), st)})
+		"server_ips": s.serverIPs(r.Context(), st), "dns_auto": st.DNSAuto, "dns_available": s.dnsAvailable(r.Context())})
 }
 
 var hostRe = regexp.MustCompile(`^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$`)
 
 func (s *Server) putSettings(w http.ResponseWriter, r *http.Request, p *principal) {
-	var in Settings
+	in := s.loadSettings(r.Context()) // fields left out keep their value
 	if !decode(w, r, &in) {
 		return
 	}
@@ -75,12 +78,34 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request, p *principa
 	if in.PublicIPs == nil {
 		in.PublicIPs = []string{}
 	}
+	old := s.loadSettings(r.Context())
+	if in.DNSAuto && !old.DNSAuto && !s.dnsAvailable(r.Context()) {
+		writeError(w, http.StatusConflict, "automatic DNS records need a DNS provider in nectar-gateway (Gateway → Certificates → DNS provider, gateway 1.3 or newer)")
+		return
+	}
+	var dns map[string]any
+	if in.DNSAuto && in.BaseDomain != "" && (!old.DNSAuto || old.BaseDomain != in.BaseDomain) {
+		// one wildcard record serves every <app>-<project>.<base>; a conflict is reported, not fatal
+		res, err := s.ensureBaseDNS(r.Context(), in)
+		switch {
+		case err != nil:
+			writeError(w, http.StatusBadGateway, "DNS record *."+in.BaseDomain+": "+err.Error())
+			return
+		case res.Conflict != "":
+			dns = map[string]any{"name": "*." + in.BaseDomain, "conflict": res.Conflict}
+		default:
+			dns = map[string]any{"name": "*." + in.BaseDomain, "records": res.Records}
+		}
+	}
 	if err := s.store.SetSetting(r.Context(), settingsKey, in); err != nil {
 		s.serverError(w, r, err)
 		return
 	}
+	if in.DNSAuto && !slices.Equal(old.PublicIPs, in.PublicIPs) {
+		s.refreshDNS(in) // the server moved: re-point the records Nectar manages
+	}
 	s.audit(r, p, "settings.update", "", in)
-	writeJSON(w, http.StatusOK, in)
+	writeJSON(w, http.StatusOK, map[string]any{"base_domain": in.BaseDomain, "public_ips": in.PublicIPs, "dns_auto": in.DNSAuto, "dns": dns})
 }
 
 // serverIPs returns the addresses DNS records should point to.
@@ -127,9 +152,12 @@ func (s *Server) addDefaultDomain(ctx context.Context, app store.App, proj store
 	if host == "" {
 		return
 	}
-	if _, err := s.store.CreateDomain(ctx, store.Domain{AppID: app.ID, Host: host, TLS: true, ForceHTTPS: true, IsDefault: true}); err != nil {
+	d, err := s.store.CreateDomain(ctx, store.Domain{AppID: app.ID, Host: host, TLS: true, ForceHTTPS: true, IsDefault: true})
+	if err != nil {
 		s.log.Warn("default domain", "host", host, "err", err)
+		return
 	}
+	s.autoDNS(d) // covered by *.<base> with dns_auto
 }
 
 // ----------------------------------------------------------------- domains --
@@ -157,6 +185,7 @@ type domainInput struct {
 	BackendProtocol *string               `json:"backend_protocol"` // http1 | h2c (gRPC)
 	TimeoutSeconds  *int                  `json:"timeout_seconds"`
 	MaxBodyMB       *int                  `json:"max_body_mb"`
+	Web             *gateway.Web          `json:"web"`              // {} clears the options
 	RateLimit       *int                  `json:"rate_limit"`       // requests/s per client IP, 0 = unlimited; over it the gateway blocks the IP for 24 h
 	BasicAuthUsers  *[]auth.BasicAuthUser `json:"basic_auth_users"` // [] removes basic auth
 	// WithWWW (create only) also adds www.<host> redirecting to https://<host>.
@@ -230,6 +259,15 @@ func applyOptions(in domainInput, o *store.DomainOptions, minRate int) string {
 	// load can make dozens of requests: low limits would lock real visitors out
 	if in.RateLimit != nil && o.RateLimit > 0 && o.RateLimit < minRate { // only when it is being set: older domains keep theirs
 		return fmt.Sprintf("rate_limit must be 0 (unlimited) or at least %d requests per second: this nectar-gateway blocks clients over it for 24 hours (update it to answer 429 instead)", minRate)
+	}
+	if in.Web != nil {
+		if err := in.Web.Normalize(); err != nil {
+			return err.Error()
+		}
+		o.Web = in.Web
+		if o.Web.IsZero() {
+			o.Web = nil
+		}
 	}
 	if in.BasicAuthUsers != nil {
 		h, err := auth.Htpasswd(*in.BasicAuthUsers, o.BasicAuth)
@@ -314,10 +352,13 @@ func (s *Server) createDomain(w http.ResponseWriter, r *http.Request, p *princip
 		if !tls {
 			redirect.RedirectTo = "http://" + host
 		}
-		if _, err := s.store.CreateDomain(r.Context(), store.Domain{AppID: app.ID, Host: wwwHost, PathPrefix: "/", TLS: tls, ForceHTTPS: force, DomainOptions: redirect}); err != nil {
+		if wd, err := s.store.CreateDomain(r.Context(), store.Domain{AppID: app.ID, Host: wwwHost, PathPrefix: "/", TLS: tls, ForceHTTPS: force, DomainOptions: redirect}); err != nil {
 			s.log.Warn("www redirect domain", "host", wwwHost, "err", err)
+		} else {
+			s.autoDNS(wd)
 		}
 	}
+	s.autoDNS(d)
 	s.resync(r)
 	d, _ = s.store.GetDomain(r.Context(), d.ID)
 	s.audit(r, p, "domain.create", proj.Slug+"/"+app.Slug, map[string]any{"host": host, "path": path, "kind": opts.Kind, "www": wwwHost != ""})
@@ -406,6 +447,7 @@ func (s *Server) deleteDomain(w http.ResponseWriter, r *http.Request, p *princip
 		s.serverError(w, r, err)
 		return
 	}
+	s.releaseDNS(r.Context(), d)
 	s.resync(r)
 	s.audit(r, p, "domain.delete", proj.Slug+"/"+app.Slug, map[string]string{"host": d.Host, "path": d.PathPrefix})
 	w.WriteHeader(http.StatusNoContent)

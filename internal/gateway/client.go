@@ -53,6 +53,8 @@ type Route struct {
 	BasicAuthHtpasswd *string `json:"basic_auth_htpasswd,omitempty"`
 	// AuthFingerprint is returned by the gateway: SHA-256(htpasswd)[:16 hex], "" = none.
 	AuthFingerprint string `json:"auth_fingerprint,omitempty"`
+	// Web: redirect rules, allowlist, headers, CORS, gzip, HSTS (feature web-options). nil = keep / none.
+	Web *Web `json:"web,omitempty"`
 }
 
 // AuthFingerprint computes the gateway's fingerprint of htpasswd text (must match the gateway).
@@ -384,4 +386,51 @@ func (c *Client) AccessLog(ctx context.Context, query url.Values) ([]map[string]
 	var out []map[string]any
 	err := c.do(ctx, http.MethodGet, "/api/access-log?"+query.Encode(), nil, &out)
 	return out, err
+}
+
+// DNSRecord is an address record at the gateway's DNS provider.
+type DNSRecord struct {
+	Type    string `json:"type"`
+	Name    string `json:"name"`
+	Content string `json:"content"`
+	Proxied bool   `json:"proxied"`
+	Managed bool   `json:"managed"` // created by the gateway
+}
+
+// DNSResult is the answer of EnsureDNS.
+type DNSResult struct {
+	Zone    string      `json:"zone"`
+	Records []DNSRecord `json:"records"`
+	Created int         `json:"created"`
+	Deleted int         `json:"deleted"`
+	// Conflict: the name has records the gateway did not create; nothing was changed.
+	Conflict string `json:"conflict,omitempty"`
+}
+
+// EnsureDNS points name at ips with A/AAAA records (feature dns-records). A conflict is not an error:
+// it comes back in DNSResult.Conflict.
+func (c *Client) EnsureDNS(ctx context.Context, name string, ips []string) (DNSResult, error) {
+	var out DNSResult
+	err := c.do(ctx, http.MethodPut, "/api/dns/records", map[string]any{"name": name, "ips": ips}, &out)
+	var se *StatusError
+	if errors.As(err, &se) && se.Code == http.StatusConflict && json.Unmarshal([]byte(se.Message), &out) == nil && out.Conflict != "" {
+		return out, nil
+	}
+	return out, err
+}
+
+// ListDNS returns the address records of name.
+func (c *Client) ListDNS(ctx context.Context, name string) (DNSResult, error) {
+	var out DNSResult
+	err := c.do(ctx, http.MethodGet, "/api/dns/records?name="+url.QueryEscape(name), nil, &out)
+	return out, err
+}
+
+// DeleteDNS removes the records of name that the gateway created.
+func (c *Client) DeleteDNS(ctx context.Context, name string) (int, error) {
+	var out struct {
+		Deleted int `json:"deleted"`
+	}
+	err := c.do(ctx, http.MethodDelete, "/api/dns/records?name="+url.QueryEscape(name), nil, &out)
+	return out.Deleted, err
 }

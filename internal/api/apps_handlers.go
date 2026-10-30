@@ -320,6 +320,20 @@ func validateConfig(rt runtimes.Runtime, kind string, c store.AppConfig) string 
 	if c.Replicas < 0 || c.Replicas > 20 {
 		return "replicas must be 0–20"
 	}
+	if len(c.InternalPorts) > 10 {
+		return "at most 10 internal ports"
+	}
+	for _, p := range c.InternalPorts {
+		if p < 1 || p > 65535 {
+			return "internal ports must be 1–65535"
+		}
+		if kind != runtimes.KindWeb && kind != runtimes.KindWorker {
+			return "only web and worker apps can have internal ports"
+		}
+		if c.Port == 0 {
+			return "internal ports need the app's main port"
+		}
+	}
 	if c.Resources.CPUMillicores < 0 || c.Resources.CPUMillicores > 64000 || c.Resources.MemoryMB < 0 || c.Resources.MemoryMB > 262144 {
 		return "resources out of range (CPU 0–64 cores, memory 0–256 GiB)"
 	}
@@ -582,6 +596,9 @@ func (s *Server) deleteApp(w http.ResponseWriter, r *http.Request, p *principal,
 	}
 	s.removeOrphanFiles(r, shas)
 	_ = s.store.DeletePlansFor(r.Context(), "app", app.ID)
+	if s.logs != nil {
+		_ = s.logs.DeleteApp(app.ID)
+	}
 	s.resync(r) // its domains are gone (cascade) → remove the gateway routes
 	s.audit(r, p, "app.delete", proj.Slug+"/"+app.Slug, nil)
 	w.WriteHeader(http.StatusNoContent)

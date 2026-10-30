@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Nectar Apps API
-  version: 0.15.0
+  version: 0.19.0
   description: |
     Control-plane API of Nectar Apps. Single source of truth for the Flutter client (generated Dart client)
     and the Go handlers. Auth: session cookie `nectar_session` (web) or `Authorization: Bearer <token>`
@@ -628,6 +628,83 @@ paths:
       responses:
         "204": { description: Deleted }
         "409": { $ref: "#/components/responses/Error" }
+  /apps/{id}/volumes/{name}/files:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [apps]
+      summary: List a folder of the volume (through a helper pod that mounts it; works while the app is stopped)
+      x-permission: volume.manage
+      parameters:
+        - { name: path, in: query, schema: { type: string, default: / } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path: { type: string }
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        type: { type: string, enum: [file, dir, link, other] }
+                        size: { type: integer, format: int64 }
+                        modified: { type: string, format: date-time }
+                        mode: { type: string, example: "644" }
+                        owner: { type: string, example: "1000:1000" }
+        "404": { description: Volume or folder not found }
+    post:
+      tags: [apps]
+      summary: Create a folder, rename or delete
+      x-permission: volume.manage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, path]
+              properties:
+                action: { type: string, enum: [mkdir, rename, delete] }
+                path: { type: string }
+                to: { type: string, description: rename target }
+      responses:
+        "204": { description: Done }
+  /apps/{id}/volumes/{name}/files/content:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: path, in: query, required: true, schema: { type: string } }
+    get:
+      tags: [apps]
+      summary: Download a file (up to 64 MB)
+      x-permission: volume.manage
+      responses:
+        "200": { description: The file, content: { application/octet-stream: {} } }
+    put:
+      tags: [apps]
+      summary: Upload or replace a file (up to 64 MB); new files get the owner of their folder
+      x-permission: volume.manage
+      requestBody:
+        content:
+          application/octet-stream: {}
+      responses:
+        "204": { description: Saved }
+  /apps/{id}/volumes/{name}/files/close:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [apps]
+      summary: Stop the volume's helper pod (it also stops by itself after an hour)
+      x-permission: volume.manage
+      responses:
+        "204": { description: Stopped }
   /apps/{id}/files:
     parameters: [{ $ref: "#/components/parameters/Id" }]
     get:
@@ -773,6 +850,58 @@ paths:
       x-permission: domain.tls
       responses:
         "200": { description: Issued, content: { application/json: { schema: { $ref: "#/components/schemas/Domain" } } } }
+  /apps/{id}/domains/{did}/dns:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: did, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [domains]
+      summary: Create or update the domain's A/AAAA records through nectar-gateway's DNS provider
+      description: Needs a gateway with the dns-records feature (a DNS provider set there). Only records the gateway created are changed; existing records of someone else give state conflict.
+      x-permission: domain.manage
+      responses:
+        "200":
+          description: Result (state managed, covered or conflict)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domain: { $ref: "#/components/schemas/Domain" }
+                  state: { type: string, enum: [managed, covered, conflict, error] }
+                  message: { type: string }
+        "409": { description: The gateway has no DNS provider }
+        "502": { description: The DNS provider refused (state error) }
+  /domains:
+    get:
+      tags: [domains]
+      summary: Every domain the caller may see (domain.view per project), with its app and project
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domains:
+                    type: array
+                    items:
+                      allOf:
+                        - { $ref: "#/components/schemas/Domain" }
+                        - type: object
+                          properties:
+                            app_slug: { type: string }
+                            app_name: { type: string }
+                            project_id: { type: integer, format: int64 }
+                            project_slug: { type: string }
+                            project_name: { type: string }
+                            can_manage: { type: boolean }
+                  base_domain: { type: string }
+                  server_ips: { type: array, items: { type: string }, description: where A/AAAA records must point }
+                  dns_auto: { type: boolean }
+                  dns_available: { type: boolean, description: the gateway can create DNS records }
+                  base_host: { type: string, description: "a host under the base domain custom domains can CNAME to (works with the *.<base> record)" }
 
   /apps/{id}/usage:
     parameters: [{ $ref: "#/components/parameters/Id" }]
@@ -840,6 +969,101 @@ paths:
             application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LogLine" } } }
             text/plain: { schema: { type: string } }
         "400": { $ref: "#/components/responses/Error" }
+  /templates:
+    get:
+      tags: [projects]
+      summary: One-click apps (WordPress, Grafana, n8n, MinIO, MongoDB, RabbitMQ, Uptime Kuma, Gitea, …)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+                    category: { type: string }
+                    description: { type: string }
+                    docs: { type: string }
+                    notes: { type: string }
+                    inputs: { type: array, items: { type: object, properties: { key: { type: string }, label: { type: string }, default: { type: string }, required: { type: boolean } } } }
+                    images: { type: array, items: { type: string } }
+                    addons: { type: array, items: { type: string } }
+  /projects/{pid}/templates/{tid}:
+    parameters:
+      - { name: pid, in: path, required: true, schema: { type: integer, format: int64 } }
+      - { name: tid, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [projects]
+      summary: Install a one-click app (created and deployed through the API as the caller)
+      x-permission: app.create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, description: "slug of the main app (default: the template id); databases get <name>-db" }
+                inputs: { type: object, additionalProperties: { type: string } }
+                deploy: { type: boolean, default: true }
+      responses:
+        "200": { description: Steps, content: { application/json: { schema: { $ref: "#/components/schemas/ApplyResult" } } } }
+        "409": { description: The name is taken in the project }
+  /projects/{pid}/apply:
+    parameters: [{ name: pid, in: path, required: true, schema: { type: integer, format: int64 } }]
+    post:
+      tags: [projects]
+      summary: Apply a nectar.yaml — creates what is missing, updates existing apps, never deletes
+      description: "Body: the YAML/JSON file itself, or {blueprint: <yaml>, deploy, dry_run}. Query: deploy=0 saves only, dry_run=1 checks the file. Every step runs through the regular endpoints as the caller (same permissions and audit)."
+      x-permission: app.create
+      responses:
+        "200": { description: Steps, content: { application/json: { schema: { $ref: "#/components/schemas/ApplyResult" } } } }
+        "400": { description: Invalid file }
+  /projects/{pid}/export:
+    parameters: [{ name: pid, in: path, required: true, schema: { type: integer, format: int64 } }]
+    get:
+      tags: [projects]
+      summary: The project as nectar.yaml (secret values and default domains left out)
+      x-permission: project.view
+      responses:
+        "200": { description: YAML, content: { application/yaml: {} } }
+  /projects/{pid}/import/compose:
+    parameters: [{ name: pid, in: path, required: true, schema: { type: integer, format: int64 } }]
+    post:
+      tags: [projects]
+      summary: Import a docker-compose.yml (each service becomes an app with the same name)
+      description: "Body: the compose file, or {compose: <yaml>, deploy, dry_run}. dry_run returns the converted nectar.yaml and notes."
+      x-permission: app.create
+      responses:
+        "200": { description: Steps or preview, content: { application/json: { schema: { $ref: "#/components/schemas/ApplyResult" } } } }
+  /apps/{id}/logs/history:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [observe]
+      summary: Stored log lines of every pod the app had (survive restarts and deploys), newest first
+      x-permission: app.logs
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: "text to find (case-insensitive), or a regular expression with regex=1" }
+        - { name: regex, in: query, schema: { type: string, enum: ["1"] } }
+        - { name: pod, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time }, description: exclusive; use the answer's next for older lines }
+        - { name: limit, in: query, schema: { type: integer, default: 500, maximum: 5000 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lines: { type: array, items: { type: object, properties: { pod: { type: string }, t: { type: string, format: date-time }, line: { type: string } } } }
+                  more: { type: boolean }
+                  next: { type: string, format: date-time }
+        "404": { description: Log history is off (no Kubernetes) }
   /apps/{id}/logs/ws:
     parameters: [{ $ref: "#/components/parameters/Id" }]
     get:
@@ -1730,6 +1954,55 @@ paths:
       x-permission: settings.manage
       responses:
         "204": { description: Removed }
+  /server/volumes:
+    get:
+      tags: [server]
+      summary: Every app volume and database volume with its usage (known while a pod mounts it)
+      x-permission: server.view
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    namespace: { type: string }
+                    claim: { type: string }
+                    project: { type: string }
+                    app: { type: string }
+                    app_id: { type: integer, format: int64 }
+                    volume: { type: string }
+                    addon: { type: string }
+                    requested_bytes: { type: integer, format: int64 }
+                    used_bytes: { type: integer, format: int64, description: "-1 = unknown" }
+                    available_bytes: { type: integer, format: int64, description: "free space where it lives, -1 = unknown" }
+                    storage_class: { type: string }
+                    phase: { type: string }
+                    node: { type: string }
+  /server/storage-classes:
+    get:
+      tags: [server]
+      summary: Storage classes volumes can use
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name: { type: string }
+                    provisioner: { type: string }
+                    default: { type: boolean }
+                    expandable: { type: boolean }
+                    shared: { type: boolean, description: can mount ReadWriteMany }
+                    replicated: { type: boolean }
+                    node_local: { type: boolean }
   /server/join:
     get:
       tags: [server]
@@ -2288,6 +2561,9 @@ components:
         k3s_data_dir: { type: string, default: /var/lib/rancher/k3s }
         prepull: { type: boolean, default: false, description: "Keep busybox, the runtime images in use and prepull_images on every node (DaemonSet nectar-prepull)" }
         prepull_images: { type: array, maxItems: 20, items: { type: string } }
+        log_history_off: { type: boolean, description: stop collecting app logs on the panel's disk (stored logs age out) }
+        log_days: { type: integer, minimum: 1, maximum: 90, default: 7, description: days of log history kept }
+        log_max_mb: { type: integer, minimum: 16, maximum: 20480, default: 512, description: log history per app; the oldest hours go first }
     ImageCleanup:
       type: object
       properties:
@@ -2572,6 +2848,9 @@ components:
               name: { type: string, pattern: "^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$" }
               mount_path: { type: string, example: /data }
               size_mb: { type: integer, minimum: 64 }
+              storage_class: { type: string, description: "storage class (empty = cluster default, k3s local-path); e.g. longhorn or nfs. Fixed once the volume exists" }
+              shared: { type: boolean, description: "ReadWriteMany (several replicas on several nodes; needs e.g. nfs). Fixed once the volume exists" }
+        internal_ports: { type: array, maxItems: 10, items: { type: integer }, description: "more TCP ports the project's apps reach at <app>:<port> (never from outside); workers with a port get an internal Service too" }
         resume_replicas: { type: integer, readOnly: true, description: replicas before the last stop }
     App:
       type: object
@@ -2665,6 +2944,7 @@ components:
       properties:
         base_domain: { type: string, description: "apps get <app>-<project>.<base_domain>" }
         public_ips: { type: array, items: { type: string }, description: "where DNS must point; empty = node addresses" }
+        dns_auto: { type: boolean, description: "create DNS records of new domains through nectar-gateway's DNS provider: one *.<base_domain> record for the default domains, a record per custom domain (needs the gateway's dns-records feature)" }
     SettingsView:
       allOf:
         - { $ref: "#/components/schemas/Settings" }
@@ -2672,6 +2952,54 @@ components:
           properties:
             gateway: { type: object, properties: { configured: { type: boolean }, reachable: { type: boolean }, version: { type: string }, api_version: { type: integer }, error: { type: string } } }
             server_ips: { type: array, items: { type: string } }
+            dns_available: { type: boolean }
+    ApplyResult:
+      type: object
+      properties:
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string, enum: [addon, app, env, link, domain, deploy] }
+              name: { type: string }
+              action: { type: string, enum: [created, updated, exists, linked, deployed, skipped, failed] }
+              message: { type: string }
+        failed: { type: integer }
+        notes: { type: array, items: { type: string } }
+        yaml: { type: string, description: dry_run of a compose import }
+        app_id: { type: integer, format: int64, description: template install - the main app }
+    WebOptions:
+      type: object
+      description: "Per-domain HTTP options applied by nectar-gateway (feature web-options, gateway 1.3+). {} clears them."
+      properties:
+        redirects:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            required: [from, to]
+            properties:
+              from: { type: string, example: /old }
+              to: { type: string, description: a path on the same host or an absolute http(s) URL }
+              code: { type: integer, enum: [301, 302, 307, 308], default: 301 }
+              prefix: { type: boolean, description: also match sub-paths and keep the rest of the path }
+        allow_ips: { type: array, items: { type: string }, description: IPs/CIDRs allowed; others get 403 }
+        response_headers: { type: object, additionalProperties: { type: string }, description: "set on responses; \"\" removes" }
+        request_headers: { type: object, additionalProperties: { type: string }, description: "set on the request to the app; \"\" removes" }
+        cors:
+          type: object
+          properties:
+            origins: { type: array, items: { type: string }, description: "exact origins or *" }
+            methods: { type: array, items: { type: string } }
+            headers: { type: array, items: { type: string } }
+            expose: { type: array, items: { type: string } }
+            credentials: { type: boolean }
+            max_age: { type: integer, maximum: 86400 }
+        compress: { type: boolean, description: gzip text responses }
+        hsts: { type: integer, description: Strict-Transport-Security max-age in seconds, 0 = off }
+        hsts_subdomains: { type: boolean }
+        hsts_preload: { type: boolean }
     DomainInput:
       type: object
       properties:
@@ -2692,6 +3020,7 @@ components:
           description: replaces the basic-auth users; omit password to keep a user's current one; [] removes basic auth
           items: { type: object, required: [user], properties: { user: { type: string }, password: { type: string, minLength: 8 } } }
         with_www: { type: boolean, description: "create only: also add www.<host> redirecting to https://<host>" }
+        web: { $ref: "#/components/schemas/WebOptions" }
     Domain:
       type: object
       properties:
@@ -2716,6 +3045,9 @@ components:
         max_body_mb: { type: integer, minimum: 0, description: request body limit, 0 = unlimited }
         rate_limit: { type: integer, minimum: 0, maximum: 100000, description: "requests per second per client IP, 0 = unlimited. Above it the gateway answers 429; a client that keeps going is blocked for rate_limit_block_minutes (gateway setting). Gateways without the rate-limit-429 feature block for 24 h at once and need at least 10" }
         auth_users: { type: array, items: { type: string }, description: basic-auth user names (hashes are never returned) }
+        web: { $ref: "#/components/schemas/WebOptions" }
+        dns_state: { type: string, enum: ["", managed, covered, conflict, error], description: "automatic DNS record: managed = created by the gateway, covered = served by *.<base domain>" }
+        dns_message: { type: string }
     TrafficSummary:
       type: object
       properties:

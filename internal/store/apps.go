@@ -31,6 +31,11 @@ type AppConfig struct {
 	ReleaseCommand string `json:"release_command,omitempty"`
 	// Expose opens TCP/UDP ports on the server (NodePort), e.g. MQTT 1883.
 	Expose []ExposedPort `json:"expose,omitempty"`
+	// InternalPorts are more TCP ports the project's other apps can reach at <app>:<port> (e.g. the S3 API
+	// of MinIO next to its console, AMQP next to RabbitMQ's management UI). Never reachable from outside.
+	InternalPorts []int `json:"internal_ports,omitempty"`
+	// EnvGroups are the project env groups whose variables the app gets (before its own, which win).
+	EnvGroups []string `json:"env_groups,omitempty"`
 	// Options are runtime-specific settings (e.g. spa_fallback for static sites).
 	Options map[string]any `json:"options,omitempty"`
 	// Volumes are persistent disks (PVCs) mounted into every container of the app.
@@ -44,6 +49,12 @@ type Volume struct {
 	Name      string `json:"name"`       // a-z0-9-, unique per app
 	MountPath string `json:"mount_path"` // absolute path in the container
 	SizeMB    int64  `json:"size_mb"`
+	// StorageClass picks the Kubernetes storage class ("" = the cluster default, k3s: local-path), e.g.
+	// "longhorn" or "nfs" (install.sh --longhorn / --nfs). Fixed once the volume exists.
+	StorageClass string `json:"storage_class,omitempty"`
+	// Shared mounts the volume ReadWriteMany (several replicas on several nodes; needs a class that
+	// supports it, e.g. nfs). Fixed once the volume exists.
+	Shared bool `json:"shared,omitempty"`
 }
 
 // Resources per replica. NoLimit = requests only (the app may use any free capacity).

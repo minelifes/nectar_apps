@@ -19,7 +19,8 @@ import '../../widgets/status.dart';
 import '../alerts/alert_widgets.dart';
 import '../observe/app_metrics.dart';
 import '../observe/event_list.dart';
-import '../observe/log_viewer.dart';
+import '../observe/log_history.dart';
+import '../projects/environments.dart';
 import 'app_actions.dart';
 import 'builds_tab.dart';
 import 'env_tab.dart';
@@ -99,7 +100,7 @@ class _AppPageState extends ConsumerState<AppPage> {
       ('Overview', () => _Overview(app: app, onStarted: _started)),
       if (source != null) ('Builds', () => BuildsTab(app: app, source: source)),
       if (can('app.metrics')) ('Metrics', () => AppMetrics(app: app, canLogs: can('app.logs'))),
-      if (can('app.logs')) ('Logs', () => NCard(child: LogViewer(key: ValueKey('logs-${app.id}'), app: app))),
+      if (can('app.logs')) ('Logs', () => NCard(child: LogsPanel(key: ValueKey('logs-${app.id}'), app: app))),
       if (can('app.exec') && app.hasReplicas) ('Terminal', () => NCard(child: TerminalTab(key: ValueKey('term-${app.id}'), app: app))),
       ('Events', () => _Events(app: app)),
       if (can('env.view')) ('Environment', () => EnvTab(key: ValueKey('env-${app.id}'), app: app)),
@@ -216,6 +217,10 @@ class _Menu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stopped = app.replicas == 0;
     final cron = app.kind == 'cron';
+    final session = ref.watch(sessionProvider);
+    final projects = ref.watch(projectsProvider).value ?? const <Project>[];
+    final mine = projects.where((p) => p.id == app.projectId).firstOrNull;
+    final targets = mine == null ? const <Project>[] : relatedProjects(mine, projects).where((p) => session.can('app.deploy', projectId: p.id)).toList();
     return PopupMenuButton<String>(
       tooltip: 'More',
       icon: const Icon(Icons.more_horiz_rounded),
@@ -229,8 +234,15 @@ class _Menu extends ConsumerWidget {
             await appOperation(context, ref, app, 'stop', done: cron ? 'Schedule paused' : '${app.name} stopped');
           case 'start':
             await appOperation(context, ref, app, 'start', done: cron ? 'Schedule resumed' : 'Starting ${app.name}');
+          case 'clone':
+            await showCloneAppDialog(context, app);
           case 'delete':
             if (await deleteApp(context, ref, app) && context.mounted) context.go('/projects/${app.projectId}');
+          default:
+            if (v.startsWith('promote:')) {
+              final t = targets.where((p) => 'promote:${p.id}' == v).firstOrNull;
+              if (t != null) await promoteApp(context, ref, app, t);
+            }
         }
       },
       itemBuilder: (_) => [
@@ -240,6 +252,8 @@ class _Menu extends ConsumerWidget {
           PopupMenuItem(value: 'stop', enabled: !busy, child: Text(cron ? 'Pause schedule' : 'Stop')),
         if (canOperate && (app.hasReplicas || cron) && stopped)
           PopupMenuItem(value: 'start', enabled: !busy, child: Text(cron ? 'Resume schedule' : 'Start')),
+        for (final t in targets) PopupMenuItem(value: 'promote:${t.id}', enabled: !busy, child: Text('Promote to ${envLabel(t)}…')),
+        const PopupMenuItem(value: 'clone', child: Text('Copy app…')),
         if (canDelete) const PopupMenuDivider(),
         if (canDelete) const PopupMenuItem(value: 'delete', child: Text('Delete app…')),
       ],

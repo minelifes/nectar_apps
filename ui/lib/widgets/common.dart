@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/client.dart';
+import '../core/locale.dart';
 import '../theme/tokens.dart';
 import 'hex.dart';
 
@@ -315,7 +316,7 @@ Future<bool> confirmAction(BuildContext context, String title, String message, S
         title: Text(title),
         content: SizedBox(width: 420, child: Text(message)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(ctx.l10n.actionCancel)),
           FilledButton(
             style: danger ? FilledButton.styleFrom(backgroundColor: NectarColors.of(ctx).failed, foregroundColor: Colors.white) : null,
             onPressed: () => Navigator.pop(ctx, true),
@@ -325,3 +326,46 @@ Future<bool> confirmAction(BuildContext context, String title, String message, S
       ),
     ) ==
     true;
+
+/// Asks for one line of text; null when cancelled.
+Future<String?> promptText(BuildContext context, String title, String label, {String initial = ''}) =>
+    showDialog<String>(context: context, builder: (_) => _PromptDialog(title: title, label: label, initial: initial));
+
+class _PromptDialog extends StatefulWidget {
+  const _PromptDialog({required this.title, required this.label, required this.initial});
+
+  final String title;
+  final String label;
+  final String initial;
+
+  @override
+  State<_PromptDialog> createState() => _PromptDialogState();
+}
+
+class _PromptDialogState extends State<_PromptDialog> {
+  late final _ctl = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.title),
+        content: SizedBox(
+          width: 420,
+          child: TextField(
+            controller: _ctl,
+            autofocus: true,
+            decoration: InputDecoration(labelText: widget.label),
+            onSubmitted: (v) => Navigator.pop(context, v),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, _ctl.text), child: const Text('OK')),
+        ],
+      );
+}

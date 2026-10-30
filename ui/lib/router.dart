@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api/session.dart';
+import 'core/locale.dart';
 import 'features/addons/addon_page.dart';
 import 'features/alerts/alerts_page.dart';
 import 'features/apps/app_page.dart';
@@ -14,6 +15,7 @@ import 'features/auth/reset_page.dart';
 import 'features/auth/setup_page.dart';
 import 'features/auth/splash_page.dart';
 import 'features/dashboard/dashboard_page.dart';
+import 'features/domains/domains_page.dart';
 import 'features/onboarding/onboarding_page.dart';
 import 'features/projects/project_page.dart';
 import 'features/projects/projects_page.dart';
@@ -69,6 +71,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => page(AppPage(id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0)),
           ),
           GoRoute(path: '/server', pageBuilder: (context, state) => page(const ServerPage())),
+          GoRoute(path: '/domains', pageBuilder: (context, state) => page(const DomainsPage())),
           GoRoute(
             path: '/addons/:id',
             pageBuilder: (context, state) => page(AddonPage(id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0)),
@@ -88,9 +91,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       body: Center(
         child: EmptyState(
           icon: Icons.explore_off_rounded,
-          title: 'Page not found',
+          title: context.l10n.pageNotFound,
           message: state.uri.path,
-          action: FilledButton(onPressed: () => context.go('/'), child: const Text('Go to the dashboard')),
+          action: FilledButton(onPressed: () => context.go('/'), child: Text(context.l10n.goToDashboard)),
         ),
       ),
     ),

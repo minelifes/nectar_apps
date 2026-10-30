@@ -287,7 +287,9 @@ func (d *Deployer) releaseClaim(ctx context.Context, namespace, claim string) er
 		return err
 	}
 	for _, pod := range pods {
-		if phase := kube.Str(pod, "status", "phase"); phase != "Succeeded" && phase != "Failed" {
+		// finished pods (backup/restore jobs) and the volume file browser still hold the claim
+		browser := kube.Str(pod, "metadata", "labels", "nectar.dev/files") != ""
+		if phase := kube.Str(pod, "status", "phase"); phase != "Succeeded" && phase != "Failed" && !browser {
 			continue
 		}
 		for _, v := range kube.Slice(pod, "spec", "volumes") {

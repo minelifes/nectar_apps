@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../api/session.dart';
+import '../../core/locale.dart';
 import '../../core/theme_mode.dart';
 import '../../data/providers.dart';
 import '../../theme/theme.dart';
@@ -131,19 +132,36 @@ class SettingsPage extends ConsumerWidget {
         ],
         const SizedBox(height: NectarTokens.gap),
         NCard(
-          title: 'Appearance',
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: SegmentedButton<ThemeMode>(
-              segments: const [
-                ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode_outlined, size: 18), label: Text('Dark')),
-                ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode_outlined, size: 18), label: Text('Light')),
-                ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto_outlined, size: 18), label: Text('System')),
-              ],
-              selected: {mode},
-              showSelectedIcon: false,
-              onSelectionChanged: (s) => ref.read(themeModeProvider.notifier).set(s.first),
-            ),
+          title: context.l10n.settingsAppearance,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SegmentedButton<ThemeMode>(
+                segments: [
+                  ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_outlined, size: 18), label: Text(context.l10n.themeDark)),
+                  ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_outlined, size: 18), label: Text(context.l10n.themeLight)),
+                  ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_outlined, size: 18), label: Text(context.l10n.themeSystem)),
+                ],
+                selected: {mode},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => ref.read(themeModeProvider.notifier).set(s.first),
+              ),
+              const SizedBox(height: 14),
+              Text(context.l10n.settingsLanguage, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 6),
+              SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(value: '', label: Text(context.l10n.languageSystem)),
+                  ButtonSegment(value: 'en', label: Text(context.l10n.languageEnglish)),
+                  ButtonSegment(value: 'uk', label: Text(context.l10n.languageUkrainian)),
+                ],
+                selected: {ref.watch(localeProvider)?.languageCode ?? ''},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => ref.read(localeProvider.notifier).set(s.first.isEmpty ? null : Locale(s.first)),
+              ),
+              const SizedBox(height: 6),
+              Text(context.l10n.settingsLanguageHint, style: TextStyle(color: NectarColors.of(context).muted, fontSize: 12.5)),
+            ],
           ),
         ),
         const SizedBox(height: NectarTokens.gap),

@@ -218,6 +218,26 @@ func (c *Client) Projects(ctx context.Context) ([]Project, error) {
 	return ps, c.getJSON(ctx, "/projects", &ps)
 }
 
+// ResolveProject finds a project by slug ("" = the only project the token sees).
+func (c *Client) ResolveProject(ctx context.Context, slug string) (Project, error) {
+	ps, err := c.Projects(ctx)
+	if err != nil {
+		return Project{}, err
+	}
+	if slug == "" {
+		if len(ps) == 1 {
+			return ps[0], nil
+		}
+		return Project{}, errors.New("several projects: choose one with --project SLUG")
+	}
+	for _, p := range ps {
+		if p.Slug == slug {
+			return p, nil
+		}
+	}
+	return Project{}, fmt.Errorf("no project %q (or the token cannot see it)", slug)
+}
+
 // Apps lists the apps of a project.
 func (c *Client) Apps(ctx context.Context, projectID int64) ([]App, error) {
 	var as []App

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/session.dart';
+import '../core/locale.dart';
 import '../data/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/hex.dart';
@@ -10,6 +11,21 @@ import 'version_banner.dart';
 
 class _Dest {
   const _Dest(this.path, this.label, this.icon, this.selectedIcon);
+
+  /// The label in the interface language.
+  String text(BuildContext context) {
+    final l = context.l10n;
+    return switch (path) {
+      '/' => l.navDashboard,
+      '/projects' => l.navProjects,
+      '/domains' => l.navDomains,
+      '/server' => l.navServer,
+      '/alerts' => l.navAlerts,
+      '/backups' => l.navBackups,
+      '/settings' => l.navSettings,
+      _ => label,
+    };
+  }
 
   final String path;
   final String label;
@@ -20,6 +36,7 @@ class _Dest {
 const _all = [
   _Dest('/', 'Dashboard', Icons.space_dashboard_outlined, Icons.space_dashboard_rounded),
   _Dest('/projects', 'Projects', Icons.folder_outlined, Icons.folder_rounded),
+  _Dest('/domains', 'Domains', Icons.language_outlined, Icons.language_rounded),
   _Dest('/server', 'Server', Icons.dns_outlined, Icons.dns_rounded),
   _Dest('/alerts', 'Alerts', Icons.notifications_outlined, Icons.notifications_rounded),
   _Dest('/backups', 'Backups', Icons.backup_outlined, Icons.backup_rounded),
@@ -81,7 +98,7 @@ class AppShell extends ConsumerWidget {
             NavigationDestination(
               icon: _badged(d, alertCount, Icon(d.icon)),
               selectedIcon: _badged(d, alertCount, Icon(d.selectedIcon)),
-              label: d.label,
+              label: d.text(context),
             ),
         ],
       ),
@@ -170,7 +187,7 @@ class _NavItemState extends State<_NavItem> {
                   Icon(sel ? widget.dest.selectedIcon : widget.dest.icon, size: 20, color: color),
                   const SizedBox(width: 12),
                   Text(
-                    widget.dest.label,
+                    widget.dest.text(context),
                     style: TextStyle(fontSize: 14, fontWeight: sel ? FontWeight.w600 : FontWeight.w500, color: sel ? c.text : color),
                   ),
                   if (widget.badge > 0) ...[

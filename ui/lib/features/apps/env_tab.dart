@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../projects/env_groups_card.dart';
 import 'env_editor.dart';
 import 'resources.dart';
 
@@ -37,6 +38,8 @@ class EnvTab extends ConsumerWidget {
             data: (vars) => _EnvCard(key: ValueKey(vars), app: app, initial: vars, canEdit: canEdit, canReveal: canReveal),
           ),
         ),
+        const SizedBox(height: NectarTokens.gap),
+        AppEnvGroups(app: app, canEdit: canEdit),
         const SizedBox(height: NectarTokens.gap),
         _LinkedDatabases(app: app),
         const SizedBox(height: NectarTokens.gap),

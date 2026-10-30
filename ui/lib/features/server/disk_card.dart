@@ -231,12 +231,15 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
   late final _dataDir = TextEditingController(text: widget.settings.k3sDataDir);
   late final _images = TextEditingController(text: widget.settings.prepullImages.join('\n'));
   late bool _prepull = widget.settings.prepull;
+  late bool _logHistory = widget.settings.logHistory;
+  late final _logDays = TextEditingController(text: '${widget.settings.logDays}');
+  late final _logMax = TextEditingController(text: '${widget.settings.logMaxMb}');
   bool _saving = false;
   String? _error;
 
   @override
   void dispose() {
-    for (final c in [_keep, _audit, _alerts, _dataDir, _images]) {
+    for (final c in [_keep, _audit, _alerts, _dataDir, _images, _logDays, _logMax]) {
       c.dispose();
     }
     super.dispose();
@@ -254,6 +257,9 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
         alertDays: int.tryParse(_alerts.text.trim()) ?? 0,
         k3sDataDir: _dataDir.text.trim(),
         prepull: _prepull,
+        logHistory: _logHistory,
+        logDays: int.tryParse(_logDays.text.trim()) ?? 0,
+        logMaxMb: int.tryParse(_logMax.text.trim()) ?? 0,
         prepullImages: [
           for (final l in _images.text.split(RegExp(r'[\s,]+')))
             if (l.trim().isNotEmpty) l.trim(),
@@ -287,6 +293,17 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
               num(_keep, 'Uploads kept per app', '1–100; uploads used by a live release are always kept'),
               num(_audit, 'Audit log, days', '30–3650'),
               num(_alerts, 'Resolved alerts, days', '7–3650'),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _logHistory,
+                onChanged: (v) => setState(() => _logHistory = v),
+                title: const Text('Keep app logs'),
+                subtitle: const Text('Stores every app\'s output on the panel\'s disk, searchable on the Logs tab after restarts and deploys.'),
+              ),
+              if (_logHistory) ...[
+                num(_logDays, 'Log history, days', '1–90'),
+                num(_logMax, 'Log history per app, MB', '16–20480; the oldest hours go first'),
+              ],
               TextField(
                 controller: _dataDir,
                 decoration: const InputDecoration(labelText: 'k3s data directory', helperText: 'Used to find crictl for image cleanup'),

@@ -30,13 +30,18 @@ type Settings struct {
 	// Prepull keeps busybox, the runtime images in use and PrepullImages on every node (DaemonSet nectar-prepull).
 	Prepull       bool     `json:"prepull"`
 	PrepullImages []string `json:"prepull_images"`
+	// Log history: app logs are kept on the panel's disk for LogDays (max LogMaxMB per app); LogHistoryOff
+	// stops collecting (stored logs age out).
+	LogHistoryOff bool `json:"log_history_off"`
+	LogDays       int  `json:"log_days"`
+	LogMaxMB      int  `json:"log_max_mb"`
 }
 
 // SettingsKey is the key of Settings in the settings table.
 const SettingsKey = "housekeeping"
 
 // Defaults are used for unset values.
-var Defaults = Settings{KeepArtifacts: 10, AuditDays: 365, AlertDays: 90, K3sDataDir: "/var/lib/rancher/k3s"}
+var Defaults = Settings{KeepArtifacts: 10, AuditDays: 365, AlertDays: 90, K3sDataDir: "/var/lib/rancher/k3s", LogDays: 7, LogMaxMB: 512}
 
 // Normalize fills in defaults.
 func (s Settings) Normalize() Settings {
@@ -52,6 +57,12 @@ func (s Settings) Normalize() Settings {
 	if s.K3sDataDir == "" {
 		s.K3sDataDir = Defaults.K3sDataDir
 	}
+	if s.LogDays <= 0 {
+		s.LogDays = Defaults.LogDays
+	}
+	if s.LogMaxMB <= 0 {
+		s.LogMaxMB = Defaults.LogMaxMB
+	}
 	return s
 }
 
@@ -66,6 +77,10 @@ func (s Settings) Validate() error {
 		return errors.New("alert_days must be between 7 and 3650")
 	case !filepath.IsAbs(s.K3sDataDir) || strings.Contains(s.K3sDataDir, ".."):
 		return errors.New("k3s_data_dir must be an absolute path")
+	case s.LogDays < 1 || s.LogDays > 90:
+		return errors.New("log_days must be between 1 and 90")
+	case s.LogMaxMB < 16 || s.LogMaxMB > 20480:
+		return errors.New("log_max_mb must be between 16 and 20480")
 	case len(s.PrepullImages) > maxPrepullImages:
 		return fmt.Errorf("prepull_images: at most %d images", maxPrepullImages)
 	}
@@ -144,6 +159,7 @@ func (k *Keeper) Run(ctx context.Context) {
 		if err := k.SyncPrepull(ctx); err != nil {
 			k.Log.Warn("image pre-pull", "err", err)
 		}
+		k.cleanFileBrowsers(ctx)
 		if res, err := k.Clean(ctx); err != nil {
 			k.Log.Warn("housekeeping", "err", err)
 		} else if res.Files > 0 || res.Uploads > 0 || res.AuditEntries > 0 || res.ResolvedAlerts > 0 {
@@ -494,4 +510,20 @@ func (k *Keeper) pruneJobs(ctx context.Context) []PruneJob {
 func lastLine(s string) string {
 	lines := strings.Split(strings.TrimSpace(s), "\n")
 	return strings.TrimSpace(lines[len(lines)-1])
+}
+
+// cleanFileBrowsers deletes volume file-browser pods that stopped (they end after an hour).
+func (k *Keeper) cleanFileBrowsers(ctx context.Context) {
+	if k.Kube == nil {
+		return
+	}
+	pods, err := k.Kube.List(ctx, "Pod", "", "nectar.dev/files")
+	if err != nil {
+		return
+	}
+	for _, p := range pods {
+		if ph := kube.Str(p, "status", "phase"); ph == "Succeeded" || ph == "Failed" {
+			_ = k.Kube.Delete(ctx, "Pod", kube.Str(p, "metadata", "namespace"), kube.Str(p, "metadata", "name"))
+		}
+	}
 }

@@ -106,6 +106,7 @@ func (s *Syncer) desiredRoute(ctx context.Context, d store.Domain) (*gateway.Rou
 			ACME: d.TLS && !wildcard, ForceSSL: d.TLS && d.ForceHTTPS && !wildcard,
 			ManagedBy: gateway.ManagedBy, Owner: Owner(d.ID), HCInterval: 30, HCPath: "/",
 			BasicAuthHtpasswd: &htpasswd, AuthFingerprint: gateway.AuthFingerprint(htpasswd),
+			Web: webFor(d),
 		}, StatusActive, ""
 	}
 	if app.Kind != runtimes.KindWeb {
@@ -144,6 +145,7 @@ func (s *Syncer) desiredRoute(ctx context.Context, d store.Domain) (*gateway.Rou
 		RateLimit:         d.RateLimit,
 		BasicAuthHtpasswd: &htpasswd,
 		AuthFingerprint:   gateway.AuthFingerprint(htpasswd),
+		Web:               webFor(d),
 	}
 	if r.BackendProtocol == "" {
 		r.BackendProtocol = "http1"
@@ -158,7 +160,20 @@ func (s *Syncer) desiredRoute(ctx context.Context, d store.Domain) (*gateway.Rou
 	return r, StatusActive, ""
 }
 
+// webFor returns the domain's web options for the route (nil = none). Redirect domains only use HSTS and
+// the allowlist; the gateway checks redirect rules before the route's own redirect anyway.
+func webFor(d store.Domain) *gateway.Web {
+	if d.Web.IsZero() {
+		return nil
+	}
+	w := *d.Web
+	return &w
+}
+
 func differs(want, have gateway.Route) bool {
+	if want.Web.Encode() != have.Web.Encode() {
+		return true
+	}
 	return want.Domain != have.Domain || want.PathPrefix != have.PathPrefix || want.TargetIP != have.TargetIP ||
 		want.TargetPort != have.TargetPort || want.ACME != have.ACME || want.ForceSSL != have.ForceSSL ||
 		want.Maintenance != have.Maintenance || want.HCEnabled != have.HCEnabled || want.HCPath != have.HCPath ||
@@ -172,6 +187,18 @@ func orDefault(v, def string) string {
 		return def
 	}
 	return v
+}
+
+// hasFeature asks the gateway whether it supports an optional feature (false when it cannot say).
+func (s *Syncer) hasFeature(ctx context.Context, feature string) bool {
+	v, ok := s.gw.(interface {
+		Version(context.Context) (gateway.Version, error)
+	})
+	if !ok {
+		return true // test fakes: everything
+	}
+	ver, err := v.Version(ctx)
+	return err == nil && ver.Has(feature)
 }
 
 // Sync reconciles once.
@@ -207,6 +234,7 @@ func (s *Syncer) Sync(ctx context.Context) error {
 		byOwner[r.Owner] = r
 	}
 
+	webOK := s.hasFeature(ctx, gateway.FeatureWebOptions)
 	var errs []error
 	wanted := map[string]bool{}
 	for _, d := range domains {
@@ -218,6 +246,15 @@ func (s *Syncer) Sync(ctx context.Context) error {
 		}
 		wanted[owner] = true
 		have, exists := byOwner[owner]
+		webNote := ""
+		if want.Web != nil && !webOK {
+			// an older gateway would silently ignore the options: serve the route without them and say so
+			want.Web = nil
+			webNote = "redirect rules, allowlist, headers, CORS, compression and HSTS need nectar-gateway 1.3 or newer (update it)"
+		}
+		if want.Web == nil && have.Web != nil {
+			want.Web = &gateway.Web{} // clears the options on the gateway ("web" omitted would keep them)
+		}
 		var got gateway.Route
 		switch {
 		case !exists:
@@ -245,6 +282,9 @@ func (s *Syncer) Sync(ctx context.Context) error {
 		}
 		if want.ACME && notAfter == 0 {
 			note = "waiting for the certificate — the domain must point to this server"
+		}
+		if webNote != "" {
+			note = strings.TrimPrefix(note+"; "+webNote, "; ")
 		}
 		id := got.ID
 		_ = s.store.SetDomainState(ctx, d.ID, StatusActive, note, &id, notAfter)

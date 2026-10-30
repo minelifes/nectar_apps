@@ -17,6 +17,7 @@ const (
 	NodeCPU      = "node_cpu"
 	NodeMemory   = "node_memory"
 	NodeDisk     = "node_disk"
+	VolumeFull   = "volume_full"
 	CertExpiry   = "cert_expiry"
 	GatewayDown  = "gateway_down"
 	BackupFailed = "backup_failed"
@@ -58,6 +59,7 @@ var Catalog = []RuleDef{
 	{NodeCPU, "High CPU", "CPU usage of a node is above the threshold.", Warning, "%", 90, 600, false, false},
 	{NodeMemory, "High memory", "Memory usage of a node is above the threshold.", Warning, "%", 90, 600, false, false},
 	{NodeDisk, "Disk almost full", "Disk usage of a node is above the threshold.", Critical, "%", 85, 0, false, false},
+	{VolumeFull, "Volume almost full", "An app volume or a database uses more than the threshold of its size. On local-path storage the size is not enforced and the node's disk fills up instead.", Warning, "%", 90, 300, false, false},
 	{CertExpiry, "Certificate expiring", "A TLS certificate expires within the threshold and has not been renewed.", Warning, "days", 14, 0, false, false},
 	{BackupFailed, "Backup failed", "The last backup of an app, database or the panel did not succeed.", Critical, "", 0, 0, false, false},
 	{UpdateAvail, "Update available", "A new version of the panel, the gateway or k3s waits to be installed by hand.", Warning, "", 0, 0, false, false},

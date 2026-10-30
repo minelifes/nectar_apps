@@ -13,6 +13,9 @@ import '../../widgets/common.dart';
 import '../../widgets/gauge.dart';
 import '../access/members_card.dart';
 import '../addons/addons_section.dart';
+import 'blueprint_dialogs.dart';
+import 'env_groups_card.dart';
+import 'environments.dart';
 
 class ProjectPage extends ConsumerWidget {
   const ProjectPage({super.key, required this.id});
@@ -49,11 +52,34 @@ class ProjectPage extends ConsumerWidget {
         onRefresh: refresh,
         actions: [
           if (canCreate)
+            OutlinedButton.icon(
+              onPressed: () => showTemplateGallery(context, id),
+              icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+              label: const Text('One-click app'),
+            ),
+          if (canCreate)
             FilledButton.icon(
               onPressed: () => context.go('/apps/new?project=$id'),
               icon: const Icon(Icons.add_rounded, size: 18),
               label: const Text('New app'),
             ),
+          PopupMenuButton<String>(
+            tooltip: 'Import / export',
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (v) => switch (v) {
+              'compose' => showImportDialog(context, id),
+              'yaml' => showImportDialog(context, id, compose: false),
+              'export' => showExportDialog(context, ref, id, p.slug),
+              'env' => showCloneProjectDialog(context, p),
+              _ => null,
+            },
+            itemBuilder: (_) => [
+              if (canCreate) const PopupMenuItem(value: 'compose', child: Text('Import docker-compose.yml')),
+              if (canCreate) const PopupMenuItem(value: 'yaml', child: Text('Apply nectar.yaml')),
+              const PopupMenuItem(value: 'export', child: Text('Export nectar.yaml')),
+              const PopupMenuItem(value: 'env', child: Text('New environment (copy)…')),
+            ],
+          ),
         ],
         children: [
           LayoutBuilder(
@@ -63,6 +89,8 @@ class ProjectPage extends ConsumerWidget {
                   _QuotaCard(project: p, apps: apps.hasValue ? apps.value! : const []),
                   const SizedBox(height: NectarTokens.gap),
                   MembersCard(projectId: id),
+                  const SizedBox(height: NectarTokens.gap),
+                  EnvGroupsCard(projectId: id),
                   if (activity.hasValue) ...[
                     const SizedBox(height: NectarTokens.gap),
                     ActivityCard(entries: activity.value!, title: 'Activity'),
