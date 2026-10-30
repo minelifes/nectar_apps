@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/minelifes/nectar_apps/compare/v1.0.2...v1.0.3) (2026-10-30)
+
+
+### Miscellaneous Chores
+
+* release 1.0.3 ([c175fab](https://github.com/minelifes/nectar_apps/commit/c175fab98712945b9efad7bf21f23448bb1fa0c9))
+
 ## [1.0.2](https://github.com/minelifes/nectar_apps/compare/v1.0.1...v1.0.2) (2026-10-30)
 
 
