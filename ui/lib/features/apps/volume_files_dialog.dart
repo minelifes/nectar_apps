@@ -252,7 +252,7 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
     if (list.isEmpty) return Center(child: Text('Empty folder', style: TextStyle(color: c.muted)));
     return ListView.separated(
       itemCount: list.length + (_path == '/' ? 0 : 1),
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, i) {
         if (_path != '/' && i == 0) {
           final up = _path.substring(0, _path.lastIndexOf('/'));
