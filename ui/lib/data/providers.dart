@@ -377,6 +377,24 @@ final gatewayHealthProvider = FutureProvider.autoDispose<Map<int, RouteHealth>>(
   return {for (final e in (res is Map ? res : const {}).entries) int.tryParse('${e.key}') ?? 0: RouteHealth.fromJson(e.value)};
 });
 
+/// Standalone (wildcard) gateway certificates; polls while one is being issued.
+final gatewayCertificatesProvider = FutureProvider.autoDispose<CertificatesInfo>((ref) async {
+  final api = ref.watch(apiProvider);
+  final info = CertificatesInfo.fromJson(await api.get('/gateway/certificates'));
+  if (info.certificates.any((c) => c.status == 'pending')) {
+    final t = Timer(const Duration(seconds: 5), ref.invalidateSelf);
+    ref.onDispose(t.cancel);
+  }
+  return info;
+});
+
+/// The gateway's runtime settings (fallbacks, Let's Encrypt email, DNS provider, rate-limit blocking).
+final gatewaySettingsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final api = ref.watch(apiProvider);
+  final v = await api.get('/gateway/settings');
+  return v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
+});
+
 final blockedIpsProvider = FutureProvider.autoDispose<List<BlockedIp>>((ref) async {
   final api = ref.watch(apiProvider);
   return listOf(await api.get('/gateway/blocked'), BlockedIp.fromJson);

@@ -3,7 +3,9 @@ package api
 import (
 	"crypto/subtle"
 	"errors"
+	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 	"time"
 
@@ -206,7 +208,7 @@ func (s *Server) startSession(w http.ResponseWriter, r *http.Request, u store.Us
 	if client == "mobile" {
 		resp.AccessExpiresAt = &se.TokenExpiresAt
 	} else {
-		s.setSessionCookie(w, plain, se.TokenExpiresAt)
+		s.setSessionCookie(w, r, plain, se.TokenExpiresAt)
 	}
 	status := http.StatusOK
 	if r.URL.Path == "/api/setup" {
@@ -215,14 +217,17 @@ func (s *Server) startSession(w http.ResponseWriter, r *http.Request, u store.Us
 	writeJSON(w, status, resp)
 }
 
-func (s *Server) setSessionCookie(w http.ResponseWriter, value string, expires time.Time) {
+// setSessionCookie marks the cookie Secure only when the browser reached the panel over HTTPS (directly or
+// through the gateway). Browsers drop Secure cookies on plain-HTTP pages, so a Secure cookie on
+// http://<server-ip>:30480 (the first-run address) would log the owner out right after setup.
+func (s *Server) setSessionCookie(w http.ResponseWriter, r *http.Request, value string, expires time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
 		Value:    value,
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   !s.cfg.Dev,
+		Secure:   requestIsHTTPS(r),
 		SameSite: http.SameSiteStrictMode,
 	})
 }
@@ -255,7 +260,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request, p *principal) {
 	if p.session != nil {
 		_ = s.store.DeleteSession(r.Context(), p.user.ID, p.session.ID)
 	}
-	s.setSessionCookie(w, "", time.Unix(0, 0))
+	s.setSessionCookie(w, r, "", time.Unix(0, 0))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -317,4 +322,21 @@ func validateUserInput(email, name, password string) string {
 		return err.Error()
 	}
 	return ""
+}
+
+// requestIsHTTPS reports whether the browser used HTTPS: TLS on this connection, or X-Forwarded-Proto
+// "https" from a proxy inside the cluster (the gateway).
+func requestIsHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	if !strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+		return false
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	addr, err := netip.ParseAddr(host)
+	return err == nil && (addr.IsPrivate() || addr.IsLoopback())
 }

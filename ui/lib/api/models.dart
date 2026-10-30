@@ -1110,14 +1110,30 @@ class ImageCleanup {
 }
 
 class HousekeepingSettings {
-  const HousekeepingSettings({required this.keepArtifacts, required this.auditDays, required this.alertDays, required this.k3sDataDir});
+  const HousekeepingSettings({
+    required this.keepArtifacts,
+    required this.auditDays,
+    required this.alertDays,
+    required this.k3sDataDir,
+    this.prepull = false,
+    this.prepullImages = const [],
+  });
 
   final int keepArtifacts;
   final int auditDays;
   final int alertDays;
   final String k3sDataDir;
+  final bool prepull;
+  final List<String> prepullImages;
 
-  Map<String, dynamic> toJson() => {'keep_artifacts': keepArtifacts, 'audit_days': auditDays, 'alert_days': alertDays, 'k3s_data_dir': k3sDataDir};
+  Map<String, dynamic> toJson() => {
+        'keep_artifacts': keepArtifacts,
+        'audit_days': auditDays,
+        'alert_days': alertDays,
+        'k3s_data_dir': k3sDataDir,
+        'prepull': prepull,
+        'prepull_images': prepullImages,
+      };
 
   factory HousekeepingSettings.fromJson(Object? j) {
     final m = _map(j);
@@ -1126,6 +1142,8 @@ class HousekeepingSettings {
       auditDays: _int(m['audit_days']),
       alertDays: _int(m['alert_days']),
       k3sDataDir: _str(m['k3s_data_dir']),
+      prepull: m['prepull'] == true,
+      prepullImages: _list(m['prepull_images']).map(_str).toList(),
     );
   }
 }
@@ -1987,6 +2005,8 @@ class GatewayRoute {
     required this.maintenance,
     required this.hcEnabled,
     this.certNotAfter,
+    this.coveredBy = '',
+    this.coveredUntil,
   });
 
   final int id;
@@ -2002,6 +2022,10 @@ class GatewayRoute {
   final bool maintenance;
   final bool hcEnabled;
   final DateTime? certNotAfter;
+
+  /// The wildcard (standalone) certificate that serves this host when the route has none of its own.
+  final String coveredBy;
+  final DateTime? coveredUntil;
 
   String get label => pathPrefix.isEmpty || pathPrefix == '/' ? domain : '$domain$pathPrefix';
 
@@ -2023,6 +2047,82 @@ class GatewayRoute {
       maintenance: _bool(m['maintenance']),
       hcEnabled: _bool(m['hc_enabled']),
       certNotAfter: notAfter > 0 ? DateTime.fromMillisecondsSinceEpoch(notAfter * 1000) : null,
+      coveredBy: _str(m['covered_by']),
+      coveredUntil: _int(m['covered_until']) > 0 ? DateTime.fromMillisecondsSinceEpoch(_int(m['covered_until']) * 1000) : null,
+    );
+  }
+}
+
+/// A standalone gateway certificate, e.g. *.apps.example.com over DNS-01.
+class GatewayCertificate {
+  const GatewayCertificate({
+    required this.id,
+    required this.domain,
+    required this.names,
+    required this.acme,
+    required this.status,
+    required this.lastError,
+    required this.serves,
+    required this.managedBy,
+    this.notAfter,
+  });
+
+  final int id;
+  final String domain;
+  final List<String> names;
+  final bool acme;
+  final String status; // pending | valid | expiring | expired | failed
+  final String lastError;
+  final List<String> serves;
+  final String managedBy;
+  final DateTime? notAfter;
+
+  factory GatewayCertificate.fromJson(Object? j) {
+    final m = _map(j);
+    final na = _int(m['not_after']);
+    return GatewayCertificate(
+      id: _int(m['id']),
+      domain: _str(m['domain']),
+      names: _list(m['names']).map(_str).toList(),
+      acme: _bool(m['acme']),
+      status: _str(m['status']),
+      lastError: _str(m['last_error']),
+      serves: _list(m['serves']).map(_str).toList(),
+      managedBy: _str(m['managed_by']),
+      notAfter: na > 0 ? DateTime.fromMillisecondsSinceEpoch(na * 1000) : null,
+    );
+  }
+}
+
+/// GET /api/gateway/certificates: what the gateway supports plus its standalone certificates.
+class CertificatesInfo {
+  const CertificatesInfo({
+    required this.supported,
+    required this.acme,
+    required this.dns,
+    required this.dnsProvider,
+    required this.baseWildcard,
+    required this.certificates,
+  });
+
+  final bool supported; // the gateway has the certificates API (≥ 1.2.2)
+  final bool acme; // its Let's Encrypt client is on
+  final bool dns; // a DNS provider is set: wildcards possible
+  final String dnsProvider;
+  final String baseWildcard; // "*.<base domain>" or ""
+  final List<GatewayCertificate> certificates;
+
+  bool get hasBaseWildcard => baseWildcard.isNotEmpty && certificates.any((c) => c.domain == baseWildcard);
+
+  factory CertificatesInfo.fromJson(Object? j) {
+    final m = _map(j);
+    return CertificatesInfo(
+      supported: _bool(m['supported']),
+      acme: _bool(m['acme']),
+      dns: _bool(m['dns']),
+      dnsProvider: _str(m['dns_provider']),
+      baseWildcard: _str(m['base_wildcard']),
+      certificates: _list(m['certificates']).map(GatewayCertificate.fromJson).toList(),
     );
   }
 }

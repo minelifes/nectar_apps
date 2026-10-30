@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -121,11 +123,16 @@ func (s *Server) putGatewaySettings(w http.ResponseWriter, r *http.Request, p *p
 		FallbackHTTP *string `json:"fallback_http"`
 		FallbackTLS  *string `json:"fallback_tls"`
 		ACMEEmail    *string `json:"acme_email"`
+		// DNS-01 for wildcard certificates: provider "" | "cloudflare"; the token is write-only
+		DNSProvider *string `json:"dns_provider"`
+		DNSAPIToken *string `json:"dns_api_token"`
+		// how long a client that keeps exceeding a rate limit is blocked (0 = never; gateway with rate-limit-429)
+		RateLimitBlockMinutes *int `json:"rate_limit_block_minutes"`
 	}
 	if !decode(w, r, &in) {
 		return
 	}
-	body := map[string]string{}
+	body := map[string]any{}
 	if in.FallbackHTTP != nil {
 		body["fallback_http"] = *in.FallbackHTTP
 	}
@@ -134,6 +141,15 @@ func (s *Server) putGatewaySettings(w http.ResponseWriter, r *http.Request, p *p
 	}
 	if in.ACMEEmail != nil {
 		body["acme_email"] = strings.TrimSpace(*in.ACMEEmail)
+	}
+	if in.DNSProvider != nil {
+		body["dns_provider"] = strings.ToLower(strings.TrimSpace(*in.DNSProvider))
+	}
+	if in.DNSAPIToken != nil && strings.TrimSpace(*in.DNSAPIToken) != "" {
+		body["dns_api_token"] = strings.TrimSpace(*in.DNSAPIToken)
+	}
+	if in.RateLimitBlockMinutes != nil {
+		body["rate_limit_block_minutes"] = *in.RateLimitBlockMinutes
 	}
 	ctx, cancel := gwCtx(r)
 	defer cancel()
@@ -146,7 +162,14 @@ func (s *Server) putGatewaySettings(w http.ResponseWriter, r *http.Request, p *p
 		s.gatewayErr(w, err)
 		return
 	}
-	s.audit(r, p, "gateway.settings", "", body)
+	logged := map[string]any{}
+	for k, v := range body {
+		logged[k] = v
+	}
+	if _, ok := logged["dns_api_token"]; ok {
+		logged["dns_api_token"] = "(changed)" // never in the audit log
+	}
+	s.audit(r, p, "gateway.settings", "", logged)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(out)
 }
@@ -237,4 +260,166 @@ func (s *Server) appAccessLog(w http.ResponseWriter, r *http.Request, _ *princip
 		all = []map[string]any{}
 	}
 	writeJSON(w, http.StatusOK, all)
+}
+
+// ------------------------------------------------------- wildcard certificates (G4) --
+
+// needCertificates checks that the gateway build has the certificates API (nectar-gateway ≥ 1.2.2).
+func (s *Server) needCertificates(w http.ResponseWriter, ctx context.Context) (gateway.Version, bool) {
+	if !s.needGateway(w) {
+		return gateway.Version{}, false
+	}
+	v, err := s.gateway.Version(ctx)
+	if err != nil {
+		s.gatewayErr(w, err)
+		return v, false
+	}
+	if !v.Has(gateway.FeatureCertificates) {
+		writeError(w, http.StatusConflict, "this nectar-gateway ("+v.Version+") has no wildcard certificates: update it to 1.2.2 or newer (Settings → Updates)")
+		return v, false
+	}
+	return v, true
+}
+
+// certificatesView is the Certificates card: the gateway's certificates plus what is needed to add one.
+type certificatesView struct {
+	Supported    bool                  `json:"supported"` // gateway has the certificates API
+	ACME         bool                  `json:"acme"`      // built-in Let's Encrypt client is on
+	DNS          bool                  `json:"dns"`       // a DNS provider is set (wildcards possible)
+	DNSProvider  string                `json:"dns_provider"`
+	BaseDomain   string                `json:"base_domain"`
+	BaseWildcard string                `json:"base_wildcard"` // "*.<base>" ("" without a base domain)
+	Certificates []gateway.Certificate `json:"certificates"`
+	Providers    []string              `json:"providers"`
+}
+
+func (s *Server) listCertificates(w http.ResponseWriter, r *http.Request, _ *principal) {
+	if !s.needGateway(w) {
+		return
+	}
+	ctx, cancel := gwCtx(r)
+	defer cancel()
+	v, err := s.gateway.Version(ctx)
+	if err != nil {
+		s.gatewayErr(w, err)
+		return
+	}
+	base := s.loadSettings(r.Context()).BaseDomain
+	out := certificatesView{Supported: v.Has(gateway.FeatureCertificates), ACME: v.Has(gateway.FeatureACME), DNS: v.Has(gateway.FeatureDNS01),
+		BaseDomain: base, Certificates: []gateway.Certificate{}, Providers: []string{"cloudflare"}}
+	if base != "" {
+		out.BaseWildcard = "*." + base
+	}
+	if out.Supported {
+		certs, err := s.gateway.ListCertificates(ctx)
+		if err != nil {
+			s.gatewayErr(w, err)
+			return
+		}
+		out.Certificates = certs
+		if raw, err := s.gateway.Raw(ctx, "/api/settings"); err == nil {
+			var st struct {
+				DNSProvider string `json:"dns_provider"`
+			}
+			_ = json.Unmarshal(raw, &st)
+			out.DNSProvider = st.DNSProvider
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) createCertificate(w http.ResponseWriter, r *http.Request, p *principal) {
+	var in struct {
+		Domain      string `json:"domain"`       // "*.example.com" or a host
+		IncludeApex *bool  `json:"include_apex"` // default true for wildcards
+		BaseDomain  bool   `json:"base_domain"`  // shortcut: *.<base domain> + apex
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	ctx, cancel := gwCtx(r)
+	defer cancel()
+	v, ok := s.needCertificates(w, ctx)
+	if !ok {
+		return
+	}
+	owner := "panel"
+	if in.BaseDomain {
+		base := s.loadSettings(r.Context()).BaseDomain
+		if base == "" {
+			writeError(w, http.StatusBadRequest, "set the base domain first (Settings → Domains)")
+			return
+		}
+		in.Domain, owner = "*."+base, "base-domain"
+	}
+	in.Domain = strings.ToLower(strings.TrimSpace(in.Domain))
+	if in.Domain == "" {
+		writeError(w, http.StatusBadRequest, "domain is required (e.g. *.example.com)")
+		return
+	}
+	wild := strings.HasPrefix(in.Domain, "*.")
+	if !v.Has(gateway.FeatureACME) {
+		writeError(w, http.StatusConflict, "the gateway's Let's Encrypt client is off: set the Let's Encrypt email under Settings → Gateway first")
+		return
+	}
+	if wild && !v.Has(gateway.FeatureDNS01) {
+		writeError(w, http.StatusConflict, "wildcard certificates need a DNS provider (DNS-01): add your Cloudflare API token first")
+		return
+	}
+	apex := wild
+	if in.IncludeApex != nil {
+		apex = *in.IncludeApex && wild
+	}
+	c, err := s.gateway.CreateCertificate(ctx, in.Domain, apex, owner)
+	if err != nil {
+		var se *gateway.StatusError
+		if errors.As(err, &se) && se.Code >= 400 && se.Code < 500 {
+			writeError(w, se.Code, se.Message)
+			return
+		}
+		s.gatewayErr(w, err)
+		return
+	}
+	s.audit(r, p, "gateway.certificate.create", c.Domain, map[string]any{"include_apex": apex})
+	// domains pick the certificate up at the next sync (it is issued in the background)
+	writeJSON(w, http.StatusCreated, c)
+}
+
+func (s *Server) certificateAction(w http.ResponseWriter, r *http.Request, p *principal) {
+	ctx, cancel := gwCtx(r)
+	defer cancel()
+	if _, ok := s.needCertificates(w, ctx); !ok {
+		return
+	}
+	id, err := strconv.ParseInt(r.PathValue("cid"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "bad certificate id")
+		return
+	}
+	var se *gateway.StatusError
+	if r.Method == http.MethodDelete {
+		if err := s.gateway.DeleteCertificate(ctx, id); err != nil {
+			if errors.As(err, &se) && se.Code >= 400 && se.Code < 500 {
+				writeError(w, se.Code, se.Message)
+				return
+			}
+			s.gatewayErr(w, err)
+			return
+		}
+		s.audit(r, p, "gateway.certificate.delete", strconv.FormatInt(id, 10), nil)
+		s.resync(r) // domains it served show "waiting for the certificate" again
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	c, err := s.gateway.RenewCertificate(ctx, id)
+	if err != nil {
+		if errors.As(err, &se) && se.Code >= 400 && se.Code < 500 {
+			writeError(w, se.Code, se.Message)
+			return
+		}
+		s.gatewayErr(w, err)
+		return
+	}
+	s.audit(r, p, "gateway.certificate.renew", c.Domain, nil)
+	writeJSON(w, http.StatusAccepted, c)
 }

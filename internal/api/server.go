@@ -53,9 +53,11 @@ type Deps struct {
 	Deployer  *deploy.Deployer  // nil when Kubernetes is not configured
 	Catalog   *runtimes.Catalog // runtime catalog
 	Artifacts *artifacts.Store  // artifact files
-	EnvBox    *secretbox.Box    // encrypts env values
-	Gateway   *gateway.Client   // nil when no gateway is configured
-	Syncer    *routing.Syncer   // domain → gateway route sync (created if nil)
+	// ArtifactKey signs artifact download URLs (rekey.ArtifactKey); nil = the master key (tests)
+	ArtifactKey []byte
+	EnvBox      *secretbox.Box  // encrypts env values
+	Gateway     *gateway.Client // nil when no gateway is configured
+	Syncer      *routing.Syncer // domain → gateway route sync (created if nil)
 	// IngressSync mirrors Kubernetes Ingress objects into the gateway (nil = disabled).
 	IngressSync *adopt.IngressSync
 	// Cluster overrides Kube for the adopt-mode endpoints (tests use a fake); default Kube.
@@ -90,6 +92,7 @@ type Server struct {
 	deployer  *deploy.Deployer
 	catalog   *runtimes.Catalog
 	artifacts *artifacts.Store
+	artKey    []byte // artifact URL signing key
 	envBox    *secretbox.Box
 	gateway   *gateway.Client
 	syncer    *routing.Syncer
@@ -148,7 +151,7 @@ func New(d Deps) *Server {
 		}
 	}
 	return &Server{cfg: d.Config, store: d.Store, kube: d.Kube, deployer: d.Deployer, catalog: d.Catalog,
-		artifacts: d.Artifacts, envBox: d.EnvBox, gateway: d.Gateway, syncer: d.Syncer, ingSync: d.IngressSync,
+		artifacts: d.Artifacts, artKey: d.ArtifactKey, envBox: d.EnvBox, gateway: d.Gateway, syncer: d.Syncer, ingSync: d.IngressSync,
 		cluster: d.Cluster, log: d.Log, limiter: newLoginLimiter(10, 15*time.Minute), web: d.Web,
 		alertBox: d.AlertBox, alertSender: d.AlertSender, keeper: d.Keeper, backups: d.Backups, mfaBox: d.MFABox, mailer: d.Mailer, updates: d.Updates,
 		builder: d.Builder, registry: d.Registry, registryBox: d.RegistryBox}
@@ -363,6 +366,10 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/gateway/routes", s.can("server.view", s.relay("/api/routes", "managed_by")))
 	mux.Handle("GET /api/gateway/settings", s.can("settings.manage", s.relay("/api/settings")))
 	mux.Handle("PUT /api/gateway/settings", s.can("settings.manage", s.putGatewaySettings))
+	mux.Handle("GET /api/gateway/certificates", s.can("server.view", s.listCertificates))
+	mux.Handle("POST /api/gateway/certificates", s.can("settings.manage", s.createCertificate))
+	mux.Handle("POST /api/gateway/certificates/{cid}/renew", s.can("settings.manage", s.certificateAction))
+	mux.Handle("DELETE /api/gateway/certificates/{cid}", s.can("settings.manage", s.certificateAction))
 
 	// adopt mode: migration state, external namespaces
 	mux.Handle("GET /api/adopt", s.can("settings.manage", s.adoptStatus))

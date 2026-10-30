@@ -39,14 +39,24 @@ class _GatewayPageState extends ConsumerState<GatewayPage> {
         ref.invalidate(gatewayRoutesProvider);
         ref.invalidate(gatewayHealthProvider);
         ref.invalidate(blockedIpsProvider);
+        ref.invalidate(gatewayCertificatesProvider);
       },
       children: [
         NTabs(index: _tab, labels: const ['Routes', 'Certificates', 'Blocked IPs'], onChanged: (i) => setState(() => _tab = i)),
         const SizedBox(height: NectarTokens.gap),
         switch (_tab) {
           0 => const _Routes(),
-          1 => const _Certificates(),
-          _ => _Blocked(canManage: session.can('server.manage')),
+          1 => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [_Wildcards(canManage: session.can('settings.manage')), const SizedBox(height: NectarTokens.gap), const _Certificates()],
+            ),
+          _ => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Blocked(canManage: session.can('server.manage')),
+                if (session.can('settings.manage')) ...[const SizedBox(height: NectarTokens.gap), const _RateLimitBlocking()],
+              ],
+            ),
         },
       ],
     );
@@ -145,7 +155,7 @@ class _Certificates extends ConsumerWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
-                    r.certNotAfter == null ? Icons.lock_open_rounded : Icons.verified_user_outlined,
+                    r.certNotAfter == null && r.coveredUntil == null ? Icons.lock_open_rounded : Icons.verified_user_outlined,
                     color: _certColor(context, r),
                   ),
                   title: Text(r.label, style: monoStyle(context, size: 13.5)),
@@ -163,6 +173,10 @@ class _Certificates extends ConsumerWidget {
 
   static String _certText(GatewayRoute r) {
     final source = switch (r.certSource) { 'acme' => 'Let\'s Encrypt', 'upload' => 'uploaded', 'file' => 'file', _ => '' };
+    if (r.certNotAfter == null && r.coveredUntil != null) {
+      final days = r.coveredUntil!.difference(DateTime.now()).inDays;
+      return 'served by ${r.coveredBy} · valid until ${r.coveredUntil!.toIso8601String().substring(0, 10)} ($days days)${r.forceSsl ? ' · HTTPS forced' : ''}';
+    }
     if (r.certNotAfter == null) return r.acme ? 'waiting for the first certificate (is DNS pointing here?)' : 'HTTP only';
     final days = r.certNotAfter!.difference(DateTime.now()).inDays;
     final when = r.certNotAfter!.toIso8601String().substring(0, 10);
@@ -171,9 +185,294 @@ class _Certificates extends ConsumerWidget {
 
   static Color _certColor(BuildContext context, GatewayRoute r) {
     final c = NectarColors.of(context);
-    if (r.certNotAfter == null) return r.acme ? c.warning : c.muted;
-    final days = r.certNotAfter!.difference(DateTime.now()).inDays;
+    final until = r.certNotAfter ?? r.coveredUntil;
+    if (until == null) return r.acme ? c.warning : c.muted;
+    final days = until.difference(DateTime.now()).inDays;
     return days < 0 ? c.failed : (days < 14 ? c.warning : c.running);
+  }
+}
+
+/// Wildcard certificates (DNS-01): the DNS provider, `*.<base domain>` in one click, and the list.
+class _Wildcards extends ConsumerWidget {
+  const _Wildcards({required this.canManage});
+
+  final bool canManage;
+
+  Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() f, [String? done]) async {
+    try {
+      await f();
+      ref.invalidate(gatewayCertificatesProvider);
+      ref.invalidate(gatewayRoutesProvider);
+      if (done != null && context.mounted) showSnack(context, done);
+    } on Object catch (e) {
+      if (context.mounted) showSnack(context, describeError(e), error: true);
+    }
+  }
+
+  static String statusPill(String s) => switch (s) { 'valid' => 'running', 'expiring' => 'warning', 'expired' || 'failed' => 'failed', _ => 'pending' };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final info = ref.watch(gatewayCertificatesProvider);
+    final c = NectarColors.of(context);
+    final api = ref.read(apiProvider);
+    return NCard(
+      title: 'Wildcard certificates',
+      child: AsyncBlock(
+        value: info,
+        onRetry: () => ref.invalidate(gatewayCertificatesProvider),
+        data: (i) {
+          if (!i.supported) {
+            return Text('One certificate for *.your-domain serves every app at once, with no Let\'s Encrypt order per app. '
+                'This needs nectar-gateway 1.2.2 or newer: update it under Settings → Updates.', style: TextStyle(color: c.muted));
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('A wildcard certificate (*.example.com) is proved over DNS: the gateway adds a TXT record through your DNS '
+                  'provider. Apps under it get HTTPS the moment they are created.', style: TextStyle(color: c.muted, fontSize: 13)),
+              const SizedBox(height: 10),
+              if (!i.acme)
+                Text('The gateway\'s Let\'s Encrypt client is off: set the Let\'s Encrypt email (Settings → Gateway) first.', style: TextStyle(color: c.warning))
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Icon(i.dns ? Icons.dns_rounded : Icons.dns_outlined, size: 18, color: i.dns ? c.running : c.muted),
+                    Text(i.dns ? 'DNS-01 through ${i.dnsProvider.isEmpty ? 'your provider' : i.dnsProvider}' : 'No DNS provider yet'),
+                    if (canManage)
+                      TextButton(
+                        onPressed: () => showDialog<void>(context: context, builder: (_) => _DnsDialog(configured: i.dns)),
+                        child: Text(i.dns ? 'Change token' : 'Set up Cloudflare'),
+                      ),
+                    if (canManage && i.dns)
+                      TextButton(
+                        onPressed: () async {
+                          if (!await confirmAction(context, 'Remove the DNS provider?', 'Wildcard certificates stop renewing until you set it again.', 'Remove', danger: true)) return;
+                          if (!context.mounted) return;
+                          await _run(context, ref, () => api.put('/gateway/settings', data: {'dns_provider': ''}));
+                        },
+                        child: const Text('Remove'),
+                      ),
+                    if (canManage && i.dns && i.baseWildcard.isNotEmpty && !i.hasBaseWildcard)
+                      FilledButton.icon(
+                        onPressed: () => _run(context, ref, () => api.post('/gateway/certificates', data: {'base_domain': true}),
+                            'Ordering ${i.baseWildcard} — this takes a minute or two'),
+                        icon: const Icon(Icons.add_moderator_outlined, size: 18),
+                        label: Text('Get ${i.baseWildcard}'),
+                      ),
+                    if (canManage && i.dns)
+                      OutlinedButton(onPressed: () => showDialog<void>(context: context, builder: (_) => const _WildcardDialog()), child: const Text('Other domain…')),
+                  ],
+                ),
+              if (i.certificates.isNotEmpty) const SizedBox(height: 8),
+              for (final cert in i.certificates)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: StatusPill(status: statusPill(cert.status), label: cert.status.isEmpty ? 'Pending' : cert.status[0].toUpperCase() + cert.status.substring(1)),
+                  title: Text(cert.names.join(' + '), style: monoStyle(context, size: 13.5)),
+                  subtitle: Text(
+                    [
+                      if (cert.notAfter != null) 'valid until ${cert.notAfter!.toIso8601String().substring(0, 10)}',
+                      if (cert.status == 'pending' && cert.lastError.isEmpty) 'ordering…',
+                      if (cert.serves.isNotEmpty) 'serves ${cert.serves.length} host${cert.serves.length == 1 ? '' : 's'}',
+                      if (cert.lastError.isNotEmpty) cert.lastError,
+                    ].join(' · '),
+                    style: TextStyle(fontSize: 12.5, color: cert.lastError.isNotEmpty ? c.failed : c.muted),
+                  ),
+                  trailing: canManage
+                      ? PopupMenuButton<String>(
+                          onSelected: (a) async {
+                            if (a == 'renew') {
+                              await _run(context, ref, () => api.post('/gateway/certificates/${cert.id}/renew'), 'Renewing ${cert.domain}');
+                            } else if (await confirmAction(context, 'Delete ${cert.domain}?',
+                                'Hosts it serves fall back to their own Let\'s Encrypt certificates (ordered per host).', 'Delete', danger: true)) {
+                              if (context.mounted) await _run(context, ref, () => api.delete('/gateway/certificates/${cert.id}'));
+                            }
+                          },
+                          itemBuilder: (_) => [
+                            if (cert.acme) const PopupMenuItem(value: 'renew', child: Text('Renew now')),
+                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          ],
+                        )
+                      : null,
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DnsDialog extends ConsumerStatefulWidget {
+  const _DnsDialog({required this.configured});
+
+  final bool configured;
+
+  @override
+  ConsumerState<_DnsDialog> createState() => _DnsDialogState();
+}
+
+class _DnsDialogState extends ConsumerState<_DnsDialog> {
+  final _token = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _token.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_token.text.trim().isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(apiProvider).put('/gateway/settings', data: {'dns_provider': 'cloudflare', 'dns_api_token': _token.text.trim()});
+      ref.invalidate(gatewayCertificatesProvider);
+      if (mounted) Navigator.pop(context);
+    } on Object catch (e) {
+      if (mounted) showSnack(context, describeError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = NectarColors.of(context);
+    return AlertDialog(
+      title: Text(widget.configured ? 'Change the Cloudflare token' : 'Cloudflare for wildcard certificates'),
+      content: SizedBox(
+        width: 460,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('In Cloudflare: My Profile → API Tokens → Create Token → "Edit zone DNS", limited to your zone '
+                '(permissions Zone:Read and DNS:Edit). The token is stored in the gateway and never shown again.',
+                style: TextStyle(color: c.muted, fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(controller: _token, obscureText: true, autofocus: true, decoration: const InputDecoration(labelText: 'API token'), onSubmitted: (_) => _save()),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
+      ],
+    );
+  }
+}
+
+class _WildcardDialog extends ConsumerStatefulWidget {
+  const _WildcardDialog();
+
+  @override
+  ConsumerState<_WildcardDialog> createState() => _WildcardDialogState();
+}
+
+class _WildcardDialogState extends ConsumerState<_WildcardDialog> {
+  final _domain = TextEditingController(text: '*.');
+  bool _apex = true;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _domain.dispose();
+    super.dispose();
+  }
+
+  Future<void> _create() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(apiProvider).post('/gateway/certificates', data: {'domain': _domain.text.trim(), 'include_apex': _apex});
+      ref.invalidate(gatewayCertificatesProvider);
+      if (mounted) Navigator.pop(context);
+    } on Object catch (e) {
+      if (mounted) showSnack(context, describeError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Wildcard certificate'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: _domain, autofocus: true, decoration: const InputDecoration(labelText: 'Domain', hintText: '*.example.com')),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _apex,
+                onChanged: (v) => setState(() => _apex = v ?? true),
+                title: const Text('Also the domain itself (example.com)'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(onPressed: _busy ? null : _create, child: const Text('Order')),
+        ],
+      );
+}
+
+/// How long a client that keeps exceeding a domain's rate limit is blocked (gateway setting).
+class _RateLimitBlocking extends ConsumerWidget {
+  const _RateLimitBlocking();
+
+  static const _choices = {0: 'Never (only 429)', 10: '10 minutes', 60: '1 hour', 1440: '24 hours'};
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(gatewaySettingsProvider);
+    final c = NectarColors.of(context);
+    return NCard(
+      title: 'Rate limits',
+      child: AsyncBlock(
+        value: settings,
+        onRetry: () => ref.invalidate(gatewaySettingsProvider),
+        data: (m) {
+          if (!m.containsKey('rate_limit_block_minutes')) {
+            return Text('This nectar-gateway blocks a client over a rate limit for 24 hours. Update it to answer 429 instead.',
+                style: TextStyle(color: c.muted));
+          }
+          final cur = (m['rate_limit_block_minutes'] as num?)?.toInt() ?? 10;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Above a domain\'s rate limit a client gets 429 and may retry a second later. A client that keeps going '
+                  '(more than ten times the limit refused within a minute) is blocked:', style: TextStyle(color: c.muted, fontSize: 13)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final e in {..._choices, if (!_choices.containsKey(cur)) cur: '$cur minutes'}.entries)
+                    ChoiceChip(
+                      label: Text(e.value),
+                      selected: e.key == cur,
+                      onSelected: (_) async {
+                        try {
+                          await ref.read(apiProvider).put('/gateway/settings', data: {'rate_limit_block_minutes': e.key});
+                          ref.invalidate(gatewaySettingsProvider);
+                        } on Object catch (err) {
+                          if (context.mounted) showSnack(context, describeError(err), error: true);
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
 

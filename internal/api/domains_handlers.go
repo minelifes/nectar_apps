@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"nectar_apps/internal/auth"
+	"nectar_apps/internal/gateway"
 	"nectar_apps/internal/runtimes"
 	"nectar_apps/internal/store"
 )
@@ -163,7 +164,9 @@ type domainInput struct {
 }
 
 // applyOptions merges the input onto o and validates. It returns an error message or "".
-func applyOptions(in domainInput, o *store.DomainOptions) string {
+// applyOptions validates and applies domain options. minRate is the lowest accepted rate limit (see
+// minRateLimit).
+func applyOptions(in domainInput, o *store.DomainOptions, minRate int) string {
 	if in.Kind != nil {
 		o.Kind = *in.Kind
 	}
@@ -223,10 +226,10 @@ func applyOptions(in domainInput, o *store.DomainOptions) string {
 	if o.RateLimit < 0 || o.RateLimit > 100000 {
 		return "rate_limit must be 0–100000 requests per second (0 = unlimited)"
 	}
-	// nectar-gateway blocks a client over the limit for 24 h on every domain (it does not answer 429),
-	// and one page load can make dozens of requests: low limits lock real visitors out
-	if in.RateLimit != nil && o.RateLimit > 0 && o.RateLimit < MinRateLimit { // only when it is being set: older domains keep theirs
-		return fmt.Sprintf("rate_limit must be 0 (unlimited) or at least %d requests per second: clients over it are blocked for 24 hours", MinRateLimit)
+	// gateways before rate-limit-429 block a client over the limit for 24 h on every domain, and one page
+	// load can make dozens of requests: low limits would lock real visitors out
+	if in.RateLimit != nil && o.RateLimit > 0 && o.RateLimit < minRate { // only when it is being set: older domains keep theirs
+		return fmt.Sprintf("rate_limit must be 0 (unlimited) or at least %d requests per second: this nectar-gateway blocks clients over it for 24 hours (update it to answer 429 instead)", minRate)
 	}
 	if in.BasicAuthUsers != nil {
 		h, err := auth.Htpasswd(*in.BasicAuthUsers, o.BasicAuth)
@@ -285,7 +288,7 @@ func (s *Server) createDomain(w http.ResponseWriter, r *http.Request, p *princip
 		return
 	}
 	var opts store.DomainOptions
-	if msg := applyOptions(in, &opts); msg != "" {
+	if msg := applyOptions(in, &opts, s.minRateLimit(r.Context())); msg != "" {
 		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
@@ -371,7 +374,7 @@ func (s *Server) updateDomain(w http.ResponseWriter, r *http.Request, p *princip
 		tls, force = false, false
 	}
 	opts := d.DomainOptions
-	if msg := applyOptions(in, &opts); msg != "" {
+	if msg := applyOptions(in, &opts, s.minRateLimit(r.Context())); msg != "" {
 		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
@@ -475,5 +478,19 @@ func (s *Server) issueDomainCert(w http.ResponseWriter, r *http.Request, p *prin
 	writeJSON(w, http.StatusOK, d)
 }
 
-// MinRateLimit is the lowest per-domain rate limit (requests/s per IP) the panel accepts.
+// MinRateLimit is the lowest per-domain rate limit (requests/s per IP) for gateways that block clients
+// over it for 24 h (before the rate-limit-429 feature).
 const MinRateLimit = 10
+
+// minRateLimit is 1 when the gateway answers 429 over the limit, else MinRateLimit.
+func (s *Server) minRateLimit(ctx context.Context) int {
+	if s.gateway == nil {
+		return 1
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if v, err := s.gateway.Version(ctx); err == nil && v.Has(gateway.FeatureRateLimit429) {
+		return 1
+	}
+	return MinRateLimit
+}

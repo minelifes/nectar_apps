@@ -27,6 +27,9 @@ type Settings struct {
 	AlertDays     int `json:"alert_days"` // resolved alerts
 	// K3sDataDir is the k3s data directory on the nodes (for image cleanup), default /var/lib/rancher/k3s.
 	K3sDataDir string `json:"k3s_data_dir"`
+	// Prepull keeps busybox, the runtime images in use and PrepullImages on every node (DaemonSet nectar-prepull).
+	Prepull       bool     `json:"prepull"`
+	PrepullImages []string `json:"prepull_images"`
 }
 
 // SettingsKey is the key of Settings in the settings table.
@@ -63,6 +66,13 @@ func (s Settings) Validate() error {
 		return errors.New("alert_days must be between 7 and 3650")
 	case !filepath.IsAbs(s.K3sDataDir) || strings.Contains(s.K3sDataDir, ".."):
 		return errors.New("k3s_data_dir must be an absolute path")
+	case len(s.PrepullImages) > maxPrepullImages:
+		return fmt.Errorf("prepull_images: at most %d images", maxPrepullImages)
+	}
+	for _, img := range s.PrepullImages {
+		if img == "" || len(img) > 255 || strings.ContainsAny(img, " \t\n\"'") {
+			return fmt.Errorf("prepull_images: %q is not an image reference", img)
+		}
 	}
 	return nil
 }
@@ -82,6 +92,7 @@ type Kube interface {
 	Apply(ctx context.Context, o kube.Object) (kube.Object, error)
 	List(ctx context.Context, kind, namespace, labelSelector string) ([]kube.Object, error)
 	PodLogs(ctx context.Context, namespace, pod, container string, tailLines int, previous bool) (string, error)
+	Delete(ctx context.Context, kind, namespace, name string) error
 }
 
 // Keeper runs the retention jobs.
@@ -91,9 +102,13 @@ type Keeper struct {
 	Kube      Kube // nil without Kubernetes
 	DataDir   string
 	DBPath    string
-	Namespace string // system namespace for image cleanup jobs
-	Log       *slog.Logger
-	Now       func() time.Time
+	Namespace string // system namespace for image cleanup jobs and the pre-pull DaemonSet
+	// InitImage is the artifact init image (busybox) kept by the pre-pull DaemonSet.
+	InitImage string
+	// Images returns the runtime images apps use (kept by the pre-pull DaemonSet).
+	Images func(ctx context.Context) []string
+	Log    *slog.Logger
+	Now    func() time.Time
 
 	mu sync.Mutex // one cleanup at a time
 }
@@ -125,6 +140,9 @@ func (k *Keeper) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
+		}
+		if err := k.SyncPrepull(ctx); err != nil {
+			k.Log.Warn("image pre-pull", "err", err)
 		}
 		if res, err := k.Clean(ctx); err != nil {
 			k.Log.Warn("housekeeping", "err", err)

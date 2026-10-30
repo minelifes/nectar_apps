@@ -238,11 +238,16 @@ func (s *Syncer) Sync(ctx context.Context) error {
 			continue
 		}
 		note := ""
-		if want.ACME && got.CertNotAfter == 0 {
+		notAfter := got.CertNotAfter
+		if notAfter == 0 && got.CoveredUntil > 0 {
+			notAfter = got.CoveredUntil // served by a wildcard certificate (e.g. *.<base domain>)
+			note = "HTTPS by the certificate " + got.CoveredBy
+		}
+		if want.ACME && notAfter == 0 {
 			note = "waiting for the certificate — the domain must point to this server"
 		}
 		id := got.ID
-		_ = s.store.SetDomainState(ctx, d.ID, StatusActive, note, &id, got.CertNotAfter)
+		_ = s.store.SetDomainState(ctx, d.ID, StatusActive, note, &id, notAfter)
 	}
 	for owner, r := range byOwner {
 		if !wanted[owner] {

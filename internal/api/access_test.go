@@ -173,6 +173,16 @@ func TestGatewayBlockAndRateLimit(t *testing.T) {
 	if code, v, _ := e.do(o, "POST", "/api/apps/"+aid+"/domains", map[string]any{"host": "r.example.com", "rate_limit": 2}); code != 400 || !strings.Contains(v["error"].(string), "24 hours") {
 		t.Fatalf("rate limit below the minimum: %d %v", code, v)
 	}
+	// a gateway that answers 429 over the limit accepts low limits
+	fg.mu.Lock()
+	fg.features = []string{"rate-limit-429"}
+	fg.mu.Unlock()
+	if code, v, _ := e.do(o, "POST", "/api/apps/"+aid+"/domains", map[string]any{"host": "low.example.com", "rate_limit": 2}); code != 201 {
+		t.Fatalf("low rate limit with rate-limit-429: %d %v", code, v)
+	}
+	fg.mu.Lock()
+	fg.features = nil
+	fg.mu.Unlock()
 	code, d, _ := e.do(o, "POST", "/api/apps/"+aid+"/domains", map[string]any{"host": "r.example.com", "rate_limit": 50})
 	if code != 201 || d["rate_limit"].(float64) != 50 {
 		t.Fatalf("domain: %d %v", code, d)
