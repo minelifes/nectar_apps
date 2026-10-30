@@ -7,11 +7,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -160,6 +162,20 @@ func TestParsePush(t *testing.T) {
 type fakeK struct {
 	*kubefake.Fake
 	logs string
+	hold atomic.Bool // while set, build Jobs are still running (no status yet)
+}
+
+func (f *fakeK) GetObject(ctx context.Context, kind, ns, name string, out any) error {
+	if kind != "Job" || !f.hold.Load() {
+		return f.Fake.GetObject(ctx, kind, ns, name, out)
+	}
+	var o kube.Object
+	if err := f.Fake.GetObject(ctx, kind, ns, name, &o); err != nil {
+		return err
+	}
+	delete(o, "status")
+	b, _ := json.Marshal(o)
+	return json.Unmarshal(b, out)
 }
 
 func (f *fakeK) List(ctx context.Context, kind, ns, sel string) ([]kube.Object, error) {
@@ -214,6 +230,7 @@ func TestBuilder(t *testing.T) {
 		Creds: func(context.Context) ([]registry.Credential, error) {
 			return []registry.Credential{{Host: "ghcr.io", Username: "me", Password: "ghp"}}, nil
 		}}
+	k.hold.Store(true) // the first build keeps running until the second start was refused
 	bl, err := b.Start(ctx, Request{App: app, Project: p, Trigger: "manual", Deploy: true})
 	if err != nil {
 		t.Fatal(err)
@@ -221,10 +238,10 @@ func TestBuilder(t *testing.T) {
 	if bl.Number != 1 || bl.CommitSHA != sha1 || bl.Image != "registry.nectar.local/prj-shop/api:build-1" {
 		t.Fatalf("build %+v", bl)
 	}
-	if _, err := b.Start(ctx, Request{App: app, Project: p, Trigger: "manual"}); err != store.ErrBuildRunning {
-		// the fake Job succeeds at once; a second start may already be allowed
-		t.Logf("second start: %v", err)
+	if _, err := b.Start(ctx, Request{App: app, Project: p, Trigger: "manual"}); !errors.Is(err, store.ErrBuildRunning) {
+		t.Fatalf("second start while a build runs: %v", err)
 	}
+	k.hold.Store(false)
 	b.Wait()
 	var job kube.Object
 	if err := k.Fake.GetObject(ctx, "Job", "nectar-builds", JobName(bl.ID), &job); err != nil {
