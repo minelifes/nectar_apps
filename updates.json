@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.3",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:223faf070922b80da96b8eab64d9be58c14a982bda19cc53362b4b4c86f6197e",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- FIX UI BAG\n- Update. Private registries: image pull secrets. Domains page. docker-compose import. App templates. Private registry credentials. Git push-to-deploy. Volume file browser. Project export/import. Persistent log history. Cloudflare DNS integration. Per-route custom redirects,ip,....Environments.",
+          "previous": "1.0.2",
+          "published_at": "2026-10-30T22:46:03+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.2",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:d105b4e8eb45efaf576c5fa672d4593f690b9c9f54803ccbf6c80e9396c0d437",
@@ -65,6 +85,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.3",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:223faf070922b80da96b8eab64d9be58c14a982bda19cc53362b4b4c86f6197e",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- FIX UI BAG\n- Update. Private registries: image pull secrets. Domains page. docker-compose import. App templates. Private registry credentials. Git push-to-deploy. Volume file browser. Project export/import. Persistent log history. Cloudflare DNS integration. Per-route custom redirects,ip,....Environments.",
+          "previous": "1.0.2",
+          "published_at": "2026-10-30T22:46:03+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.2",
@@ -128,5 +168,5 @@
       ]
     }
   },
-  "updated_at": "2026-10-30T15:39:57+00:00"
+  "updated_at": "2026-10-30T22:46:03+00:00"
 }
