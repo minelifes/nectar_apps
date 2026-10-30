@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"slices"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -18,7 +20,7 @@ func TestVolumesFilesScaleRestartPending(t *testing.T) {
 	ctx := context.Background()
 	a := javaApp()
 	a.Config.Expose = nil
-	a.Config.Volumes = []store.Volume{{Name: "data", MountPath: "/data", SizeMB: 1024}}
+	a.Config.Volumes = []store.Volume{{Name: "data", MountPath: "/data", SizeMB: 1024}, {Name: "shared", MountPath: "/shared", SizeMB: 512, StorageClass: "nfs", Shared: true}}
 	a, _ = e.app(t, a)
 	enc, _ := e.box.Seal("key: value\n")
 	if err := e.st.ReplaceFiles(ctx, a.ID, []store.AppFile{{Path: "/app/config/application.yml", ContentEnc: enc}}); err != nil {
@@ -40,8 +42,12 @@ func TestVolumesFilesScaleRestartPending(t *testing.T) {
 	}
 	ns := e.p.Namespace
 	pvc := e.k.Get("PersistentVolumeClaim", ns, "api-data")
-	if pvc == nil || kube.Str(pvc, "spec", "resources", "requests", "storage") != "1024Mi" || kube.Str(pvc, "metadata", "labels", LabelVolume) != "data" {
+	if pvc == nil || kube.Str(pvc, "spec", "resources", "requests", "storage") != "1024Mi" || kube.Str(pvc, "metadata", "labels", LabelVolume) != "data" ||
+		kube.Field(pvc, "spec", "storageClassName") != nil {
 		t.Fatalf("pvc: %v", pvc)
+	}
+	if nfs := e.k.Get("PersistentVolumeClaim", ns, "api-shared"); kube.Str(nfs, "spec", "storageClassName") != "nfs" || fmt.Sprint(kube.Field(nfs, "spec", "accessModes")) != "[ReadWriteMany]" {
+		t.Fatalf("nfs pvc: %v", nfs)
 	}
 	sec := e.k.Get("Secret", ns, "api-userfiles")
 	if v, _ := base64.StdEncoding.DecodeString(kube.Str(sec, "data", "file-00")); string(v) != "key: value\n" {
@@ -106,7 +112,8 @@ func TestVolumesFilesScaleRestartPending(t *testing.T) {
 		t.Fatal("the deploy touched or pruned the volume")
 	}
 	vols, err := e.d.Volumes(ctx, a, e.p)
-	if err != nil || len(vols) != 1 || vols[0].InConfig || vols[0].Mounted || vols[0].RequestedMB != 1024 {
+	sort.Slice(vols, func(i, j int) bool { return vols[i].Name < vols[j].Name })
+	if err != nil || len(vols) != 2 || vols[0].InConfig || vols[0].Mounted || vols[0].RequestedMB != 1024 || vols[1].StorageClass != "nfs" {
 		t.Fatalf("volumes: %+v %v", vols, err)
 	}
 	// finished backup/restore pods that mount the claim would keep it Terminating: they go first;
@@ -120,10 +127,14 @@ func TestVolumesFilesScaleRestartPending(t *testing.T) {
 		mkPod("other", "Succeeded", "web-data"), mkPod("busy", "Running", "api-data")} {
 		e.k.Apply(ctx, p)
 	}
+	browser := mkPod("nectar-files-api-data", "Running", "api-data") // the file browser holds the claim too
+	browser["metadata"].(map[string]any)["labels"] = map[string]any{"nectar.dev/files": "api-data"}
+	e.k.Apply(ctx, browser)
 	if err := e.d.DeleteVolume(ctx, a, e.p, "data"); err != nil || e.k.Has("PersistentVolumeClaim", ns, "api-data") {
 		t.Fatalf("delete volume: %v", err)
 	}
-	if e.k.Has("Pod", ns, "backup-done") || e.k.Has("Pod", ns, "restore-failed") || !e.k.Has("Pod", ns, "other") || !e.k.Has("Pod", ns, "busy") {
+	if e.k.Has("Pod", ns, "backup-done") || e.k.Has("Pod", ns, "restore-failed") || !e.k.Has("Pod", ns, "other") || !e.k.Has("Pod", ns, "busy") ||
+		e.k.Has("Pod", ns, "nectar-files-api-data") {
 		t.Fatal("releaseClaim deleted the wrong pods")
 	}
 }

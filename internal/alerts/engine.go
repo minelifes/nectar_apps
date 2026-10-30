@@ -49,6 +49,8 @@ type Engine struct {
 	Now      func() time.Time
 	// PanelSMTP returns the panel's SMTP server for email channels that use it.
 	PanelSMTP func(ctx context.Context) (ChannelConfig, error)
+	// Volumes returns the usage of every volume (nil = no volume_full checks).
+	Volumes func(ctx context.Context) ([]VolumeUsage, error)
 
 	mu       sync.Mutex
 	pending  map[string]time.Time // key → since when the condition holds
@@ -416,6 +418,12 @@ func (e *Engine) check(ctx context.Context, set Settings, now time.Time) ([]cond
 			}
 		}
 	}
+	if on(VolumeFull) && e.Volumes != nil {
+		if vols, err := e.Volumes(ctx); err == nil {
+			checked[VolumeFull] = true
+			out = append(out, volumeConds(vols, set.Rule(VolumeFull).Threshold)...)
+		}
+	}
 	if on(BackupFailed) {
 		if last, err := e.Store.LastBackupRuns(ctx); err == nil {
 			checked[BackupFailed] = true
@@ -753,4 +761,30 @@ func bytesHuman(b int64) string {
 func trimFloat(v float64) string {
 	s := strconv.FormatFloat(v, 'f', 1, 64)
 	return strings.TrimSuffix(s, ".0")
+}
+
+// VolumeUsage is one volume for the volume_full rule.
+type VolumeUsage struct {
+	Key     string // stable id, e.g. prj-shop/web-data
+	Subject string // "shop/web: data" or "shop/db (database)"
+	Path    string // panel link
+	UsedB   int64  // -1 = unknown
+	SizeB   int64  // the size in the settings
+}
+
+func volumeConds(vols []VolumeUsage, threshold float64) []cond {
+	var out []cond
+	for _, v := range vols {
+		if v.UsedB < 0 || v.SizeB <= 0 {
+			continue // unknown while no pod mounts it
+		}
+		pct := float64(v.UsedB) * 100 / float64(v.SizeB)
+		if pct < threshold {
+			continue
+		}
+		out = append(out, cond{Rule: VolumeFull, Key: VolumeFull + ":" + v.Key, Subject: v.Subject, Severity: Warning, Path: v.Path,
+			Message: fmt.Sprintf("Volume %s uses %s of %s (%.0f%%, threshold %.0f%%). Grow it in the app settings or clean up files (Volumes → Files).",
+				v.Subject, bytesHuman(v.UsedB), bytesHuman(v.SizeB), pct, threshold)})
+	}
+	return out
 }

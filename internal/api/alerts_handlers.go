@@ -264,7 +264,7 @@ func (s *Server) serverDisk(w http.ResponseWriter, r *http.Request, _ *principal
 }
 
 func (s *Server) putHousekeeping(w http.ResponseWriter, r *http.Request, p *principal) {
-	var in housekeep.Settings
+	in := housekeep.Load(r.Context(), s.store) // fields left out keep their value
 	if !decode(w, r, &in) {
 		return
 	}

@@ -91,3 +91,40 @@ func TestCLIDeploy(t *testing.T) {
 		t.Fatalf("login with the saved address: %d %s %+v", code, out2.String(), cfg)
 	}
 }
+
+// nectar export / apply / import-compose / templates / install with an owner token.
+func TestCLIBlueprints(t *testing.T) {
+	e := newEnv(t)
+	o := e.owner()
+	e.do(o, "POST", "/api/projects", map[string]any{"slug": "shop", "name": "Shop"})
+	_, tok, _ := e.do(o, "POST", "/api/me/tokens", map[string]any{"name": "admin"})
+	run := func(stdin string, args ...string) (int, string, string) {
+		var out, errb bytes.Buffer
+		code := cli.Run(context.Background(), args, cli.Env{Stdout: &out, Stderr: &errb, Stdin: strings.NewReader(stdin), Version: "test",
+			Client: &cli.Client{URL: e.srv.URL, Token: tok["token"].(string)}})
+		return code, out.String(), errb.String()
+	}
+	if code, out, errs := run("", "templates"); code != 0 || !strings.Contains(out, "wordpress") {
+		t.Fatalf("templates: %d %s %s", code, out, errs)
+	}
+	if code, out, errs := run("", "install", "uptime-kuma", "--project", "shop", "--name", "status"); code != 0 || !strings.Contains(out, "Installed uptime-kuma") {
+		t.Fatalf("install: %d %s %s", code, out, errs)
+	}
+	e.dep.Wait()
+	yml := "apps:\n  - slug: api\n    image: ghcr.io/acme/api:3\n    port: 8080\n    env: { MODE: prod }\n"
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "nectar.yaml"), []byte(yml), 0o600)
+	if code, out, errs := run("", "apply", "-f", filepath.Join(dir, "nectar.yaml"), "--project", "shop", "--no-deploy"); code != 0 || !strings.Contains(out, "created  app     api") {
+		t.Fatalf("apply: %d %q %s", code, out, errs)
+	}
+	if code, out, errs := run("", "export", "--project", "shop"); code != 0 || !strings.Contains(out, "slug: api") || !strings.Contains(out, "slug: status") {
+		t.Fatalf("export: %d %s %s", code, out, errs)
+	}
+	compose := "services:\n  web:\n    build: .\n    ports: [\"80:8000\"]\n"
+	if code, out, errs := run(compose, "import-compose", "-f", "-", "--project", "shop", "--dry-run"); code != 0 || !strings.Contains(out, "slug: web") || !strings.Contains(errs, "built from source") {
+		t.Fatalf("import-compose dry run: %d %s %s", code, out, errs)
+	}
+	if code, _, errs := run("apps: [{slug: bad}]", "apply", "-f", "-", "--project", "shop"); code == 0 || !strings.Contains(errs, "image is required") {
+		t.Fatalf("invalid file: %d %s", code, errs)
+	}
+}

@@ -58,6 +58,7 @@ var resources = map[string]resource{
 	"IngressRouteTCP":          {"/apis/traefik.io/v1alpha1", "ingressroutetcps", true},
 	"IngressRouteUDP":          {"/apis/traefik.io/v1alpha1", "ingressrouteudps", true},
 	"Node":                     {"/api/v1", "nodes", false},
+	"StorageClass":             {"/apis/storage.k8s.io/v1", "storageclasses", false},
 	"Certificate":              {"/apis/cert-manager.io/v1", "certificates", true},
 	"ClusterIssuer":            {"/apis/cert-manager.io/v1", "clusterissuers", false},
 	"VirtualService":           {"/apis/networking.istio.io/v1beta1", "virtualservices", true},

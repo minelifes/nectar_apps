@@ -6,6 +6,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"nectar_apps/internal/gateway"
 )
 
 // Domain routes a host (+ path prefix) to an app through the gateway.
@@ -23,6 +25,9 @@ type Domain struct {
 	GatewayRouteID *int64     `json:"gateway_route_id,omitempty"`
 	CertNotAfter   *time.Time `json:"cert_not_after,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
+	// DNSState: "" (records not managed by Nectar) | managed | conflict | error; DNSMessage explains.
+	DNSState   string `json:"dns_state"`
+	DNSMessage string `json:"dns_message,omitempty"`
 	DomainOptions
 }
 
@@ -44,19 +49,23 @@ type DomainOptions struct {
 	// BasicAuth is htpasswd text (user:<bcrypt>); never sent to clients — see AuthUsers.
 	BasicAuth string   `json:"-"`
 	AuthUsers []string `json:"auth_users"`
+	// Web: redirect rules, IP allowlist, headers, CORS, gzip, HSTS (nectar-gateway "web-options").
+	Web *gateway.Web `json:"web,omitempty"`
 }
 
 const domainCols = `id, app_id, host, path_prefix, target_port, tls, force_https, is_default, status, status_message,
 	gateway_route_id, cert_not_after, created_at, kind, redirect_to, redirect_code, backend_protocol, timeout_seconds,
-	max_body_mb, basic_auth, rate_limit`
+	max_body_mb, basic_auth, rate_limit, web, dns_state, dns_message`
 
 func scanDomain(r scanner) (Domain, error) {
 	var d Domain
 	var gw sql.NullInt64
 	var notAfter, created int64
+	var web string
 	err := r.Scan(&d.ID, &d.AppID, &d.Host, &d.PathPrefix, &d.TargetPort, &d.TLS, &d.ForceHTTPS, &d.IsDefault,
 		&d.Status, &d.StatusMessage, &gw, &notAfter, &created, &d.Kind, &d.RedirectTo, &d.RedirectCode,
-		&d.BackendProtocol, &d.TimeoutSeconds, &d.MaxBodyMB, &d.BasicAuth, &d.RateLimit)
+		&d.BackendProtocol, &d.TimeoutSeconds, &d.MaxBodyMB, &d.BasicAuth, &d.RateLimit, &web, &d.DNSState, &d.DNSMessage)
+	d.Web = gateway.DecodeWeb(web)
 	if errors.Is(err, sql.ErrNoRows) {
 		return d, ErrNotFound
 	}
@@ -91,10 +100,10 @@ func (s *Store) CreateDomain(ctx context.Context, d Domain) (Domain, error) {
 	now := s.unix()
 	o := d.DomainOptions.withDefaults()
 	res, err := s.db.ExecContext(ctx, `INSERT INTO domains (app_id, host, path_prefix, target_port, tls, force_https, is_default, status,
-		created_at, updated_at, kind, redirect_to, redirect_code, backend_protocol, timeout_seconds, max_body_mb, basic_auth, rate_limit)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		created_at, updated_at, kind, redirect_to, redirect_code, backend_protocol, timeout_seconds, max_body_mb, basic_auth, rate_limit, web)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		d.AppID, NormalizeHost(d.Host), NormalizePath(d.PathPrefix), d.TargetPort, b2i(d.TLS), b2i(d.ForceHTTPS), b2i(d.IsDefault), now, now,
-		o.Kind, o.RedirectTo, o.RedirectCode, o.BackendProtocol, o.TimeoutSeconds, o.MaxBodyMB, o.BasicAuth, o.RateLimit)
+		o.Kind, o.RedirectTo, o.RedirectCode, o.BackendProtocol, o.TimeoutSeconds, o.MaxBodyMB, o.BasicAuth, o.RateLimit, o.Web.Encode())
 	if isUnique(err) {
 		return Domain{}, ErrConflict
 	}
@@ -149,8 +158,8 @@ func (s *Store) UpdateDomainSettings(ctx context.Context, id int64, targetPort i
 func (s *Store) UpdateDomainOptions(ctx context.Context, id int64, o DomainOptions) (Domain, error) {
 	o = o.withDefaults()
 	res, err := s.db.ExecContext(ctx, `UPDATE domains SET kind = ?, redirect_to = ?, redirect_code = ?, backend_protocol = ?,
-		timeout_seconds = ?, max_body_mb = ?, basic_auth = ?, rate_limit = ?, updated_at = ? WHERE id = ?`,
-		o.Kind, o.RedirectTo, o.RedirectCode, o.BackendProtocol, o.TimeoutSeconds, o.MaxBodyMB, o.BasicAuth, o.RateLimit, s.unix(), id)
+		timeout_seconds = ?, max_body_mb = ?, basic_auth = ?, rate_limit = ?, web = ?, updated_at = ? WHERE id = ?`,
+		o.Kind, o.RedirectTo, o.RedirectCode, o.BackendProtocol, o.TimeoutSeconds, o.MaxBodyMB, o.BasicAuth, o.RateLimit, o.Web.Encode(), s.unix(), id)
 	if err != nil {
 		return Domain{}, err
 	}
@@ -201,6 +210,15 @@ func (s *Store) SetDomainState(ctx context.Context, id int64, status, message st
 	}
 	_, err := s.db.ExecContext(ctx, `UPDATE domains SET status = ?, status_message = ?, gateway_route_id = ?, cert_not_after = ? WHERE id = ?`,
 		status, message, nullInt(routeID), certNotAfter, id)
+	return err
+}
+
+// SetDomainDNS records the state of the domain's automatic DNS record.
+func (s *Store) SetDomainDNS(ctx context.Context, id int64, state, message string) error {
+	if len(message) > 500 {
+		message = message[:500]
+	}
+	_, err := s.db.ExecContext(ctx, `UPDATE domains SET dns_state = ?, dns_message = ? WHERE id = ?`, state, message, id)
 	return err
 }
 

@@ -12,7 +12,7 @@ import '../../widgets/common.dart';
 import '../../widgets/status.dart';
 
 /// Gateway: every route nectar-gateway serves with its health, TLS certificate and rate limit, and the
-/// blocked client IPs (the gateway's scanner blocks automatically; you can block and unblock by hand).
+/// latest requests over all domains, the blocked client IPs (the gateway's scanner blocks automatically; you can block and unblock by hand).
 class GatewayPage extends ConsumerStatefulWidget {
   const GatewayPage({super.key});
 
@@ -40,13 +40,15 @@ class _GatewayPageState extends ConsumerState<GatewayPage> {
         ref.invalidate(gatewayHealthProvider);
         ref.invalidate(blockedIpsProvider);
         ref.invalidate(gatewayCertificatesProvider);
+        ref.invalidate(gatewayAccessLogProvider);
       },
       children: [
-        NTabs(index: _tab, labels: const ['Routes', 'Certificates', 'Blocked IPs'], onChanged: (i) => setState(() => _tab = i)),
+        NTabs(index: _tab, labels: const ['Routes', 'Access log', 'Certificates', 'Blocked IPs'], onChanged: (i) => setState(() => _tab = i)),
         const SizedBox(height: NectarTokens.gap),
         switch (_tab) {
           0 => const _Routes(),
-          1 => Column(
+          1 => _AccessLogView(canBlock: session.can('server.manage')),
+          2 => Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [_Wildcards(canManage: session.can('settings.manage')), const SizedBox(height: NectarTokens.gap), const _Certificates()],
             ),
@@ -533,14 +535,16 @@ class _Blocked extends ConsumerWidget {
 }
 
 class _BlockDialog extends ConsumerStatefulWidget {
-  const _BlockDialog();
+  const _BlockDialog({this.ip = ''});
+
+  final String ip;
 
   @override
   ConsumerState<_BlockDialog> createState() => _BlockDialogState();
 }
 
 class _BlockDialogState extends ConsumerState<_BlockDialog> {
-  final _ip = TextEditingController();
+  late final _ip = TextEditingController(text: widget.ip);
   final _reason = TextEditingController();
   int _hours = 24;
 
@@ -592,4 +596,165 @@ class _BlockDialogState extends ConsumerState<_BlockDialog> {
           FilledButton(onPressed: _block, child: const Text('Block')),
         ],
       );
+}
+
+/// The gateway's latest requests over all domains (kept in the gateway's memory, newest first), with
+/// filters; an IP can be blocked from its row.
+class _AccessLogView extends ConsumerStatefulWidget {
+  const _AccessLogView({required this.canBlock});
+
+  final bool canBlock;
+
+  @override
+  ConsumerState<_AccessLogView> createState() => _AccessLogViewState();
+}
+
+class _AccessLogViewState extends ConsumerState<_AccessLogView> {
+  String _domain = '';
+  String _status = '';
+  String _ip = '';
+  final _ipField = TextEditingController();
+
+  @override
+  void dispose() {
+    _ipField.dispose();
+    super.dispose();
+  }
+
+  ({String domain, String status, String ip}) get _filter => (domain: _domain, status: _status, ip: _ip);
+
+  @override
+  Widget build(BuildContext context) {
+    final c = NectarColors.of(context);
+    final log = ref.watch(gatewayAccessLogProvider(_filter));
+    final domains = {for (final r in ref.watch(gatewayRoutesProvider).value ?? const <GatewayRoute>[]) r.domain}.toList()..sort();
+    if (_domain.isNotEmpty && !domains.contains(_domain)) domains.insert(0, _domain);
+    return NCard(
+      title: 'Latest requests',
+      trailing: IconButton(
+        tooltip: 'Refresh',
+        icon: const Icon(Icons.refresh_rounded, size: 18),
+        onPressed: () => ref.invalidate(gatewayAccessLogProvider(_filter)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SizedBox(
+                width: 240,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _domain,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Domain', isDense: true),
+                  items: [
+                    const DropdownMenuItem(value: '', child: Text('All domains')),
+                    for (final d in domains) DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)),
+                  ],
+                  onChanged: (v) => setState(() => _domain = v ?? ''),
+                ),
+              ),
+              SizedBox(
+                width: 150,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _status,
+                  decoration: const InputDecoration(labelText: 'Status', isDense: true),
+                  items: const [
+                    DropdownMenuItem(value: '', child: Text('Any')),
+                    DropdownMenuItem(value: '2xx', child: Text('2xx')),
+                    DropdownMenuItem(value: '3xx', child: Text('3xx')),
+                    DropdownMenuItem(value: '4xx', child: Text('4xx')),
+                    DropdownMenuItem(value: '5xx', child: Text('5xx')),
+                  ],
+                  onChanged: (v) => setState(() => _status = v ?? ''),
+                ),
+              ),
+              SizedBox(
+                width: 200,
+                child: TextField(
+                  controller: _ipField,
+                  decoration: InputDecoration(
+                    labelText: 'Client IP',
+                    isDense: true,
+                    suffixIcon: _ip.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 16),
+                            onPressed: () => setState(() {
+                              _ipField.clear();
+                              _ip = '';
+                            }),
+                          ),
+                  ),
+                  onSubmitted: (v) => setState(() => _ip = v.trim()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          AsyncBlock(
+            value: log,
+            loadingHeight: 120,
+            onRetry: () => ref.invalidate(gatewayAccessLogProvider(_filter)),
+            data: (entries) {
+              if (entries.isEmpty) {
+                return Text('No requests match. The gateway keeps the latest requests in memory (ACCESS_LOG_SIZE, 2000 by default).',
+                    style: TextStyle(color: c.muted, fontSize: 13));
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final e in entries) ...[
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 64, child: Text(e.time == null ? '' : timeAgo(e.time), style: TextStyle(color: c.muted, fontSize: 12))),
+                          SizedBox(
+                            width: 40,
+                            child: Text(
+                              '${e.status}',
+                              style: monoStyle(context, size: 12.5, color: e.status >= 500 ? c.failed : (e.status >= 400 ? c.warning : c.running)),
+                            ),
+                          ),
+                          SizedBox(width: 58, child: Text(e.method, style: monoStyle(context, size: 12.5))),
+                          Expanded(
+                            child: Text('${e.host}${e.path}', maxLines: 1, overflow: TextOverflow.ellipsis, style: monoStyle(context, size: 12.5)),
+                          ),
+                          SizedBox(width: 64, child: Text('${e.ms} ms', textAlign: TextAlign.right, style: TextStyle(color: c.muted, fontSize: 12))),
+                          SizedBox(
+                            width: 128,
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: InkWell(
+                                onTap: () => setState(() {
+                                  _ipField.text = e.ip;
+                                  _ip = e.ip;
+                                }),
+                                child: Text(e.ip, style: TextStyle(color: c.muted, fontSize: 12)),
+                              ),
+                            ),
+                          ),
+                          if (widget.canBlock)
+                            IconButton(
+                              tooltip: 'Block ${e.ip}',
+                              visualDensity: VisualDensity.compact,
+                              icon: Icon(Icons.block_rounded, size: 16, color: c.muted),
+                              onPressed: () => showDialog<void>(context: context, builder: (_) => _BlockDialog(ip: e.ip)),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 }

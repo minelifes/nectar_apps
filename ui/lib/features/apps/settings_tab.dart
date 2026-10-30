@@ -16,6 +16,7 @@ import '../../widgets/gauge.dart';
 import 'app_actions.dart';
 import 'builds_tab.dart';
 import 'resources.dart';
+import 'volume_files_dialog.dart';
 
 /// Edits the app settings (saved with PATCH; most take effect with the next deploy).
 class SettingsTab extends ConsumerStatefulWidget {
@@ -37,11 +38,15 @@ class _Port {
 }
 
 class _Vol {
-  _Vol(this.name, this.mount, this.size, {this.existing = false});
+  _Vol(this.name, this.mount, this.size, {this.existing = false, this.storageClass = '', this.shared = false});
 
   final TextEditingController name;
   final TextEditingController mount;
   final TextEditingController size;
+
+  /// Fixed once the volume exists.
+  String storageClass;
+  bool shared;
 
   /// Saved before: the name is fixed and the size can only grow.
   final bool existing;
@@ -69,7 +74,8 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
   ];
   late final List<_Vol> _vols = [
     for (final v in widget.app.volumes)
-      _Vol(TextEditingController(text: v.name), TextEditingController(text: v.mountPath), TextEditingController(text: '${v.sizeMb}'), existing: true),
+      _Vol(TextEditingController(text: v.name), TextEditingController(text: v.mountPath), TextEditingController(text: '${v.sizeMb}'),
+          existing: true, storageClass: v.storageClass, shared: v.shared),
   ];
   bool _dirty = false;
   bool _saving = false;
@@ -141,7 +147,14 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       ];
     }
     cfg['volumes'] = [
-      for (final v in _vols) {'name': v.name.text.trim(), 'mount_path': v.mount.text.trim(), 'size_mb': _int(v.size) ?? 0},
+      for (final v in _vols)
+        {
+          'name': v.name.text.trim(),
+          'mount_path': v.mount.text.trim(),
+          'size_mb': _int(v.size) ?? 0,
+          if (v.storageClass.isNotEmpty) 'storage_class': v.storageClass,
+          if (v.shared) 'shared': true,
+        },
     ];
     if (_name.text.trim().isEmpty) err ??= 'The name cannot be empty';
     if (err != null) {
@@ -435,6 +448,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     final live = ref.watch(appVolumesProvider(widget.app.id));
     final infos = live.hasValue ? {for (final v in live.value!) v.name: v} : const <String, VolumeInfo>{};
     final orphans = live.hasValue ? live.value!.where((v) => v.orphaned).toList() : const <VolumeInfo>[];
+    final classes = ref.watch(storageClassesProvider).value ?? const <StorageClassInfo>[];
     return NCard(
       title: 'Volumes',
       child: Column(
@@ -491,15 +505,26 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                 ],
               ),
             ),
+            _volumeStorage(context, v, canEdit, classes),
             if (infos[v.name.text.trim()] case final info? when info.usedBytes > 0 && info.requestedMb > 0)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: 4),
                 child: UsageBar(
                   label: 'Used',
                   value: info.usedBytes / (info.requestedMb * 1024 * 1024),
                   trailing: '${formatBytes(info.usedBytes)} of ${formatMb(info.requestedMb)}',
                 ),
               ),
+            if (infos[v.name.text.trim()] case final info? when info.phase.isNotEmpty && canDelete)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => showVolumeFiles(context, appId: widget.app.id, volume: info.name),
+                  icon: const Icon(Icons.folder_open_rounded, size: 18),
+                  label: const Text('Files'),
+                ),
+              ),
+            const SizedBox(height: 6),
           ],
           if (canEdit)
             Align(
@@ -533,6 +558,59 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                     : null,
               ),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Storage class and sharing of a volume: chosen for new volumes, shown for existing ones.
+  Widget _volumeStorage(BuildContext context, _Vol v, bool canEdit, List<StorageClassInfo> classes) {
+    final c = NectarColors.of(context);
+    if (v.existing || !canEdit) {
+      final cls = v.storageClass.isEmpty ? 'default storage' : v.storageClass;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Text('$cls${v.shared ? ' · shared' : ''}', style: TextStyle(color: c.muted, fontSize: 12)),
+      );
+    }
+    if (classes.length < 2) return const SizedBox.shrink(); // only local-path: nothing to choose
+    final chosen = classes.where((x) => x.name == v.storageClass).firstOrNull;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          SizedBox(
+            width: 260,
+            child: DropdownButtonFormField<String>(
+              initialValue: v.storageClass,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Storage', isDense: true),
+              items: [
+                const DropdownMenuItem(value: '', child: Text('Default')),
+                for (final x in classes) DropdownMenuItem(value: x.name, child: Text('${x.name}${x.description.isEmpty ? '' : ' — ${x.description}'}', overflow: TextOverflow.ellipsis)),
+              ],
+              onChanged: (val) => setState(() {
+                v.storageClass = val ?? '';
+                if (!(classes.where((x) => x.name == v.storageClass).firstOrNull?.shared ?? false)) v.shared = false;
+                _dirty = true;
+              }),
+            ),
+          ),
+          if (chosen?.shared ?? false)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Checkbox(
+                value: v.shared,
+                onChanged: (val) => setState(() {
+                  v.shared = val ?? false;
+                  _dirty = true;
+                }),
+              ),
+              const Text('Shared by all replicas', style: TextStyle(fontSize: 13)),
+            ]),
+          Text('Fixed once the volume exists.', style: TextStyle(color: c.muted, fontSize: 12)),
         ],
       ),
     );

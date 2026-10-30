@@ -449,3 +449,14 @@ func TestWildcardCertificateConditions(t *testing.T) {
 		t.Errorf("failed order: %+v", out[1])
 	}
 }
+
+func TestVolumeConds(t *testing.T) {
+	cs := volumeConds([]VolumeUsage{
+		{Key: "a", Subject: "shop/web: data", UsedB: 950 << 20, SizeB: 1 << 30},
+		{Key: "b", Subject: "shop/web: logs", UsedB: 100 << 20, SizeB: 1 << 30},
+		{Key: "c", Subject: "shop/db (database)", UsedB: -1, SizeB: 1 << 30},
+	}, 90)
+	if len(cs) != 1 || cs[0].Key != VolumeFull+":a" || !strings.Contains(cs[0].Message, "93%") {
+		t.Fatalf("conds: %+v", cs)
+	}
+}

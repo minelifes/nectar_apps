@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -38,6 +39,7 @@ import (
 	"nectar_apps/internal/gateway"
 	"nectar_apps/internal/housekeep"
 	"nectar_apps/internal/kube"
+	"nectar_apps/internal/logstore"
 	"nectar_apps/internal/mail"
 	"nectar_apps/internal/observe"
 	"nectar_apps/internal/registry"
@@ -288,6 +290,9 @@ func serve() error {
 	if kc != nil {
 		keeper.Kube, alertEngine.Kube = kc, kc
 	}
+	if kc != nil && dep != nil {
+		alertEngine.Volumes = func(ctx context.Context) ([]alerts.VolumeUsage, error) { return volumeUsage(ctx, dep) }
+	}
 	if gw != nil {
 		alertEngine.Gateway = gw
 	}
@@ -346,10 +351,25 @@ func serve() error {
 	}
 	go updates.Run(ctx)
 
+	// log history: app logs on the panel's disk, searchable after restarts (Settings → retention)
+	var logStore *logstore.Store
+	if kc != nil {
+		if ls, err := logstore.New(filepath.Join(cfg.DataDir, "logs")); err != nil {
+			log.Warn("log history off", "err", err)
+		} else {
+			logStore = ls
+			lc := &logstore.Collector{Store: ls, Kube: kc, Log: log, Retention: func(ctx context.Context) (bool, int, int64) {
+				h := housekeep.Load(ctx, st)
+				return h.LogHistoryOff, h.LogDays, int64(h.LogMaxMB) << 20
+			}}
+			go lc.Run(ctx)
+		}
+	}
+
 	srv := api.New(api.Deps{Config: cfg, Store: st, Kube: kc, Deployer: dep, Catalog: catalog,
 		Artifacts: arts, EnvBox: envBox, Gateway: gw, Syncer: syncer, IngressSync: ingSync, Log: log, Web: web.Handler(),
 		AlertBox: alertBox, AlertSender: alertEngine.Sender, Keeper: keeper, Backups: backups, MFABox: mfaBox, Mailer: mailr,
-		Updates: updates, Builder: builder, Registry: reg, RegistryBox: registryBox, ArtifactKey: artifactKey})
+		Updates: updates, Builder: builder, Registry: reg, RegistryBox: registryBox, ArtifactKey: artifactKey, LogStore: logStore})
 	if err := srv.SyncBuiltinRoles(ctx); err != nil {
 		return err
 	}
@@ -657,4 +677,29 @@ func runtimeImages(ctx context.Context, st *store.Store, catalog *runtimes.Catal
 		}
 	}
 	return out
+}
+
+// volumeUsage adapts the deployer's volume list for the volume_full alert rule.
+func volumeUsage(ctx context.Context, dep *deploy.Deployer) ([]alerts.VolumeUsage, error) {
+	vols, err := dep.AllVolumes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]alerts.VolumeUsage, 0, len(vols))
+	for _, v := range vols {
+		u := alerts.VolumeUsage{Key: v.Namespace + "/" + v.Claim, UsedB: v.UsedB, SizeB: v.RequestedB, Path: "/server"}
+		switch {
+		case v.Volume != "":
+			u.Subject = v.Project + "/" + v.App + ": " + v.Volume
+			if v.AppID > 0 {
+				u.Path = "/apps/" + strconv.FormatInt(v.AppID, 10)
+			}
+		case v.Addon != "":
+			u.Subject = v.Project + "/" + v.Addon + " (database)"
+		default:
+			u.Subject = v.Namespace + "/" + v.Claim
+		}
+		out = append(out, u)
+	}
+	return out, nil
 }

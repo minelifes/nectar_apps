@@ -164,6 +164,47 @@ the cluster and sets up the registry mirror. Apps then spread over the nodes; ne
 (drain, respecting disruption budgets) and remove a drained worker from the cluster. Draining the edge node,
 or the last node that could take the pods, asks again first: it would take the gateway or the panel offline.
 
+## One-click apps, docker-compose and nectar.yaml
+
+- **One-click apps** (project → One-click app): WordPress, Grafana, n8n, MinIO, MongoDB, RabbitMQ, Uptime Kuma,
+  Gitea. Pick one, name it, install: the apps, a managed database where needed, volumes and generated
+  passwords (secret variables) are created and deployed. The catalog is data (`internal/blueprint/templates.yaml`).
+- **docker-compose** (project → ⋮ → Import docker-compose.yml, or `nectar import-compose -f docker-compose.yml
+  --project shop`): every service becomes an app with the same name, so the services still find each other;
+  services with published ports get a domain, databases and brokers stay internal, named volumes become volumes.
+  "Check" shows the converted file and what could not be imported (bind mounts, `build:`, `env_file`).
+- **nectar.yaml** (project → ⋮ → Export / Apply, or `nectar export --project shop > nectar.yaml` and
+  `nectar apply -f nectar.yaml --project shop`): the project's apps, databases, variables, volumes, links and
+  domains as one file for Git. Applying creates what is missing and updates existing apps; it never deletes.
+  Secret values are not exported — a secret without a value keeps the current one.
+- **References** in variables are filled in at every deploy: `${db.DATABASE_URL}` (a database's connection
+  settings, without linking it), `${api.host}`, `${api.port}`, `${api.url}` (another app of the project) and
+  `${api.SOME_VAR}` (one of its variables). Workers with a port (e.g. MongoDB) and `internal_ports` are reachable
+  by the project's apps at `<app>:<port>`, never from outside.
+
+## Log history
+
+App logs are kept on the panel's disk (7 days, up to 512 MB per app by default — Server → Disk → Retention):
+the Logs tab has **Live** (the stream) and **History**, where you search every pod the app ever had — also after
+crashes, restarts and deploys — by text or regular expression over the last hour up to everything kept. The
+panel follows the pods itself; nothing is installed in the cluster. History is stored per hour and compressed
+once the hour is over; deleting an app deletes its logs. Switch it off there as well.
+
+## Volumes and storage
+
+- **Files** (app → Settings → Volumes → Files): browse a volume, upload and download files (up to 64 MB),
+  edit text files, create folders, rename and delete — also while the app is stopped and for images without a
+  shell. A small helper pod mounts the volume while the dialog is open (it stops after an hour at the latest).
+  New files get the owner of their folder. Needs the `volume.manage` permission; every change is audited.
+- **Usage:** Server → Volumes lists every app and database volume with its usage, and the **Volume almost
+  full** alert (90 % by default, Alerts → Rules) warns before one runs out. On the default local-path storage a
+  size is not enforced: a volume grows until the node's disk is full, which the "Disk almost full" alert covers.
+- **Storage classes:** volumes live on one node by default (k3s local-path). `install.sh --longhorn` adds
+  Longhorn (volumes replicated across nodes, storage class `longhorn`), `install.sh --nfs 10.0.0.5:/srv/nectar`
+  an NFS storage class `nfs` (volumes that several replicas on several nodes can share). Pick the class per
+  volume when you add it (it is fixed afterwards); `--join` with the same flag installs the storage client on a
+  new node.
+
 ## Deploy from the command line / CI
 
 Create a token under **Settings → API tokens** (for CI: role **Deployer**, limited to one project), then use the
@@ -210,10 +251,28 @@ can use the resumable [tus](https://tus.io) endpoint `POST /api/apps/{id}/upload
   **Get \*.\<base domain\>**. One Let's Encrypt certificate, proved over DNS-01, then serves every app subdomain:
   new apps have HTTPS at once and need no certificate of their own (no port 80 check, no per-app rate limits).
   Other wildcards (`*.example.com`) work the same. Needs nectar-gateway 1.2.2 or newer.
-- **Gateway** (Server → Gateway): every route with its health check, certificate and rate limit, plus blocked
-  IPs (block or unblock by hand). Rate limits, upload size and timeouts are set per domain on the app page.
-  A client over a domain's rate limit is blocked for 24 hours on every domain (unblock it there), so the
-  panel accepts limits of 10 requests/s or more: one page load can make dozens of requests.
+- **Gateway** (Server → Gateway): every route with its health check, certificate and rate limit; the latest
+  requests over all domains (filter by domain, status class or client IP, block an IP from its row); wildcard
+  certificates; blocked IPs (block or unblock by hand). Rate limits, upload size and timeouts are set per
+  domain on the app page. With gateway 1.2.2 or newer, requests over a limit get 429 and only a client that
+  keeps hammering is blocked (Blocked IPs → block length); older gateways block for 24 hours on every
+  domain, so the panel then accepts limits of 10 requests/s or more.
+
+## Domains
+
+- **Domains page** (sidebar → Domains): every domain of every app you can see, with its project, HTTPS state,
+  web options and DNS state; search, "Custom" and "Problems" filters, a DNS check and the edit dialog per row.
+  The **DNS setup** card lists the records to create at your DNS provider (`*.<base domain>` and your own
+  domains → the server's IPs).
+- **Automatic DNS records:** with a DNS provider in the gateway (Gateway → Certificates → DNS provider,
+  Cloudflare) switch on **Create DNS records automatically**: the gateway creates one `*.<base domain>` record
+  for every default domain and an A/AAAA record for each custom domain you add, re-points them when the
+  server's IP changes and removes a record with its domain. Records someone else created are never changed
+  (the domain shows "existing records"). Needs nectar-gateway 1.3 or newer.
+- **Redirects, access, headers** (domain dialog): ordered redirect rules (`/old → /new`, or `/blog/… →
+  https://blog.example.com/…`), an IP allowlist (others get 403), response and request headers, CORS (preflights
+  answered by the gateway), gzip for text responses and HSTS. Needs nectar-gateway 1.3 or newer; with an older
+  gateway the domain keeps working without them and says so.
 
 ## Development
 

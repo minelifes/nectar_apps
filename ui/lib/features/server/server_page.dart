@@ -14,6 +14,7 @@ import '../observe/event_list.dart';
 import 'add_node_dialog.dart';
 import 'disk_card.dart';
 import 'node_card.dart';
+import 'volumes_card.dart';
 
 /// Nodes with live usage, usage history (CPU, memory, network, disk) and recent warnings.
 class ServerPage extends ConsumerStatefulWidget {
@@ -86,6 +87,8 @@ class _ServerPageState extends ConsumerState<ServerPage> {
           ),
         ),
         const DiskCard(),
+        const SizedBox(height: NectarTokens.gap),
+        const VolumesCard(),
         const SizedBox(height: NectarTokens.gap),
         NCard(
           title: 'Warnings',

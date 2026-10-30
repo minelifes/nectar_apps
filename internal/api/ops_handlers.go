@@ -118,16 +118,26 @@ func validMountPath(p string) string {
 	return ""
 }
 
+var storageClassRe = regexp.MustCompile(`^[a-z0-9]([-a-z0-9.]{0,61}[a-z0-9])?$`)
+
 func validateVolumes(vs []store.Volume, old []store.Volume) string {
 	if len(vs) > 10 {
 		return "at most 10 volumes"
 	}
 	names, mounts := map[string]bool{}, map[string]bool{}
 	prev := map[string]int64{}
+	prevVol := map[string]store.Volume{}
 	for _, v := range old {
 		prev[v.Name] = v.SizeMB
+		prevVol[v.Name] = v
 	}
 	for _, v := range vs {
+		if v.StorageClass != "" && !storageClassRe.MatchString(v.StorageClass) {
+			return fmt.Sprintf("volume %s: invalid storage class %q", v.Name, v.StorageClass)
+		}
+		if was, ok := prevVol[v.Name]; ok && (was.StorageClass != v.StorageClass || was.Shared != v.Shared) {
+			return "volume " + v.Name + ": the storage class and sharing of an existing volume cannot change — add a new volume and copy the data"
+		}
 		if !volumeNameRe.MatchString(v.Name) {
 			return fmt.Sprintf("volume name %q: use 1–30 lowercase letters, digits and dashes", v.Name)
 		}

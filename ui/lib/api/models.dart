@@ -184,6 +184,8 @@ class Project {
     required this.adopted,
     this.quota,
     this.createdAt,
+    this.environment = '',
+    this.originId,
   });
 
   final int id;
@@ -192,6 +194,10 @@ class Project {
   final String namespace;
   final int apps;
   final bool adopted;
+
+  /// Environment label ("staging", "production", …) and the project this one was copied from.
+  final String environment;
+  final int? originId;
 
   /// null = unlimited.
   final Quota? quota;
@@ -208,7 +214,23 @@ class Project {
       adopted: _bool(m['adopted']),
       quota: m['quota'] == null ? null : Quota.fromJson(m['quota']),
       createdAt: _time(m['created_at']),
+      environment: _str(m['environment']),
+      originId: m['origin_id'] == null ? null : _int(m['origin_id']),
     );
+  }
+}
+
+/// A project env group: variables shared by several apps of the project.
+class EnvGroupInfo {
+  const EnvGroupInfo({required this.name, required this.vars, required this.apps});
+
+  final String name;
+  final List<EnvVar> vars;
+  final List<String> apps;
+
+  factory EnvGroupInfo.fromJson(Object? j) {
+    final m = _map(j);
+    return EnvGroupInfo(name: _str(m['name']), vars: listOf(m['vars'], EnvVar.fromJson), apps: _list(m['apps']).map(_str).toList());
   }
 }
 
@@ -261,6 +283,9 @@ class App {
 
   int get resumeReplicas => _int(config['resume_replicas']);
   List<AppVolume> get volumes => _list(config['volumes']).map(AppVolume.fromJson).toList();
+
+  /// Project env groups whose variables the app gets.
+  List<String> get envGroups => _list(config['env_groups']).map(_str).toList();
 
   bool get isWeb => kind == 'web';
   bool get hasReplicas => kind == 'web' || kind == 'worker';
@@ -537,7 +562,17 @@ class Domain {
     this.rateLimit = 0,
     this.maxBodyMb = 0,
     this.timeoutSeconds = 0,
+    this.web,
+    this.dnsState = '',
+    this.dnsMessage = '',
   });
+
+  /// Redirect rules, IP allowlist, headers, CORS, compression, HSTS (null = none).
+  final WebOptions? web;
+
+  /// Automatic DNS record: '' | managed | covered | conflict | error.
+  final String dnsState;
+  final String dnsMessage;
 
   final bool forceHttps;
   final int rateLimit; // requests/s per client IP, 0 = unlimited
@@ -578,6 +613,167 @@ class Domain {
       rateLimit: _int(m['rate_limit']),
       maxBodyMb: _int(m['max_body_mb']),
       timeoutSeconds: _int(m['timeout_seconds']),
+      web: m['web'] == null ? null : WebOptions.fromJson(m['web']),
+      dnsState: _str(m['dns_state']),
+      dnsMessage: _str(m['dns_message']),
+    );
+  }
+}
+
+/// One redirect rule of a domain (checked in order before the app).
+class RedirectRule {
+  const RedirectRule({required this.from, required this.to, this.code = 301, this.prefix = false});
+
+  final String from;
+  final String to;
+  final int code;
+
+  /// Also match sub-paths and keep the rest of the path.
+  final bool prefix;
+
+  factory RedirectRule.fromJson(Object? j) {
+    final m = _map(j);
+    return RedirectRule(from: _str(m['from']), to: _str(m['to']), code: m['code'] == null ? 301 : _int(m['code']), prefix: _bool(m['prefix']));
+  }
+
+  Map<String, dynamic> toJson() => {'from': from, 'to': to, 'code': code, if (prefix) 'prefix': true};
+}
+
+/// The gateway's per-domain HTTP options (gateway 1.3+, feature web-options).
+class WebOptions {
+  const WebOptions({
+    this.redirects = const [],
+    this.allowIps = const [],
+    this.responseHeaders = const {},
+    this.requestHeaders = const {},
+    this.corsOrigins = const [],
+    this.corsCredentials = false,
+    this.compress = false,
+    this.hsts = 0,
+    this.hstsSubdomains = false,
+  });
+
+  final List<RedirectRule> redirects;
+  final List<String> allowIps;
+  final Map<String, String> responseHeaders;
+  final Map<String, String> requestHeaders;
+
+  /// Empty = CORS off.
+  final List<String> corsOrigins;
+  final bool corsCredentials;
+  final bool compress;
+
+  /// Strict-Transport-Security max-age in seconds, 0 = off.
+  final int hsts;
+  final bool hstsSubdomains;
+
+  bool get isEmpty =>
+      redirects.isEmpty && allowIps.isEmpty && responseHeaders.isEmpty && requestHeaders.isEmpty && corsOrigins.isEmpty && !compress && hsts == 0;
+
+  /// Short summary for lists ("2 redirects · allowlist · CORS · gzip · HSTS").
+  String get summary => [
+        if (redirects.isNotEmpty) '${redirects.length} redirect${redirects.length == 1 ? '' : 's'}',
+        if (allowIps.isNotEmpty) 'IP allowlist',
+        if (responseHeaders.isNotEmpty || requestHeaders.isNotEmpty) 'headers',
+        if (corsOrigins.isNotEmpty) 'CORS',
+        if (compress) 'gzip',
+        if (hsts > 0) 'HSTS',
+      ].join(' · ');
+
+  factory WebOptions.fromJson(Object? j) {
+    final m = _map(j);
+    Map<String, String> headers(Object? v) => {for (final e in _map(v).entries) e.key: _str(e.value)};
+    final cors = _map(m['cors']);
+    return WebOptions(
+      redirects: listOf(m['redirects'], RedirectRule.fromJson),
+      allowIps: _list(m['allow_ips']).map(_str).toList(),
+      responseHeaders: headers(m['response_headers']),
+      requestHeaders: headers(m['request_headers']),
+      corsOrigins: _list(cors['origins']).map(_str).toList(),
+      corsCredentials: _bool(cors['credentials']),
+      compress: _bool(m['compress']),
+      hsts: _int(m['hsts']),
+      hstsSubdomains: _bool(m['hsts_subdomains']),
+    );
+  }
+
+  /// JSON for the API; an empty object clears every option.
+  Map<String, dynamic> toJson() => {
+        if (redirects.isNotEmpty) 'redirects': [for (final r in redirects) r.toJson()],
+        if (allowIps.isNotEmpty) 'allow_ips': allowIps,
+        if (responseHeaders.isNotEmpty) 'response_headers': responseHeaders,
+        if (requestHeaders.isNotEmpty) 'request_headers': requestHeaders,
+        if (corsOrigins.isNotEmpty) 'cors': {'origins': corsOrigins, if (corsCredentials) 'credentials': true},
+        if (compress) 'compress': true,
+        if (hsts > 0) 'hsts': hsts,
+        if (hsts > 0 && hstsSubdomains) 'hsts_subdomains': true,
+      };
+}
+
+/// A row of the domains overview: a domain with its app and project.
+class DomainRow {
+  const DomainRow({
+    required this.domain,
+    required this.appId,
+    required this.appSlug,
+    required this.appName,
+    required this.projectId,
+    required this.projectSlug,
+    required this.projectName,
+    required this.canManage,
+  });
+
+  final Domain domain;
+  final int appId;
+  final String appSlug;
+  final String appName;
+  final int projectId;
+  final String projectSlug;
+  final String projectName;
+  final bool canManage;
+
+  factory DomainRow.fromJson(Object? j) {
+    final m = _map(j);
+    return DomainRow(
+      domain: Domain.fromJson(m),
+      appId: _int(m['app_id']),
+      appSlug: _str(m['app_slug']),
+      appName: _str(m['app_name']),
+      projectId: _int(m['project_id']),
+      projectSlug: _str(m['project_slug']),
+      projectName: _str(m['project_name']),
+      canManage: _bool(m['can_manage']),
+    );
+  }
+}
+
+/// GET /api/domains: every visible domain plus what DNS should look like.
+class DomainsOverview {
+  const DomainsOverview({
+    required this.domains,
+    required this.baseDomain,
+    required this.serverIps,
+    required this.dnsAuto,
+    required this.dnsAvailable,
+    required this.baseHost,
+  });
+
+  final List<DomainRow> domains;
+  final String baseDomain;
+  final List<String> serverIps;
+  final bool dnsAuto;
+  final bool dnsAvailable;
+  final String baseHost;
+
+  factory DomainsOverview.fromJson(Object? j) {
+    final m = _map(j);
+    return DomainsOverview(
+      domains: listOf(m['domains'], DomainRow.fromJson),
+      baseDomain: _str(m['base_domain']),
+      serverIps: _list(m['server_ips']).map(_str).toList(),
+      dnsAuto: _bool(m['dns_auto']),
+      dnsAvailable: _bool(m['dns_available']),
+      baseHost: _str(m['base_host']),
     );
   }
 }
@@ -1117,7 +1313,15 @@ class HousekeepingSettings {
     required this.k3sDataDir,
     this.prepull = false,
     this.prepullImages = const [],
+    this.logHistory = true,
+    this.logDays = 7,
+    this.logMaxMb = 512,
   });
+
+  /// App logs kept on the panel's disk (searchable on the Logs tab).
+  final bool logHistory;
+  final int logDays;
+  final int logMaxMb;
 
   final int keepArtifacts;
   final int auditDays;
@@ -1133,6 +1337,9 @@ class HousekeepingSettings {
         'k3s_data_dir': k3sDataDir,
         'prepull': prepull,
         'prepull_images': prepullImages,
+        'log_history_off': !logHistory,
+        'log_days': logDays,
+        'log_max_mb': logMaxMb,
       };
 
   factory HousekeepingSettings.fromJson(Object? j) {
@@ -1144,6 +1351,9 @@ class HousekeepingSettings {
       k3sDataDir: _str(m['k3s_data_dir']),
       prepull: m['prepull'] == true,
       prepullImages: _list(m['prepull_images']).map(_str).toList(),
+      logHistory: m['log_history_off'] != true,
+      logDays: m['log_days'] == null ? 7 : _int(m['log_days']),
+      logMaxMb: m['log_max_mb'] == null ? 512 : _int(m['log_max_mb']),
     );
   }
 }
@@ -1194,17 +1404,141 @@ class DiskReport {
 
 /// A persistent volume of an app (settings).
 class AppVolume {
-  AppVolume({required this.name, required this.mountPath, required this.sizeMb});
+  AppVolume({required this.name, required this.mountPath, required this.sizeMb, this.storageClass = '', this.shared = false});
 
   String name;
   String mountPath;
   int sizeMb;
 
-  Map<String, dynamic> toJson() => {'name': name, 'mount_path': mountPath, 'size_mb': sizeMb};
+  /// '' = the cluster default (k3s: local-path).
+  String storageClass;
+
+  /// ReadWriteMany (several replicas on several nodes).
+  bool shared;
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'mount_path': mountPath,
+        'size_mb': sizeMb,
+        if (storageClass.isNotEmpty) 'storage_class': storageClass,
+        if (shared) 'shared': true,
+      };
 
   factory AppVolume.fromJson(Object? j) {
     final m = _map(j);
-    return AppVolume(name: _str(m['name']), mountPath: _str(m['mount_path']), sizeMb: _int(m['size_mb']));
+    return AppVolume(
+      name: _str(m['name']),
+      mountPath: _str(m['mount_path']),
+      sizeMb: _int(m['size_mb']),
+      storageClass: _str(m['storage_class']),
+      shared: _bool(m['shared']),
+    );
+  }
+}
+
+/// A Kubernetes storage class volumes can use.
+class StorageClassInfo {
+  const StorageClassInfo({required this.name, required this.isDefault, required this.shared, required this.replicated, required this.nodeLocal});
+
+  final String name;
+  final bool isDefault;
+  final bool shared;
+  final bool replicated;
+  final bool nodeLocal;
+
+  String get description => [
+        if (nodeLocal) 'on one node' else if (replicated) 'replicated across nodes',
+        if (shared) 'can be shared',
+        if (isDefault) 'default',
+      ].join(' · ');
+
+  factory StorageClassInfo.fromJson(Object? j) {
+    final m = _map(j);
+    return StorageClassInfo(
+      name: _str(m['name']),
+      isDefault: _bool(m['default']),
+      shared: _bool(m['shared']),
+      replicated: _bool(m['replicated']),
+      nodeLocal: _bool(m['node_local']),
+    );
+  }
+}
+
+/// A volume anywhere on the server with its usage (Server page).
+class VolumeUse {
+  const VolumeUse({
+    required this.project,
+    required this.app,
+    required this.appId,
+    required this.volume,
+    required this.addon,
+    required this.claim,
+    required this.requestedBytes,
+    required this.usedBytes,
+    required this.availableBytes,
+    required this.storageClass,
+    required this.node,
+  });
+
+  final String project;
+  final String app;
+  final int appId;
+  final String volume;
+  final String addon;
+  final String claim;
+  final int requestedBytes;
+
+  /// -1 = unknown (no pod mounts it right now).
+  final int usedBytes;
+  final int availableBytes;
+  final String storageClass;
+  final String node;
+
+  String get label => volume.isNotEmpty ? '$project / $app · $volume' : (addon.isNotEmpty ? '$project / $addon (database)' : claim);
+
+  factory VolumeUse.fromJson(Object? j) {
+    final m = _map(j);
+    return VolumeUse(
+      project: _str(m['project']),
+      app: _str(m['app']),
+      appId: _int(m['app_id']),
+      volume: _str(m['volume']),
+      addon: _str(m['addon']),
+      claim: _str(m['claim']),
+      requestedBytes: _int(m['requested_bytes']),
+      usedBytes: m['used_bytes'] == null ? -1 : _int(m['used_bytes']),
+      availableBytes: m['available_bytes'] == null ? -1 : _int(m['available_bytes']),
+      storageClass: _str(m['storage_class']),
+      node: _str(m['node']),
+    );
+  }
+}
+
+/// A file or folder on a volume.
+class VolumeEntry {
+  const VolumeEntry({required this.name, required this.type, required this.size, required this.modified, required this.mode, required this.owner});
+
+  final String name;
+
+  /// file | dir | link | other
+  final String type;
+  final int size;
+  final DateTime? modified;
+  final String mode;
+  final String owner;
+
+  bool get isDir => type == 'dir';
+
+  factory VolumeEntry.fromJson(Object? j) {
+    final m = _map(j);
+    return VolumeEntry(
+      name: _str(m['name']),
+      type: _str(m['type']),
+      size: _int(m['size']),
+      modified: _time(m['modified']),
+      mode: _str(m['mode']),
+      owner: _str(m['owner']),
+    );
   }
 }
 

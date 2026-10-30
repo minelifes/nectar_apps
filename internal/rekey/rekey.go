@@ -74,6 +74,7 @@ type column struct {
 var columns = []column{
 	{"env", "env_vars", "value_enc", ""},
 	{"env", "app_files", "content_enc", ""},
+	{"env", "env_group_vars", "value_enc", ""},
 	{"env", "addons", "credentials", ""},
 	{"totp", "users", "totp_secret", "totp_secret != ''"},
 	{"alerts", "alert_channels", "config", ""},

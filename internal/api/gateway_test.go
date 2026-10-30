@@ -38,7 +38,9 @@ type fakeGateway struct {
 	block    []map[string]any
 	features []string
 	certs    map[int64]map[string]any
-	covered  map[string]string // host → certificate domain (covered_by on routes)
+	covered  map[string]string   // host → certificate domain (covered_by on routes)
+	dns      map[string][]string // name → IPs (records the gateway created)
+	foreign  map[string]bool     // names with records someone else created
 }
 
 func (f *fakeGateway) handler(t *testing.T) http.Handler {
@@ -171,6 +173,29 @@ func (f *fakeGateway) handler(t *testing.T) http.Handler {
 		id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
 		delete(f.certs, id)
 		w.WriteHeader(204)
+	}))
+	mux.HandleFunc("PUT /api/dns/records", auth(func(w http.ResponseWriter, r *http.Request) {
+		var in struct {
+			Name string   `json:"name"`
+			IPs  []string `json:"ips"`
+		}
+		json.NewDecoder(r.Body).Decode(&in)
+		if f.foreign[in.Name] {
+			w.WriteHeader(409)
+			js(w, map[string]any{"zone": "z", "records": []any{}, "conflict": in.Name + " already has records the gateway did not create"})
+			return
+		}
+		if f.dns == nil {
+			f.dns = map[string][]string{}
+		}
+		f.dns[in.Name] = in.IPs
+		js(w, map[string]any{"zone": "z", "records": []map[string]any{{"type": "A", "name": in.Name, "content": in.IPs[0], "managed": true}}, "created": len(in.IPs)})
+	}))
+	mux.HandleFunc("DELETE /api/dns/records", auth(func(w http.ResponseWriter, r *http.Request) {
+		n := r.URL.Query().Get("name")
+		_, had := f.dns[n]
+		delete(f.dns, n)
+		js(w, map[string]int{"deleted": map[bool]int{true: 1}[had]})
 	}))
 	mux.HandleFunc("GET /api/blocked", auth(func(w http.ResponseWriter, r *http.Request) { js(w, []map[string]string{{"ip": "6.6.6.6"}}) }))
 	mux.HandleFunc("POST /api/blocked", auth(func(w http.ResponseWriter, r *http.Request) {

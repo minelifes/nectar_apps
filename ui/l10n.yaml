@@ -1,0 +1,8 @@
+# Translations: lib/l10n/app_en.arb is the template, app_uk.arb Ukrainian. `fvm flutter gen-l10n` (also run
+# by pub get / build) writes lib/l10n/app_localizations*.dart. Add a language: copy app_en.arb to app_<code>.arb.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false
+untranslated-messages-file: build/untranslated.txt

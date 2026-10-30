@@ -395,6 +395,46 @@ final gatewaySettingsProvider = FutureProvider.autoDispose<Map<String, dynamic>>
   return v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 });
 
+/// Latest requests across every domain of the gateway, filtered by domain, status class (2xx…5xx or a
+/// code) and client IP; empty strings mean no filter.
+final gatewayAccessLogProvider =
+    FutureProvider.autoDispose.family<List<AccessLogEntry>, ({String domain, String status, String ip})>((ref, f) async {
+  final api = ref.watch(apiProvider);
+  return listOf(
+    await api.get('/gateway/access-log', query: {
+      'limit': 200,
+      if (f.domain.isNotEmpty) 'domain': f.domain,
+      if (f.status.isNotEmpty) 'status': f.status,
+      if (f.ip.isNotEmpty) 'ip': f.ip,
+    }),
+    AccessLogEntry.fromJson,
+  );
+});
+
+/// Every visible domain across projects plus DNS setup info (Domains page).
+final domainsOverviewProvider = FutureProvider.autoDispose<DomainsOverview>((ref) async {
+  final api = ref.watch(apiProvider);
+  return DomainsOverview.fromJson(await api.get('/domains'));
+});
+
+/// Storage classes volumes can use.
+final storageClassesProvider = FutureProvider.autoDispose<List<StorageClassInfo>>((ref) async {
+  final api = ref.watch(apiProvider);
+  return listOf(await api.get('/server/storage-classes'), StorageClassInfo.fromJson);
+});
+
+/// Every volume on the server with its usage (Server page).
+final serverVolumesProvider = FutureProvider.autoDispose<List<VolumeUse>>((ref) async {
+  final api = ref.watch(apiProvider);
+  return listOf(await api.get('/server/volumes'), VolumeUse.fromJson);
+});
+
+/// The env groups of a project.
+final envGroupsProvider = FutureProvider.autoDispose.family<List<EnvGroupInfo>, int>((ref, projectId) async {
+  final api = ref.watch(apiProvider);
+  return listOf(await api.get('/projects/$projectId/env-groups'), EnvGroupInfo.fromJson);
+});
+
 final blockedIpsProvider = FutureProvider.autoDispose<List<BlockedIp>>((ref) async {
   final api = ref.watch(apiProvider);
   return listOf(await api.get('/gateway/blocked'), BlockedIp.fromJson);

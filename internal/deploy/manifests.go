@@ -241,13 +241,20 @@ func AppObjects(s AppSpec) ([]obj, error) {
 		})
 	}
 	for _, v := range s.Config.Volumes {
+		spec := map[string]any{
+			"accessModes": []any{"ReadWriteOnce"},
+			"resources":   map[string]any{"requests": map[string]any{"storage": fmt.Sprintf("%dMi", v.SizeMB)}},
+		}
+		if v.Shared {
+			spec["accessModes"] = []any{"ReadWriteMany"}
+		}
+		if v.StorageClass != "" {
+			spec["storageClassName"] = v.StorageClass
+		}
 		out = append(out, obj{
 			"apiVersion": "v1", "kind": "PersistentVolumeClaim",
 			"metadata": meta(VolumeClaimName(s.App.Slug, v.Name), ns, merge(labels, map[string]any{LabelVolume: v.Name})),
-			"spec": map[string]any{
-				"accessModes": []any{"ReadWriteOnce"},
-				"resources":   map[string]any{"requests": map[string]any{"storage": fmt.Sprintf("%dMi", v.SizeMB)}},
-			},
+			"spec":     spec,
 		})
 	}
 
@@ -299,14 +306,26 @@ func AppObjects(s AppSpec) ([]obj, error) {
 		return nil, fmt.Errorf("unknown app kind %q", s.App.Kind)
 	}
 
-	if s.App.Kind == runtimes.KindWeb && s.Config.Port > 0 {
+	if (s.App.Kind == runtimes.KindWeb || s.App.Kind == runtimes.KindWorker) && s.Config.Port > 0 {
+		// web apps: the gateway's target; workers with a port (a database, a broker): reachable by the
+		// project's other apps at <app>:<port>, never from outside
+		name := "http"
+		if s.App.Kind == runtimes.KindWorker {
+			name = "tcp"
+		}
+		ports := []any{map[string]any{"name": name, "port": s.Config.Port, "targetPort": name, "protocol": "TCP"}}
+		for _, p := range s.Config.InternalPorts {
+			if p != s.Config.Port {
+				ports = append(ports, map[string]any{"name": fmt.Sprintf("i%d", p), "port": p, "targetPort": p, "protocol": "TCP"})
+			}
+		}
 		out = append(out, obj{
 			"apiVersion": "v1", "kind": "Service",
 			"metadata": meta(s.name(), ns, labels),
 			"spec": map[string]any{
 				"type":     "ClusterIP",
 				"selector": map[string]any{LabelApp: s.App.Slug, LabelRole: "workload"},
-				"ports":    []any{map[string]any{"name": "http", "port": s.Config.Port, "targetPort": "http", "protocol": "TCP"}},
+				"ports":    ports,
 			},
 		})
 	}
@@ -444,8 +463,11 @@ func (s AppSpec) podSpec(command []string, role string) (map[string]any, error) 
 		if s.App.Kind == runtimes.KindWeb && cfg.Port > 0 {
 			ports = append(ports, map[string]any{"name": "http", "containerPort": cfg.Port, "protocol": "TCP"})
 		}
+		if s.App.Kind == runtimes.KindWorker && cfg.Port > 0 {
+			ports = append(ports, map[string]any{"name": "tcp", "containerPort": cfg.Port, "protocol": "TCP"})
+		}
 		for i, p := range cfg.Expose {
-			if p.Port == cfg.Port && s.App.Kind == runtimes.KindWeb {
+			if p.Port == cfg.Port && (s.App.Kind == runtimes.KindWeb || s.App.Kind == runtimes.KindWorker) {
 				continue
 			}
 			proto := strings.ToUpper(p.Protocol)
