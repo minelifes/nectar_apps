@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/minelifes/nectar_apps/compare/v1.0.1...v1.0.2) (2026-10-30)
+
+
+### Bug Fixes
+
+* **ui:** covered_by fields belong to GatewayRoute, not Domain ([20cb395](https://github.com/minelifes/nectar_apps/commit/20cb3951f01d65510a19b24717a73b981fec7a59))
+
 ## [1.0.1](https://github.com/minelifes/nectar_apps/compare/v1.0.0...v1.0.1) (2026-10-30)
 
 
