@@ -59,5 +59,36 @@ jobs:
       - name: dry run
         run: sudo sh deploy/install.sh --dry-run -y --skip-firewall --manifests deploy/manifests --base-domain apps.example.com
 
-  # Real k3s on the runner: install k3s, apply manifests with locally built images comes in M1
-  # (needs the gateway image from nectar_gateway G5). Tracked in PROGRESS.md.
+  # A fresh install on the runner: k3s from get.k3s.io, the released nectar-gateway image, the panel image built
+  # from this commit (preloaded through k3s' image directory), then scripts/e2e.sh drives the API.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: panel image
+        run: docker build --build-arg VERSION=0.0.0-ci --build-arg COMMIT="$GITHUB_SHA" -t ghcr.io/minelifes/nectar-apps:0.0.0-ci .
+      - name: preload it for k3s
+        run: |
+          sudo mkdir -p /var/lib/rancher/k3s/agent/images
+          docker save ghcr.io/minelifes/nectar-apps:0.0.0-ci | sudo tee /var/lib/rancher/k3s/agent/images/nectar-apps.tar >/dev/null
+      - name: CLI
+        run: CGO_ENABLED=0 go build -o "$RUNNER_TEMP/nectar" ./cmd/nectar
+      - name: install
+        run: |
+          sudo sh deploy/install.sh -y --skip-firewall --manifests deploy/manifests --version 0.0.0-ci \
+            --base-domain apps.e2e.test --cli-binary "$RUNNER_TEMP/nectar"
+      - name: smoke flows
+        run: scripts/e2e.sh
+      - name: CLI against the panel
+        run: nectar version
+      - name: diagnostics
+        if: failure()
+        run: |
+          sudo k3s kubectl get all -A -o wide || true
+          sudo k3s kubectl get events -A --sort-by=.lastTimestamp | tail -60 || true
+          sudo k3s kubectl -n nectar-system logs deploy/nectar-apps --tail=200 || true
+          sudo k3s kubectl -n nectar-system logs deploy/nectar-gateway --tail=100 || true

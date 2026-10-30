@@ -38,6 +38,10 @@ type Route struct {
 	Owner        string `json:"owner"`
 	CertSource   string `json:"cert_source,omitempty"`
 	CertNotAfter int64  `json:"cert_not_after,omitempty"`
+	// CoveredBy / CoveredUntil (read-only): the standalone certificate (e.g. *.example.com) that serves
+	// the host because the route has none of its own (gateway ≥ 1.2.2).
+	CoveredBy    string `json:"covered_by,omitempty"`
+	CoveredUntil int64  `json:"covered_until,omitempty"`
 
 	RedirectURL     string `json:"redirect_url,omitempty"`
 	RedirectCode    int    `json:"redirect_code,omitempty"`
@@ -65,7 +69,28 @@ type Version struct {
 	Version    string `json:"version"`
 	APIVersion int    `json:"api_version"`
 	Headless   bool   `json:"headless"`
+	// Features lists optional API parts: "certificates", "acme", "dns-01" (gateway ≥ 1.2.2).
+	Features []string `json:"features,omitempty"`
 }
+
+// Has reports whether the gateway build supports an optional feature.
+func (v Version) Has(feature string) bool {
+	for _, f := range v.Features {
+		if f == feature {
+			return true
+		}
+	}
+	return false
+}
+
+// Feature names in Version.Features.
+const (
+	FeatureCertificates = "certificates"
+	FeatureACME         = "acme"
+	FeatureDNS01        = "dns-01"
+	// FeatureRateLimit429: over a rate limit the gateway answers 429 (blocks only sustained abuse).
+	FeatureRateLimit429 = "rate-limit-429"
+)
 
 // StatusError is a non-2xx answer from the gateway.
 type StatusError struct {
@@ -250,6 +275,56 @@ func (c *Client) UploadCert(ctx context.Context, id int64, certPEM, keyPEM strin
 	var out Route
 	err := c.do(ctx, http.MethodPut, fmt.Sprintf("/api/routes/%d/cert", id), map[string]string{"cert_pem": certPEM, "key_pem": keyPEM}, &out)
 	return out, err
+}
+
+// ------------------------------------------------------------ certificates --
+
+// Certificate is a standalone gateway certificate (wildcards over DNS-01, gateway ≥ 1.2.2).
+type Certificate struct {
+	ID          int64    `json:"id"`
+	Domain      string   `json:"domain"`
+	IncludeApex bool     `json:"include_apex"`
+	Names       []string `json:"names"`
+	ACME        bool     `json:"acme"`
+	Source      string   `json:"source"`
+	NotAfter    int64    `json:"not_after"`
+	LastError   string   `json:"last_error"`
+	LastAttempt int64    `json:"last_attempt"`
+	ManagedBy   string   `json:"managed_by"`
+	Owner       string   `json:"owner"`
+	Serves      []string `json:"serves"`
+	Status      string   `json:"status"` // pending | valid | expiring | expired | failed
+}
+
+// ListCertificates returns every standalone certificate.
+func (c *Client) ListCertificates(ctx context.Context) ([]Certificate, error) {
+	var out []Certificate
+	err := c.do(ctx, http.MethodGet, "/api/certificates", nil, &out)
+	return out, err
+}
+
+// CreateCertificate orders a Let's Encrypt certificate (in the background on the gateway).
+func (c *Client) CreateCertificate(ctx context.Context, domain string, includeApex bool, owner string) (Certificate, error) {
+	var out Certificate
+	err := c.do(ctx, http.MethodPost, "/api/certificates", map[string]any{"domain": domain, "include_apex": includeApex,
+		"managed_by": ManagedBy, "owner": owner}, &out)
+	return out, err
+}
+
+// RenewCertificate starts a new order now.
+func (c *Client) RenewCertificate(ctx context.Context, id int64) (Certificate, error) {
+	var out Certificate
+	err := c.do(ctx, http.MethodPost, fmt.Sprintf("/api/certificates/%d/renew", id), nil, &out)
+	return out, err
+}
+
+// DeleteCertificate removes a certificate.
+func (c *Client) DeleteCertificate(ctx context.Context, id int64) error {
+	err := c.do(ctx, http.MethodDelete, fmt.Sprintf("/api/certificates/%d", id), nil, nil)
+	if IsNotFound(err) {
+		return nil
+	}
+	return err
 }
 
 // ------------------------------------------------- observability passthrough --

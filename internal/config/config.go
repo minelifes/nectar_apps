@@ -63,6 +63,8 @@ type Config struct {
 	// RegistrySizeGB its volume (NECTAR_REGISTRY_SIZE_GB, default 20).
 	RegistryPassword string
 	RegistryHost     string
+	// BuilderImage is the Kaniko executor image for Git builds (NECTAR_BUILDER_IMAGE), e.g. a maintained fork.
+	BuilderImage     string
 	RegistryNodePort int
 	RegistrySizeGB   int
 }
@@ -95,6 +97,7 @@ func Load() (Config, error) {
 		SystemNamespace:   env("NECTAR_NAMESPACE", "nectar-system"),
 		RegistryPassword:  os.Getenv("NECTAR_REGISTRY_PASSWORD"),
 		RegistryHost:      env("NECTAR_REGISTRY_HOST", "registry.nectar.local"),
+		BuilderImage:      env("NECTAR_BUILDER_IMAGE", ""),
 	}
 	c.RegistryNodePort, _ = strconv.Atoi(env("NECTAR_REGISTRY_NODEPORT", "30500"))
 	c.RegistrySizeGB, _ = strconv.Atoi(env("NECTAR_REGISTRY_SIZE_GB", "20"))

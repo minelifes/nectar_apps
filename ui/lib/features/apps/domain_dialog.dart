@@ -141,7 +141,7 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text('0 = no limit (timeout: 60 s). A client over the rate limit is blocked for 24 h on all domains (Gateway → Blocked IPs), so use at least 10: one page load can make dozens of requests.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text('0 = no limit (timeout: 60 s). Above the rate limit a client gets 429 (Too Many Requests); one that keeps going is blocked for a while (Gateway → Blocked IPs). One page load can make dozens of requests. Older gateways block for 24 h at once and need at least 10.', style: TextStyle(color: c.muted, fontSize: 12.5)),
               ],
             ],
           ),

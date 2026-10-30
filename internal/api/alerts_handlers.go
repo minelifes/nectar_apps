@@ -281,6 +281,9 @@ func (s *Server) putHousekeeping(w http.ResponseWriter, r *http.Request, p *prin
 		return
 	}
 	s.audit(r, p, "housekeeping.update", "", in)
+	if err := s.keeper.SyncPrepull(r.Context()); err != nil {
+		s.log.Warn("image pre-pull", "err", err) // retried every hour
+	}
 	writeJSON(w, http.StatusOK, in)
 }
 

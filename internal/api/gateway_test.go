@@ -36,6 +36,9 @@ type fakeGateway struct {
 	settings map[string]any
 	unblock  []string
 	block    []map[string]any
+	features []string
+	certs    map[int64]map[string]any
+	covered  map[string]string // host → certificate domain (covered_by on routes)
 }
 
 func (f *fakeGateway) handler(t *testing.T) http.Handler {
@@ -63,11 +66,17 @@ func (f *fakeGateway) handler(t *testing.T) http.Handler {
 		}
 	}
 	mux.HandleFunc("GET /api/version", func(w http.ResponseWriter, r *http.Request) {
-		js(w, map[string]any{"version": "test", "api_version": 1})
+		f.mu.Lock()
+		feats := append([]string{}, f.features...)
+		f.mu.Unlock()
+		js(w, map[string]any{"version": "test", "api_version": 1, "features": feats})
 	})
 	mux.HandleFunc("GET /api/routes", auth(func(w http.ResponseWriter, r *http.Request) {
 		out := []map[string]any{}
 		for _, rt := range f.routes {
+			if c, ok := f.covered[rt["domain"].(string)]; ok {
+				rt["covered_by"], rt["covered_until"] = c, float64(time.Now().Add(80*24*time.Hour).Unix())
+			}
 			out = append(out, rt)
 		}
 		js(w, out)
@@ -79,6 +88,9 @@ func (f *fakeGateway) handler(t *testing.T) http.Handler {
 		rt["id"] = float64(f.next)
 		normalize(rt)
 		f.routes[f.next] = rt
+		if c, ok := f.covered[rt["domain"].(string)]; ok {
+			rt["covered_by"], rt["covered_until"] = c, float64(time.Now().Add(80*24*time.Hour).Unix())
+		}
 		w.WriteHeader(201)
 		js(w, rt)
 	}))
@@ -90,6 +102,9 @@ func (f *fakeGateway) handler(t *testing.T) http.Handler {
 		normalize(rt)
 		f.routes[id] = rt
 		f.updates++
+		if c, ok := f.covered[rt["domain"].(string)]; ok {
+			rt["covered_by"], rt["covered_until"] = c, float64(time.Now().Add(80*24*time.Hour).Unix())
+		}
 		js(w, rt)
 	}))
 	mux.HandleFunc("DELETE /api/routes/{id}", auth(func(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +133,44 @@ func (f *fakeGateway) handler(t *testing.T) http.Handler {
 			f.settings[k] = v
 		}
 		js(w, f.settings)
+	}))
+	mux.HandleFunc("GET /api/certificates", auth(func(w http.ResponseWriter, r *http.Request) {
+		out := []map[string]any{}
+		for _, c := range f.certs {
+			out = append(out, c)
+		}
+		js(w, out)
+	}))
+	mux.HandleFunc("POST /api/certificates", auth(func(w http.ResponseWriter, r *http.Request) {
+		var in map[string]any
+		json.NewDecoder(r.Body).Decode(&in)
+		for _, c := range f.certs {
+			if c["domain"] == in["domain"] {
+				w.WriteHeader(409)
+				js(w, map[string]string{"error": "a certificate for this domain already exists"})
+				return
+			}
+		}
+		id := int64(len(f.certs) + 1)
+		in["id"], in["status"], in["acme"] = float64(id), "pending", true
+		f.certs[id] = in
+		w.WriteHeader(201)
+		js(w, in)
+	}))
+	mux.HandleFunc("POST /api/certificates/{id}/renew", auth(func(w http.ResponseWriter, r *http.Request) {
+		id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		if f.certs[id] == nil {
+			w.WriteHeader(404)
+			js(w, map[string]string{"error": "certificate not found"})
+			return
+		}
+		w.WriteHeader(202)
+		js(w, f.certs[id])
+	}))
+	mux.HandleFunc("DELETE /api/certificates/{id}", auth(func(w http.ResponseWriter, r *http.Request) {
+		id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		delete(f.certs, id)
+		w.WriteHeader(204)
 	}))
 	mux.HandleFunc("GET /api/blocked", auth(func(w http.ResponseWriter, r *http.Request) { js(w, []map[string]string{{"ip": "6.6.6.6"}}) }))
 	mux.HandleFunc("POST /api/blocked", auth(func(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +201,8 @@ func newEnvGW(t *testing.T) (*testEnv, *fakeGateway) {
 	t.Helper()
 	cfg := config.Config{Dev: true, SetupToken: "setup-123", MasterKey: bytes.Repeat([]byte{9}, 32), MaxArtifactBytes: 10 << 20, BaseDomain: "apps.example.com"}
 	st := openTestStore(t)
-	fg := &fakeGateway{routes: map[int64]map[string]any{}, settings: map[string]any{"fallback_http": "", "fallback_tls": ""}}
+	fg := &fakeGateway{routes: map[int64]map[string]any{}, settings: map[string]any{"fallback_http": "", "fallback_tls": ""},
+		certs: map[int64]map[string]any{}, covered: map[string]string{}}
 	gws := httptest.NewServer(fg.handler(t))
 	t.Cleanup(gws.Close)
 	gw := gateway.New(gws.URL, gwToken)
@@ -274,5 +328,75 @@ func TestDomainOptionsAndGatewayRelay(t *testing.T) {
 	e.do(o, "DELETE", "/api/apps/"+aid+"/domains/"+did, nil)
 	if fg.byDomain("grpc.example.com") != nil {
 		t.Fatal("route not deleted")
+	}
+}
+
+func TestWildcardCertificates(t *testing.T) {
+	e, fg := newEnvGW(t)
+	o := e.owner()
+	// an old gateway without the certificates API
+	if code, v, _ := e.do(o, "GET", "/api/gateway/certificates", nil); code != 200 || v["supported"] != false || v["base_wildcard"] != "*.apps.example.com" {
+		t.Fatalf("old gateway: %d %v", code, v)
+	}
+	if code, v, _ := e.do(o, "POST", "/api/gateway/certificates", map[string]any{"base_domain": true}); code != 409 || !strings.Contains(v["error"].(string), "1.2.2") {
+		t.Fatalf("create on an old gateway: %d %v", code, v)
+	}
+	// certificates but no DNS provider yet
+	fg.mu.Lock()
+	fg.features = []string{"certificates", "acme"}
+	fg.mu.Unlock()
+	if code, v, _ := e.do(o, "POST", "/api/gateway/certificates", map[string]any{"base_domain": true}); code != 409 || !strings.Contains(v["error"].(string), "DNS provider") {
+		t.Fatalf("wildcard without dns: %d %v", code, v)
+	}
+	// the DNS token goes to the gateway, never into the audit log
+	if code, _, _ := e.do(o, "PUT", "/api/gateway/settings", map[string]any{"dns_provider": "Cloudflare", "dns_api_token": " cf-secret "}); code != 200 {
+		t.Fatalf("dns settings: %d", code)
+	}
+	fg.mu.Lock()
+	gotTok, gotProv := fg.settings["dns_api_token"], fg.settings["dns_provider"]
+	fg.features = []string{"certificates", "acme", "dns-01"}
+	fg.mu.Unlock()
+	if gotTok != "cf-secret" || gotProv != "cloudflare" {
+		t.Fatalf("relayed settings: %v %v", gotProv, gotTok)
+	}
+	_, _, audit := e.raw(o, "GET", "/api/audit?limit=5", nil)
+	if strings.Contains(string(audit), "cf-secret") {
+		t.Fatal("DNS token in the audit log")
+	}
+	// one click: *.<base domain> + apex, owned by the panel
+	code, c, _ := e.do(o, "POST", "/api/gateway/certificates", map[string]any{"base_domain": true})
+	if code != 201 || c["domain"] != "*.apps.example.com" || c["include_apex"] != true || c["managed_by"] != "nectar-apps" || c["owner"] != "base-domain" {
+		t.Fatalf("create: %d %v", code, c)
+	}
+	if code, _, _ := e.do(o, "POST", "/api/gateway/certificates", map[string]any{"base_domain": true}); code != 409 {
+		t.Fatalf("duplicate: %d", code)
+	}
+	if code, v, _ := e.do(o, "GET", "/api/gateway/certificates", nil); code != 200 || v["dns"] != true || len(v["certificates"].([]any)) != 1 {
+		t.Fatalf("list: %d %v", code, v)
+	}
+	cid := itoa(c["id"].(float64))
+	if code, _, _ := e.do(o, "POST", "/api/gateway/certificates/"+cid+"/renew", nil); code != 202 {
+		t.Fatalf("renew: %d", code)
+	}
+
+	// a domain served by the wildcard is active with HTTPS, not "waiting for the certificate"
+	_, proj, _ := e.do(o, "POST", "/api/projects", map[string]any{"slug": "shop", "name": "Shop"})
+	_, app, _ := e.do(o, "POST", "/api/projects/"+itoa(proj["id"].(float64))+"/apps", map[string]any{"slug": "web", "name": "Web", "runtime": "image",
+		"config": map[string]any{"image": "nginx:1", "port": 80}})
+	aid := itoa(app["id"].(float64))
+	fg.mu.Lock()
+	fg.covered["web-shop.apps.example.com"] = "*.apps.example.com"
+	fg.mu.Unlock()
+	e.do(o, "POST", "/api/apps/"+aid+"/deploy", nil)
+	e.dep.Wait()
+	if err := e.api.syncer.Sync(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	_, _, ds := e.raw(o, "GET", "/api/apps/"+aid+"/domains", nil)
+	if !strings.Contains(string(ds), "HTTPS by the certificate *.apps.example.com") || strings.Contains(string(ds), "waiting for the certificate") {
+		t.Fatalf("covered domain: %s", ds)
+	}
+	if code, _, _ := e.do(o, "DELETE", "/api/gateway/certificates/"+cid, nil); code != 204 {
+		t.Fatalf("delete: %d", code)
 	}
 }

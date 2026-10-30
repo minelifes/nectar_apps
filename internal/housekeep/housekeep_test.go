@@ -23,6 +23,8 @@ type fakeKube struct {
 	pods    []kube.Object
 }
 
+func (f *fakeKube) Delete(context.Context, string, string, string) error { return nil }
+
 func (f *fakeKube) ListNodes(context.Context) ([]kube.Node, error) {
 	return []kube.Node{{Name: "node-1"}, {Name: "Node_2.example"}}, nil
 }

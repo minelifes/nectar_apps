@@ -63,6 +63,9 @@ sudo sh install.sh --finalize          # once nothing uses the old proxy any mor
 - **Disk:** every hour the panel keeps the last 10 uploads per app (and any upload a live release uses), plus
   365 days of audit log and 90 days of resolved alerts. **Server → Disk** shows usage and can remove container
   images that no container uses.
+- **Image pre-pull** (optional, Server → Disk → Retention): a DaemonSet keeps busybox, the runtime images your
+  apps use and any extra images on every node, so a new node or a moved pod starts without downloading them, and
+  image cleanup never removes them. Each image costs one sleeping container (1m CPU, 4 MiB).
 
 ## Databases
 
@@ -91,6 +94,20 @@ curl -fsSL https://raw.githubusercontent.com/minelifes/nectar_apps/main/deploy/i
 The panel restores its database first, then recreates the databases (with their latest dumps) and redeploys
 the apps (with their latest volume snapshots). A folder target on the lost server is gone with it — use
 off-site storage for the panel backup.
+
+### Rotating the master key
+
+```bash
+sudo k3s kubectl -n nectar-system exec deploy/nectar-apps -- nectar-apps admin rotate-master-key
+```
+
+The command stores a new key next to the current one (`master-key-next` in Secret `nectar-secrets`) and
+restarts the panel. On start the panel re-seals every secret it keeps (environment variables, files, database
+credentials, two-factor secrets, alert channels, backup targets, registry logins, Git tokens, SMTP password) in
+one transaction, then makes the new key the current one. A start that fails half-way finishes the switch on the
+next start. It prints the new key once: store it, download new recovery kits and take a panel backup — backups
+made before the rotation still need the old key, so keep that too until the new backup exists.
+`--key K` uses your own key (base64, 32 bytes); `--no-restart` leaves the restart to you.
 
 ## Security
 
@@ -127,6 +144,8 @@ token. The repository needs a `Dockerfile`. Each build runs as a [Kaniko](https:
 Job in its own namespace, pushes `registry.nectar.local/<project>/<app>:build-N` to the **built-in registry** and
 deploys it; the Builds tab shows every build with its log. Add the push webhook shown there to GitHub, GitLab or
 Gitea and every push to the branch builds and deploys. The newest 5 images per app are kept.
+Builds use Kaniko v1.23.2 (the last upstream release); to use a maintained fork set `NECTAR_BUILDER_IMAGE`
+on the panel, e.g. `kubectl -n nectar-system set env deploy/nectar-apps NECTAR_BUILDER_IMAGE=<image>`.
 
 The built-in registry is set up by `install.sh` on new servers (`--registry` adds it to an existing one, which
 restarts k3s once; `--no-registry` skips it). It is reachable only from the cluster and with a password: nodes
@@ -187,6 +206,10 @@ can use the resumable [tus](https://tus.io) endpoint `POST /api/apps/{id}/upload
 - **On your phone:** add an ntfy or Telegram channel under Alerts. Besides incidents (app down, crash loop,
   out of memory, …) the panel can tell you when a deploy fails or finishes (Alerts → Rules → Deploy failed /
   Deploy finished).
+- **Wildcard certificates** (Gateway → Certificates): add a Cloudflare API token (Zone:Read + DNS:Edit) and click
+  **Get \*.\<base domain\>**. One Let's Encrypt certificate, proved over DNS-01, then serves every app subdomain:
+  new apps have HTTPS at once and need no certificate of their own (no port 80 check, no per-app rate limits).
+  Other wildcards (`*.example.com`) work the same. Needs nectar-gateway 1.2.2 or newer.
 - **Gateway** (Server → Gateway): every route with its health check, certificate and rate limit, plus blocked
   IPs (block or unblock by hand). Rate limits, upload size and timeouts are set per domain on the app page.
   A client over a domain's rate limit is blocked for 24 hours on every domain (unblock it there), so the

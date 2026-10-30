@@ -30,6 +30,11 @@ type Gateway interface {
 	ListManaged(ctx context.Context) ([]gateway.Route, error)
 }
 
+// CertificateLister is implemented by gateways with standalone (wildcard) certificates.
+type CertificateLister interface {
+	ListCertificates(ctx context.Context) ([]gateway.Certificate, error)
+}
+
 const labelApp = "nectar.dev/app"
 
 // Engine evaluates the rules every Interval, records incidents and notifies the enabled channels.
@@ -384,7 +389,7 @@ func (e *Engine) check(ctx context.Context, set Settings, now time.Time) ([]cond
 	}
 	if e.Gateway != nil {
 		vctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		_, verr := e.Gateway.Version(vctx)
+		gv, verr := e.Gateway.Version(vctx)
 		cancel()
 		checked[GatewayDown] = true
 		if verr != nil && on(GatewayDown) {
@@ -398,6 +403,16 @@ func (e *Engine) check(ctx context.Context, set Settings, now time.Time) ([]cond
 			if err == nil {
 				checked[CertExpiry] = true
 				out = append(out, certConds(routes, set.Rule(CertExpiry).Threshold, now)...)
+			}
+			if cl, ok := e.Gateway.(CertificateLister); ok && gv.Has(gateway.FeatureCertificates) {
+				lctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				certs, err := cl.ListCertificates(lctx)
+				cancel()
+				if err == nil {
+					out = append(out, wildcardConds(certs, set.Rule(CertExpiry).Threshold, now)...)
+				} else {
+					delete(checked, CertExpiry) // keep open incidents rather than resolving them blind
+				}
 			}
 		}
 	}
@@ -633,6 +648,46 @@ func (e *Engine) checkAddons(ctx context.Context, p store.Project) ([]cond, erro
 			Path: "/addons/" + strconv.FormatInt(a.ID, 10), Message: a.Name + " is not ready: apps using it cannot reach their data."})
 	}
 	return out, nil
+}
+
+// wildcardConds: standalone certificates (e.g. *.<base domain>) that expire soon or could not be issued.
+// Hosts they serve have no certificate of their own, so certConds does not see them.
+func wildcardConds(certs []gateway.Certificate, days float64, now time.Time) []cond {
+	var out []cond
+	for _, c := range certs {
+		key := CertExpiry + ":" + c.Domain
+		if c.NotAfter <= 0 {
+			if c.LastError != "" && c.LastAttempt > 0 && now.Sub(time.Unix(c.LastAttempt, 0)) < 48*time.Hour {
+				out = append(out, cond{Rule: CertExpiry, Key: key, Subject: c.Domain, Severity: Warning,
+					Message: "The certificate " + c.Domain + " could not be issued: " + c.LastError, Path: "/gateway"})
+			}
+			continue
+		}
+		left := time.Unix(c.NotAfter, 0).Sub(now)
+		if left.Hours()/24 >= days {
+			continue
+		}
+		sev := Warning
+		if left < 3*24*time.Hour {
+			sev = Critical
+		}
+		msg := "The certificate " + c.Domain + " expires in " + humanDuration(left) + " (" + time.Unix(c.NotAfter, 0).UTC().Format("2006-01-02") + ")."
+		if left <= 0 {
+			msg = "The certificate " + c.Domain + " expired " + humanDuration(-left) + " ago."
+		}
+		if len(c.Serves) > 0 {
+			msg += fmt.Sprintf(" It serves %d host(s).", len(c.Serves))
+		}
+		if c.ACME {
+			msg += " Automatic renewal has not succeeded yet"
+			if c.LastError != "" {
+				msg += ": " + c.LastError
+			}
+			msg += "."
+		}
+		out = append(out, cond{Rule: CertExpiry, Key: key, Subject: c.Domain, Severity: sev, Message: msg, Path: "/gateway"})
+	}
+	return out
 }
 
 func certConds(routes []gateway.Route, days float64, now time.Time) []cond {

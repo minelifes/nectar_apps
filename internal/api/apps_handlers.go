@@ -176,6 +176,10 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request, p *princi
 	if s.deployer != nil {
 		if err := s.deployer.EnsureProject(r.Context(), proj); err != nil {
 			_ = s.store.DeleteProject(r.Context(), proj.ID)
+			if strings.Contains(err.Error(), "is being terminated") {
+				writeError(w, http.StatusConflict, "a deleted project with this slug is still being removed from the cluster; try again in a minute")
+				return
+			}
 			s.log.Error("create namespace", "project", proj.Slug, "err", err)
 			writeError(w, http.StatusBadGateway, "could not create the project namespace: "+err.Error())
 			return
@@ -792,7 +796,7 @@ func (s *Server) finishArtifact(w http.ResponseWriter, r *http.Request, p *princ
 // internalArtifact serves artifact files to app pods (init container) via signed URLs.
 func (s *Server) internalArtifact(w http.ResponseWriter, r *http.Request) {
 	sha := r.PathValue("sha")
-	if !artifacts.ValidSHA(sha) || !deploy.VerifyArtifact(s.cfg.MasterKey, sha, r.URL.Query().Get("sig")) {
+	if !artifacts.ValidSHA(sha) || !s.verifyArtifact(sha, r.URL.Query().Get("sig")) {
 		writeError(w, http.StatusForbidden, "invalid signature")
 		return
 	}
@@ -1082,4 +1086,12 @@ func (s *Server) runTask(w http.ResponseWriter, r *http.Request, p *principal, a
 	}
 	s.audit(r, p, "app.run", proj.Slug+"/"+app.Slug, map[string]any{"job": job, "command": in.Command})
 	writeJSON(w, http.StatusAccepted, map[string]string{"job": job})
+}
+
+// verifyArtifact accepts URLs signed with the artifact key and, from before it existed, the master key.
+func (s *Server) verifyArtifact(sha, sig string) bool {
+	if s.artKey != nil && deploy.VerifyArtifact(s.artKey, sha, sig) {
+		return true
+	}
+	return deploy.VerifyArtifact(s.cfg.MasterKey, sha, sig)
 }

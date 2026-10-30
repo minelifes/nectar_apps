@@ -46,12 +46,20 @@ type Builder struct {
 	Remote    Remote
 	Log       *slog.Logger
 	Namespace string        // default nectar-builds
+	Image     string        // Kaniko executor image, default KanikoImage
 	Poll      time.Duration // default 3 s
 	Timeout   time.Duration // default 1 h
 
 	mu      sync.Mutex
 	running sync.WaitGroup
 	cancel  map[int64]bool
+}
+
+func (b *Builder) image() string {
+	if b.Image != "" {
+		return b.Image
+	}
+	return KanikoImage
 }
 
 func (b *Builder) ns() string {
@@ -234,7 +242,7 @@ func (b *Builder) createJob(ctx context.Context, bl store.Build, req Request, sr
 					"restartPolicy":                "Never",
 					"automountServiceAccountToken": false,
 					"containers": []any{map[string]any{
-						"name": "kaniko", "image": KanikoImage, "args": args, "env": env,
+						"name": "kaniko", "image": b.image(), "args": args, "env": env,
 						"volumeMounts": []any{map[string]any{"name": "docker", "mountPath": "/kaniko/.docker", "readOnly": true}},
 						"resources": map[string]any{
 							"requests": map[string]any{"cpu": "250m", "memory": "512Mi"},

@@ -428,3 +428,24 @@ func TestEventRulesDefaults(t *testing.T) {
 		t.Error("deploy_succeeded is an event rule")
 	}
 }
+
+func TestWildcardCertificateConditions(t *testing.T) {
+	now := time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC)
+	certs := []gateway.Certificate{
+		{Domain: "*.apps.example.com", ACME: true, NotAfter: now.Add(2 * 24 * time.Hour).Unix(), LastError: "cloudflare: Authentication error (10000)", Serves: []string{"a", "b"}},
+		{Domain: "*.ok.example.com", ACME: true, NotAfter: now.Add(60 * 24 * time.Hour).Unix()},
+		{Domain: "*.new.example.com", ACME: true, LastError: "no zone", LastAttempt: now.Add(-time.Hour).Unix()},
+		{Domain: "*.old-failure.example.com", ACME: true, LastError: "x", LastAttempt: now.Add(-72 * time.Hour).Unix()},
+		{Domain: "*.pending.example.com", ACME: true},
+	}
+	out := wildcardConds(certs, 14, now)
+	if len(out) != 2 {
+		t.Fatalf("conditions %+v", out)
+	}
+	if out[0].Severity != Critical || !strings.Contains(out[0].Message, "serves 2 host(s)") || !strings.Contains(out[0].Message, "Authentication error") {
+		t.Errorf("expiring: %+v", out[0])
+	}
+	if out[1].Subject != "*.new.example.com" || !strings.Contains(out[1].Message, "could not be issued: no zone") {
+		t.Errorf("failed order: %+v", out[1])
+	}
+}

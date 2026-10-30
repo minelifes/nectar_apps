@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -40,6 +41,7 @@ import (
 	"nectar_apps/internal/mail"
 	"nectar_apps/internal/observe"
 	"nectar_apps/internal/registry"
+	"nectar_apps/internal/rekey"
 	"nectar_apps/internal/routing"
 	"nectar_apps/internal/runtimes"
 	"nectar_apps/internal/secretbox"
@@ -84,6 +86,7 @@ func usage() {
 Usage:
   nectar-apps serve                                      run the API and web UI
   nectar-apps admin reset-password --email E [--password P]
+  nectar-apps admin rotate-master-key [--key K] [--no-restart]
   nectar-apps admin make-owner --email E                 grant the Owner flag (recovery)
   nectar-apps adopt discover|backup|shadow|verify|cutover|rollback|finalize|status
                                                          migrate an existing k3s server (see adopt --help)
@@ -149,6 +152,15 @@ func serve() error {
 		return fmt.Errorf("open database: %w", err)
 	}
 	defer st.Close()
+	// the master key must match the database; a pending rotation (master-key-next) is finished here,
+	// before anything else reads or writes a secret
+	ro := rekey.Options{Store: st, Namespace: cfg.SystemNamespace, Current: cfg.MasterKey, Log: log}
+	if kc != nil {
+		ro.Kube = kc
+	}
+	if cfg.MasterKey, err = rekey.Startup(ctx, ro); err != nil {
+		return err
+	}
 
 	catalog, err := runtimes.LoadBuiltin()
 	if err != nil {
@@ -159,6 +171,10 @@ func serve() error {
 		return fmt.Errorf("artifact store: %w", err)
 	}
 	envBox, err := secretbox.New(cfg.MasterKey, "env")
+	if err != nil {
+		return err
+	}
+	artifactKey, err := rekey.ArtifactKey(ctx, st, envBox)
 	if err != nil {
 		return err
 	}
@@ -216,7 +232,7 @@ func serve() error {
 		dep = deploy.New(st, kc, catalog, envBox, log, deploy.Options{
 			SystemNamespace: cfg.SystemNamespace,
 			InternalURL:     cfg.InternalURL,
-			SigningKey:      cfg.MasterKey,
+			SigningKey:      artifactKey,
 			OnDone:          func(int64) { syncer.Trigger() },
 			PullSecret:      func(ctx context.Context) ([]byte, error) { return pullSecret(ctx) },
 			OnResult: func(a store.App, rel store.Release, err error) {
@@ -256,7 +272,8 @@ func serve() error {
 			go func() { _ = backups.RestoreAll(ctx) }()
 		}
 	}
-	keeper := &housekeep.Keeper{Store: st, Artifacts: arts, DataDir: cfg.DataDir, DBPath: cfg.DBPath(), Namespace: cfg.SystemNamespace, Log: log}
+	keeper := &housekeep.Keeper{Store: st, Artifacts: arts, DataDir: cfg.DataDir, DBPath: cfg.DBPath(), Namespace: cfg.SystemNamespace, Log: log,
+		InitImage: deploy.InitImage, Images: func(ctx context.Context) []string { return runtimeImages(ctx, st, catalog) }}
 	alertEngine := &alerts.Engine{Store: st, Box: alertBox, Sender: &alerts.Sender{}, Log: log}
 	deployEvents.Store(alertEngine)
 	mailBox, err := secretbox.New(cfg.MasterKey, "smtp")
@@ -306,7 +323,7 @@ func serve() error {
 		if err != nil {
 			return err
 		}
-		builder = &build.Builder{Store: st, Kube: kc, Registry: reg, Deployer: dep, Box: buildBox, Log: log,
+		builder = &build.Builder{Store: st, Kube: kc, Registry: reg, Deployer: dep, Box: buildBox, Log: log, Image: cfg.BuilderImage,
 			Creds: func(ctx context.Context) ([]registry.Credential, error) {
 				return registry.LoadCredentials(ctx, st, registryBox)
 			}}
@@ -332,7 +349,7 @@ func serve() error {
 	srv := api.New(api.Deps{Config: cfg, Store: st, Kube: kc, Deployer: dep, Catalog: catalog,
 		Artifacts: arts, EnvBox: envBox, Gateway: gw, Syncer: syncer, IngressSync: ingSync, Log: log, Web: web.Handler(),
 		AlertBox: alertBox, AlertSender: alertEngine.Sender, Keeper: keeper, Backups: backups, MFABox: mfaBox, Mailer: mailr,
-		Updates: updates, Builder: builder, Registry: reg, RegistryBox: registryBox})
+		Updates: updates, Builder: builder, Registry: reg, RegistryBox: registryBox, ArtifactKey: artifactKey})
 	if err := srv.SyncBuiltinRoles(ctx); err != nil {
 		return err
 	}
@@ -345,7 +362,12 @@ func serve() error {
 	}
 
 	// retention and disk cleanup, alerts
-	go keeper.Run(ctx)
+	go func() {
+		if err := keeper.SyncPrepull(ctx); err != nil {
+			log.Warn("image pre-pull", "err", err)
+		}
+		keeper.Run(ctx)
+	}()
 	go alertEngine.Run(ctx)
 
 	httpSrv := &http.Server{
@@ -446,7 +468,10 @@ func updateCmd(args []string) error {
 //	kubectl -n nectar-system exec deploy/nectar-apps -- nectar-apps admin reset-password --email you@example.com
 func admin(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: nectar-apps admin reset-password|make-owner|reset-mfa --email E | clear-ip-allowlist")
+		return errors.New("usage: nectar-apps admin reset-password|make-owner|reset-mfa --email E | clear-ip-allowlist | rotate-master-key")
+	}
+	if args[0] == "rotate-master-key" {
+		return rotateMasterKey(args[1:])
 	}
 	if args[0] == "clear-ip-allowlist" {
 		cfg, err := config.Load()
@@ -535,6 +560,68 @@ func admin(args []string) error {
 	return nil
 }
 
+// rotateMasterKey starts a master key rotation: the new key goes into Secret nectar-secrets as
+// master-key-next and the panel restarts; while starting it re-seals every secret (rekey.Startup).
+//
+//	kubectl -n nectar-system exec deploy/nectar-apps -- nectar-apps admin rotate-master-key
+func rotateMasterKey(args []string) error {
+	fs := flag.NewFlagSet("admin rotate-master-key", flag.ContinueOnError)
+	given := fs.String("key", "", "the new key (base64, 32+ bytes); default: a random one")
+	noRestart := fs.Bool("no-restart", false, "do not restart the panel now (the rotation happens at its next start)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	kc, err := kube.New(cfg.KubeAPI)
+	if err != nil {
+		return fmt.Errorf("kubernetes: %w (run this inside the panel pod: kubectl -n %s exec deploy/nectar-apps -- nectar-apps admin rotate-master-key)", err, cfg.SystemNamespace)
+	}
+	ctx := context.Background()
+	var sec kube.Object
+	if err := kc.GetObject(ctx, "Secret", cfg.SystemNamespace, rekey.SecretName, &sec); err != nil {
+		return fmt.Errorf("Secret %s: %w", rekey.SecretName, err)
+	}
+	if kube.Str(sec, "data", rekey.KeyNext) != "" {
+		return errors.New("a rotation is already pending (" + rekey.KeyNext + " is set): restart the panel to finish it")
+	}
+	raw, enc := rekey.NewKey()
+	if *given != "" {
+		b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(*given))
+		if err != nil || len(b) < 32 {
+			return errors.New("--key must be base64 of at least 32 bytes (openssl rand -base64 32)")
+		}
+		raw, enc = b, strings.TrimSpace(*given)
+	}
+	if rekey.KeyID(raw) == rekey.KeyID(cfg.MasterKey) {
+		return errors.New("the new key is the current key")
+	}
+	data := map[string]any{rekey.KeyNext: base64.StdEncoding.EncodeToString([]byte(enc))}
+	if _, err := kc.Patch(ctx, "Secret", cfg.SystemNamespace, rekey.SecretName, map[string]any{"data": data}); err != nil {
+		return fmt.Errorf("store the new key: %w", err)
+	}
+	fmt.Println("NEW MASTER KEY — store it somewhere safe (password manager) and keep the old one until the steps below are done:")
+	fmt.Println("  " + enc)
+	fmt.Println()
+	if *noRestart {
+		fmt.Println("The rotation happens when the panel starts next (kubectl -n " + cfg.SystemNamespace + " rollout restart deploy/nectar-apps).")
+	} else {
+		patch := map[string]any{"spec": map[string]any{"template": map[string]any{"metadata": map[string]any{"annotations": map[string]any{
+			"kubectl.kubernetes.io/restartedAt": time.Now().UTC().Format(time.RFC3339)}}}}}
+		if _, err := kc.Patch(ctx, "Deployment", cfg.SystemNamespace, "nectar-apps", patch); err != nil {
+			return fmt.Errorf("the new key is stored, but the panel did not restart (%w): kubectl -n %s rollout restart deploy/nectar-apps", err, cfg.SystemNamespace)
+		}
+		fmt.Println("The panel restarts now and re-seals every secret with the new key while starting (a few seconds).")
+	}
+	fmt.Println("Then:")
+	fmt.Println("  1. Download a new recovery kit (Backups → target → Recovery kit): the old one only works with the old key.")
+	fmt.Println("  2. Run the panel backup once (Backups → Panel data → Run now): older panel backups need the old key to restore.")
+	fmt.Println("  3. Keep the old key until then; afterwards it is no longer needed.")
+	return nil
+}
+
 // edgeAddress is the public address of the edge node (nectar-gateway runs there): its ExternalIP, else
 // its InternalIP; "" when no node is labelled nectar.dev/edge=true.
 func edgeAddress(ctx context.Context, kc *kube.Client) string {
@@ -551,4 +638,23 @@ func edgeAddress(ctx context.Context, kc *kube.Client) string {
 		}
 	}
 	return ""
+}
+
+// runtimeImages returns the runtime images the apps use (artifact apps; image apps bring their own image).
+func runtimeImages(ctx context.Context, st *store.Store, catalog *runtimes.Catalog) []string {
+	apps, err := st.ListApps(ctx, 0)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, a := range apps {
+		rt, ok := catalog.Get(a.RuntimeID)
+		if !ok {
+			continue
+		}
+		if v, ok := rt.Version(a.RuntimeVersion); ok {
+			out = append(out, v.Image)
+		}
+	}
+	return out
 }

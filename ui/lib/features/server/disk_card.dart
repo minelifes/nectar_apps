@@ -229,12 +229,14 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
   late final _audit = TextEditingController(text: '${widget.settings.auditDays}');
   late final _alerts = TextEditingController(text: '${widget.settings.alertDays}');
   late final _dataDir = TextEditingController(text: widget.settings.k3sDataDir);
+  late final _images = TextEditingController(text: widget.settings.prepullImages.join('\n'));
+  late bool _prepull = widget.settings.prepull;
   bool _saving = false;
   String? _error;
 
   @override
   void dispose() {
-    for (final c in [_keep, _audit, _alerts, _dataDir]) {
+    for (final c in [_keep, _audit, _alerts, _dataDir, _images]) {
       c.dispose();
     }
     super.dispose();
@@ -251,6 +253,11 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
         auditDays: int.tryParse(_audit.text.trim()) ?? 0,
         alertDays: int.tryParse(_alerts.text.trim()) ?? 0,
         k3sDataDir: _dataDir.text.trim(),
+        prepull: _prepull,
+        prepullImages: [
+          for (final l in _images.text.split(RegExp(r'[\s,]+')))
+            if (l.trim().isNotEmpty) l.trim(),
+        ],
       ).toJson());
       ref.invalidate(serverDiskProvider);
       if (mounted) Navigator.pop(context);
@@ -272,19 +279,37 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
       title: const Text('Retention'),
       content: SizedBox(
         width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            num(_keep, 'Uploads kept per app', '1–100; uploads used by a live release are always kept'),
-            num(_audit, 'Audit log, days', '30–3650'),
-            num(_alerts, 'Resolved alerts, days', '7–3650'),
-            TextField(
-              controller: _dataDir,
-              decoration: const InputDecoration(labelText: 'k3s data directory', helperText: 'Used to find crictl for image cleanup'),
-            ),
-            if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: c.failed))),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              num(_keep, 'Uploads kept per app', '1–100; uploads used by a live release are always kept'),
+              num(_audit, 'Audit log, days', '30–3650'),
+              num(_alerts, 'Resolved alerts, days', '7–3650'),
+              TextField(
+                controller: _dataDir,
+                decoration: const InputDecoration(labelText: 'k3s data directory', helperText: 'Used to find crictl for image cleanup'),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _prepull,
+                onChanged: (v) => setState(() => _prepull = v),
+                title: const Text('Keep images on every node'),
+                subtitle: const Text('Pre-pulls busybox and the runtime images your apps use, so new nodes and moved pods start '
+                    'without downloading them. Image cleanup keeps them.'),
+              ),
+              if (_prepull)
+                TextField(
+                  controller: _images,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: const InputDecoration(labelText: 'Extra images', helperText: 'One per line, e.g. postgres:17 (up to 20)'),
+                ),
+              if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: c.failed))),
+            ],
+          ),
         ),
       ),
       actions: [

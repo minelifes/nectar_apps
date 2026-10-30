@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Nectar Apps API
-  version: 0.13.1
+  version: 0.15.0
   description: |
     Control-plane API of Nectar Apps. Single source of truth for the Flutter client (generated Dart client)
     and the Go handlers. Auth: session cookie `nectar_session` (web) or `Authorization: Bearer <token>`
@@ -1839,6 +1839,60 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/GatewaySettings" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GatewaySettings" } } } }
+  /gateway/certificates:
+    get:
+      tags: [gateway]
+      summary: Standalone (wildcard) certificates of the gateway, and whether the gateway can issue them (nectar-gateway ≥ 1.2.2)
+      x-permission: server.view
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  supported: { type: boolean, description: the gateway has the certificates API }
+                  acme: { type: boolean, description: its Let's Encrypt client is on }
+                  dns: { type: boolean, description: a DNS provider is set (DNS-01, needed for wildcards) }
+                  dns_provider: { type: string }
+                  base_domain: { type: string }
+                  base_wildcard: { type: string, description: '"*.<base domain>" ("" without a base domain)' }
+                  providers: { type: array, items: { type: string } }
+                  certificates: { type: array, items: { $ref: "#/components/schemas/GatewayCertificate" } }
+    post:
+      tags: [gateway]
+      summary: Order a certificate over Let's Encrypt (wildcards over DNS-01); it is issued in the background
+      x-permission: settings.manage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domain: { type: string, description: "*.example.com or a host name" }
+                include_apex: { type: boolean, description: "also the domain itself (default true for wildcards)" }
+                base_domain: { type: boolean, description: "shortcut for *.<base domain> + the base domain" }
+      responses:
+        "201": { description: Ordered, content: { application/json: { schema: { $ref: "#/components/schemas/GatewayCertificate" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { description: "Already exists, the gateway is too old, Let's Encrypt is off, or no DNS provider for a wildcard", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /gateway/certificates/{cid}/renew:
+    parameters: [{ name: cid, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [gateway]
+      summary: Start a new order now (e.g. after fixing the DNS token)
+      x-permission: settings.manage
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { $ref: "#/components/schemas/GatewayCertificate" } } } }
+  /gateway/certificates/{cid}:
+    parameters: [{ name: cid, in: path, required: true, schema: { type: integer } }]
+    delete:
+      tags: [gateway]
+      summary: Delete a certificate (hosts it served get their own per-host certificates again)
+      x-permission: settings.manage
+      responses:
+        "204": { description: Deleted }
 
   /adopt:
     get:
@@ -2232,6 +2286,8 @@ components:
         audit_days: { type: integer, default: 365 }
         alert_days: { type: integer, default: 90 }
         k3s_data_dir: { type: string, default: /var/lib/rancher/k3s }
+        prepull: { type: boolean, default: false, description: "Keep busybox, the runtime images in use and prepull_images on every node (DaemonSet nectar-prepull)" }
+        prepull_images: { type: array, maxItems: 20, items: { type: string } }
     ImageCleanup:
       type: object
       properties:
@@ -2630,7 +2686,7 @@ components:
         backend_protocol: { type: string, enum: [http1, h2c], default: http1, description: h2c = cleartext HTTP/2 to the app (gRPC) }
         timeout_seconds: { type: integer, minimum: 0, maximum: 3600, description: response-header timeout, 0 = 60 s }
         max_body_mb: { type: integer, minimum: 0, description: request body limit, 0 = unlimited }
-        rate_limit: { type: integer, minimum: 0, maximum: 100000, description: "requests per second per client IP, 0 = unlimited, otherwise at least 10. A client over it is blocked by nectar-gateway for 24 hours on every domain (see GET /api/gateway/blocked)" }
+        rate_limit: { type: integer, minimum: 0, maximum: 100000, description: "requests per second per client IP, 0 = unlimited. Above it the gateway answers 429; a client that keeps going is blocked for rate_limit_block_minutes (gateway setting). Gateways without the rate-limit-429 feature block for 24 h at once and need at least 10" }
         basic_auth_users:
           type: array
           description: replaces the basic-auth users; omit password to keep a user's current one; [] removes basic auth
@@ -2658,7 +2714,7 @@ components:
         backend_protocol: { type: string, enum: [http1, h2c], default: http1, description: h2c = cleartext HTTP/2 to the app (gRPC) }
         timeout_seconds: { type: integer, minimum: 0, maximum: 3600, description: response-header timeout, 0 = 60 s }
         max_body_mb: { type: integer, minimum: 0, description: request body limit, 0 = unlimited }
-        rate_limit: { type: integer, minimum: 0, maximum: 100000, description: "requests per second per client IP, 0 = unlimited, otherwise at least 10. A client over it is blocked by nectar-gateway for 24 hours on every domain (see GET /api/gateway/blocked)" }
+        rate_limit: { type: integer, minimum: 0, maximum: 100000, description: "requests per second per client IP, 0 = unlimited. Above it the gateway answers 429; a client that keeps going is blocked for rate_limit_block_minutes (gateway setting). Gateways without the rate-limit-429 feature block for 24 h at once and need at least 10" }
         auth_users: { type: array, items: { type: string }, description: basic-auth user names (hashes are never returned) }
     TrafficSummary:
       type: object
@@ -2692,9 +2748,27 @@ components:
         ms: { type: integer }
         user_agent: { type: string }
         domain: { type: string }
+    GatewayCertificate:
+      type: object
+      properties:
+        id: { type: integer }
+        domain: { type: string }
+        names: { type: array, items: { type: string } }
+        include_apex: { type: boolean }
+        acme: { type: boolean }
+        source: { type: string, enum: ["", acme, upload] }
+        status: { type: string, enum: [pending, valid, expiring, expired, failed] }
+        not_after: { type: integer, description: unix seconds, 0 = not issued yet }
+        last_error: { type: string }
+        serves: { type: array, items: { type: string }, description: hosts without a certificate of their own that it serves }
+        managed_by: { type: string }
     GatewaySettings:
       type: object
       properties:
         fallback_http: { type: string, description: "host:port for hosts without a route ('' = 410)", example: traefik.kube-system.svc.cluster.local:80 }
         fallback_tls: { type: string, description: "host:port receiving raw TLS for hosts without a local certificate ('' = off)", example: traefik.kube-system.svc.cluster.local:443 }
         acme_email: { type: string, format: email, description: "Let's Encrypt account contact ('' = none); changes apply immediately" }
+        dns_provider: { type: string, enum: ["", cloudflare], description: "DNS-01 provider for wildcard certificates ('' = none)" }
+        dns_api_token: { type: string, writeOnly: true, description: "the provider's API token (Cloudflare: Zone:Read + DNS:Edit); never returned, dns_token_set shows it is there" }
+        dns_token_set: { type: boolean, readOnly: true }
+        rate_limit_block_minutes: { type: integer, minimum: 0, maximum: 10080, description: "a client that keeps exceeding a rate limit (more than 10 × the limit refused within a minute) is blocked this long; 0 = never (only 429). Gateways with the rate-limit-429 feature; default 10" }
