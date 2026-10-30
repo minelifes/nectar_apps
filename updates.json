@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.2",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:d105b4e8eb45efaf576c5fa672d4593f690b9c9f54803ccbf6c80e9396c0d437",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- fix(ui): covered_by fields belong to GatewayRoute, not Domain\n- fix session cookie handle",
+          "previous": "1.0.1",
+          "published_at": "2026-10-30T15:39:57+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.1",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:57593b064f4512a9f1bd1f349fce97d49ab5bd1f9795bd893cec6949262aa65a",
@@ -45,6 +65,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.2",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:d105b4e8eb45efaf576c5fa672d4593f690b9c9f54803ccbf6c80e9396c0d437",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- fix(ui): covered_by fields belong to GatewayRoute, not Domain\n- fix session cookie handle",
+          "previous": "1.0.1",
+          "published_at": "2026-10-30T15:39:57+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.1",
@@ -88,5 +128,5 @@
       ]
     }
   },
-  "updated_at": "2026-10-30T01:47:24+00:00"
+  "updated_at": "2026-10-30T15:39:57+00:00"
 }
