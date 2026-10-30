@@ -559,10 +559,6 @@ class Domain {
   final String redirectTo;
   final DateTime? certNotAfter;
 
-  /// The wildcard (standalone) certificate that serves this host when the route has none of its own.
-  final String coveredBy;
-  final DateTime? coveredUntil;
-
   String get url => '${tls ? 'https' : 'http'}://$host${pathPrefix == '/' || pathPrefix.isEmpty ? '' : pathPrefix}';
 
   factory Domain.fromJson(Object? j) {
@@ -2026,6 +2022,10 @@ class GatewayRoute {
   final bool maintenance;
   final bool hcEnabled;
   final DateTime? certNotAfter;
+
+  /// The wildcard (standalone) certificate that serves this host when the route has none of its own.
+  final String coveredBy;
+  final DateTime? coveredUntil;
 
   String get label => pathPrefix.isEmpty || pathPrefix == '/' ? domain : '$domain$pathPrefix';
 

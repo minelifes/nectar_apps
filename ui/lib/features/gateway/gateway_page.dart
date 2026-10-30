@@ -192,7 +192,7 @@ class _Certificates extends ConsumerWidget {
   }
 }
 
-/// Wildcard certificates (DNS-01): the DNS provider, *.<base domain> in one click, and the list.
+/// Wildcard certificates (DNS-01): the DNS provider, `*.<base domain>` in one click, and the list.
 class _Wildcards extends ConsumerWidget {
   const _Wildcards({required this.canManage});
 
