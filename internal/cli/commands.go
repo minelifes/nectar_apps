@@ -29,7 +29,7 @@ type Env struct {
 const usage = `nectar — deploy to a Nectar Apps panel
 
 Usage:
-  nectar login --url https://panel.example.com [--token nat_…]   save the panel and an API token
+  nectar login [--url https://panel.example.com] [--token nat_…]  save the panel and an API token (--url defaults to the saved one)
   nectar whoami                                                   who the token belongs to
   nectar apps [--project SLUG]                                    list apps
   nectar deploy APP [--file app.jar | --image REF] [--no-wait] [--timeout 15m] [--force]
@@ -117,6 +117,12 @@ func run(ctx context.Context, cmd string, args []string, env Env) error {
 		tok := fs.String("token", "", "API token (nat_…); read from stdin when empty")
 		if _, err := parse(fs, args); err != nil {
 			return err
+		}
+		if *u == "" {
+			// the saved address (install.sh writes the local panel address on the server) or NECTAR_URL
+			if c, err := LoadConfig(); err == nil {
+				*u = c.URL
+			}
 		}
 		if *u == "" {
 			return errors.New("--url is required")

@@ -34,6 +34,7 @@ INGRESS_CONTROLLER=""
 STRATEGY=""                               # adopt: migrate | keep | adopt-gateway (default: recommended)
 ADOPT_BIN="${ADOPT_BIN:-}"                # nectar-apps binary for the host-side adopt commands
 RELEASES="https://github.com/minelifes/nectar_apps/releases"
+GATEWAY_RELEASES="https://github.com/minelifes/nectar_gateway/releases"
 FORCE=0
 RESTART_K3S=0
 
@@ -50,6 +51,8 @@ REGISTRY_HOST="registry.nectar.local"     # the name nodes pull built images fro
 REGISTRY_NODEPORT=30500
 REGISTRY_PASSWORD=""
 REGISTRY_MANUAL=0                          # set when your own registries.yaml has mirrors/configs (merge by hand)
+CLI=1                                     # install the nectar CLI into /usr/local/bin (--no-cli skips it)
+CLI_BIN="${CLI_BIN:-}"                    # --cli-binary: a local nectar binary instead of the release download
 JOIN_URL=""                               # --join: add this machine to an existing Nectar server as a k3s agent
 JOIN_TOKEN=""
 SUC_VERSION="${SUC_VERSION:-v0.14.2}"
@@ -120,6 +123,9 @@ Existing k3s (adopt mode):
   --force                with --adopt/--finalize: skip the safety checks
   --binary PATH          use a local nectar-apps binary for the adopt commands (development)
 
+  --no-cli               do not install the nectar CLI (default: /usr/local/bin/nectar, from the same release)
+  --cli-binary PATH      install this nectar binary instead of downloading it (development)
+
   --uninstall            remove nectar-apps and nectar-gateway (keeps k3s; adopt mode: restores the old proxy)
   --purge-k3s            with --uninstall: also uninstall k3s (DESTROYS ALL WORKLOADS)
   --dry-run              print what would be done, change nothing
@@ -157,6 +163,8 @@ while [ $# -gt 0 ]; do
 		--restart-k3s) RESTART_K3S=1; shift ;;
 		--force) FORCE=1; shift ;;
 		--binary) ADOPT_BIN="${2:?}"; shift 2 ;;
+		--no-cli) CLI=0; shift ;;
+		--cli-binary) CLI_BIN="${2:?}"; shift 2 ;;
 		--uninstall) MODE="uninstall"; shift ;;
 		--purge-k3s) PURGE_K3S=1; shift ;;
 		--dry-run) DRY_RUN=1; shift ;;
@@ -253,6 +261,7 @@ install_prerequisites() {
 		have openssl || die "openssl is required"
 	fi
 	ok "Prerequisites present"
+	resolve_versions
 }
 
 # --------------------------------------------------------------- helpers --
@@ -280,27 +289,103 @@ ssh_port() {
 # ---------------------------------------------------------------- adopt --
 # The host-side work (discovery, backup, verification, cutover, rollback) is done by the nectar-apps
 # binary: `nectar-apps adopt …`. It is downloaded from the GitHub release (checksum verified).
+# latest_release RELEASES_URL prints the newest release version (X.Y.Z). GitHub answers
+# /releases/latest/download/<file> with a redirect to /releases/download/vX.Y.Z/<file>.
+latest_release() {
+	loc="$(curl -fsSI --max-time 15 "$1/latest/download/release.json" 2>/dev/null | tr -d '\r' | sed -n 's/^[Ll]ocation: *//p' | head -n 1)"
+	v="$(printf '%s' "$loc" | sed -n 's|.*/releases/download/v\{0,1\}\([^/]*\)/.*|\1|p')"
+	[ -n "$v" ] && printf '%s\n' "$v"
+}
+
+# resolve_versions turns "latest" into the newest release and drops a leading "v" (1.0.0 and v1.0.0 both
+# work). Images are tagged X.Y.Z, X.Y and stable/beta (never "latest"), and manifests and binaries come
+# from the same release, so everything must use one concrete version.
+resolve_versions() {
+	[ -n "${VERSIONS_RESOLVED:-}" ] && return 0
+	have curl || return 0 # called again after the prerequisites are installed
+	NECTAR_VERSION="${NECTAR_VERSION#v}"
+	GATEWAY_VERSION="${GATEWAY_VERSION#v}"
+	if [ "$NECTAR_VERSION" = latest ]; then
+		if v="$(latest_release "$RELEASES")"; then
+			NECTAR_VERSION="$v"
+		elif [ -n "$MANIFESTS_DIR" ] || [ "$DRY_RUN" -eq 1 ]; then
+			warn "could not look up the latest Nectar Apps release; using \"latest\""
+		else
+			die "could not look up the latest Nectar Apps release at $RELEASES — pass --version X.Y.Z"
+		fi
+	fi
+	if [ "$GATEWAY_VERSION" = latest ]; then
+		if v="$(latest_release "$GATEWAY_RELEASES")"; then
+			GATEWAY_VERSION="$v"
+		else
+			GATEWAY_VERSION="stable" # the stable channel tag always points at the newest stable gateway
+			warn "could not look up the latest nectar-gateway release; using the :stable image"
+		fi
+	fi
+	VERSIONS_RESOLVED=1
+	[ "$NECTAR_VERSION" = latest ] || info "Nectar Apps $NECTAR_VERSION, nectar-gateway $GATEWAY_VERSION"
+}
+
+# download_verified ASSET DEST: a release asset for NECTAR_VERSION, checked against its .sha256.
+download_verified() {
+	if [ "$NECTAR_VERSION" = latest ]; then base="$RELEASES/latest/download"; else base="$RELEASES/download/v$NECTAR_VERSION"; fi
+	if [ "$DRY_RUN" -eq 1 ]; then run curl -fsSL "$base/$1" -o "$2"; return 0; fi
+	tmp="$(mktemp)"
+	if ! curl -fsSL "$base/$1" -o "$tmp"; then rm -f "$tmp"; warn "download failed: $base/$1"; return 1; fi
+	if ! want="$(curl -fsSL "$base/$1.sha256" | awk '{print $1}')"; then rm -f "$tmp"; warn "download failed: $base/$1.sha256"; return 1; fi
+	got="$(sha256sum "$tmp" 2>/dev/null | awk '{print $1}' || openssl dgst -sha256 -r "$tmp" | awk '{print $1}')"
+	if [ -z "$want" ] || [ "$want" != "$got" ]; then
+		rm -f "$tmp"
+		warn "checksum mismatch for $1"
+		return 1
+	fi
+	mkdir -p "$(dirname "$2")"
+	install -m 0755 "$tmp" "$2"
+	rm -f "$tmp"
+}
+
 fetch_adopt_bin() {
 	if [ -n "$ADOPT_BIN" ]; then
 		[ -x "$ADOPT_BIN" ] || die "--binary $ADOPT_BIN is not executable"
 		return
 	fi
 	ADOPT_BIN="$STATE_DIR/bin/nectar-apps"
-	if [ "$NECTAR_VERSION" = latest ]; then base="$RELEASES/latest/download"; else base="$RELEASES/download/v$NECTAR_VERSION"; fi
-	asset="nectar-apps_linux_$ARCH"
-	info "Downloading $asset ($NECTAR_VERSION)"
-	if [ "$DRY_RUN" -eq 1 ]; then run curl -fsSL "$base/$asset" -o "$ADOPT_BIN"; return; fi
-	mkdir -p "$STATE_DIR/bin"
-	tmp="$(mktemp)"
-	curl -fsSL "$base/$asset" -o "$tmp" || die "download failed: $base/$asset"
-	want="$(curl -fsSL "$base/$asset.sha256" | awk '{print $1}')" || die "download failed: $base/$asset.sha256"
-	got="$(sha256sum "$tmp" 2>/dev/null | awk '{print $1}' || openssl dgst -sha256 -r "$tmp" | awk '{print $1}')"
-	if [ -z "$want" ] || [ "$want" != "$got" ]; then
-		rm -f "$tmp"
-		die "checksum mismatch for $asset"
+	info "Downloading nectar-apps_linux_$ARCH ($NECTAR_VERSION)"
+	download_verified "nectar-apps_linux_$ARCH" "$ADOPT_BIN" || die "could not download the nectar-apps binary"
+}
+
+# install_cli puts the nectar CLI into /usr/local/bin and saves this panel's local address for root (and
+# the sudo user), so `nectar login` on the server only asks for an API token. A missing release asset
+# is not fatal: the panel works without the CLI.
+CLI_DEST=/usr/local/bin/nectar
+install_cli() {
+	[ "$CLI" -eq 1 ] || return 0
+	if [ -n "$CLI_BIN" ]; then
+		[ -x "$CLI_BIN" ] || die "--cli-binary $CLI_BIN is not executable"
+		run install -m 0755 "$CLI_BIN" "$CLI_DEST"
+	else
+		info "Installing the nectar CLI ($NECTAR_VERSION) to $CLI_DEST"
+		download_verified "nectar_linux_$ARCH" "$CLI_DEST" || { warn "the nectar CLI was not installed (install it later from $RELEASES)"; return 0; }
 	fi
-	install -m 0755 "$tmp" "$ADOPT_BIN"
-	rm -f "$tmp"
+	run mkdir -p "$STATE_DIR"
+	run touch "$STATE_DIR/cli-installed" # uninstall removes only a CLI it installed
+	cli_config /root
+	if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+		h="$(getent passwd "$SUDO_USER" 2>/dev/null | cut -d: -f6)"
+		[ -n "$h" ] && [ -d "$h" ] && cli_config "$h" "$SUDO_USER"
+	fi
+	CLI_DONE=1
+}
+
+# cli_config HOME [USER]: write ~/.config/nectar/config.json with the panel address unless one exists.
+cli_config() {
+	f="$1/.config/nectar/config.json"
+	[ -f "$f" ] && return 0
+	if [ "$DRY_RUN" -eq 1 ]; then run sh -c "write $f (url http://127.0.0.1:$PANEL_NODEPORT)"; return 0; fi
+	mkdir -p "$1/.config/nectar"
+	printf '{"url":"http://127.0.0.1:%s","token":""}\n' "$PANEL_NODEPORT" >"$f"
+	chmod 600 "$f"
+	if [ -n "${2:-}" ]; then chown -R "$2" "$1/.config/nectar" 2>/dev/null || true; fi
 }
 
 adopt_cli() { "$ADOPT_BIN" adopt "$@" --namespace "$NAMESPACE" --state-dir "$STATE_DIR"; }
@@ -349,6 +434,7 @@ do_adopt() {
 	[ "$REGISTRY" = auto ] && REGISTRY=0
 	setup_registry
 	deploy_stack
+	install_cli
 	if [ "$STRATEGY" = keep ]; then
 		print_summary
 		return
@@ -772,6 +858,9 @@ print_summary() {
 		echo "  It is shown only once."
 	fi
 	echo
+	if [ "${CLI_DONE:-0}" -eq 1 ]; then
+		echo "  CLI on this server:  nectar login   (asks for an API token: Settings → API tokens), then e.g. nectar apps"
+	fi
 	echo "  Forgot your password?  k3s kubectl -n $NAMESPACE exec deploy/nectar-apps -- nectar-apps admin reset-password --email you@example.com"
 	echo
 }
@@ -796,6 +885,7 @@ do_install() {
 		keep_existing_settings
 		setup_registry
 		deploy_stack
+		install_cli
 		print_summary
 		exit 0
 	fi
@@ -813,6 +903,7 @@ do_install() {
 	install_k3s
 	keep_existing_settings
 	deploy_stack
+	install_cli
 	print_summary
 }
 
@@ -838,6 +929,10 @@ do_uninstall() {
 	run k3s kubectl label nodes --all nectar.dev/edge- >/dev/null 2>&1 || true
 	# the built-in registry is gone: drop its k3s mirror (it also holds the registry password)
 	remove_registries_yaml
+	if [ -f "$STATE_DIR/cli-installed" ]; then
+		run rm -f "$CLI_DEST" "$STATE_DIR/cli-installed"
+		info "Removed the nectar CLI ($CLI_DEST); ~/.config/nectar stays"
+	fi
 	if [ -d "$STATE_DIR/backup" ]; then
 		run rm -rf "$STATE_DIR/bin" "$STATE_DIR/installed-version"
 		warn "Backups kept in $STATE_DIR/backup (delete them yourself when no longer needed)"
@@ -852,6 +947,7 @@ do_uninstall() {
 
 # ------------------------------------------------------------------- main --
 check_platform
+resolve_versions
 case "$MODE" in
 	install) do_install ;;
 	discover) k3s_present || die "k3s is not installed — nothing to discover"; discover ;;

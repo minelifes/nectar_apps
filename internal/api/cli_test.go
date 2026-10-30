@@ -81,4 +81,13 @@ func TestCLIDeploy(t *testing.T) {
 	if p, _ := cli.ConfigPath(); func() bool { st, err := os.Stat(p); return err != nil || st.Mode().Perm() != 0o600 }() {
 		t.Error("config must be 0600")
 	}
+	// on the server install.sh saves only the address: login without --url uses it
+	p, _ := cli.ConfigPath()
+	os.WriteFile(p, []byte(`{"url":"`+e.srv.URL+`","token":""}`), 0o600)
+	out2.Reset()
+	code = cli.Run(context.Background(), []string{"login"}, cli.Env{Stdout: &out2, Stderr: &out2,
+		Stdin: strings.NewReader(tok["token"].(string) + "\n")})
+	if cfg, _ := cli.LoadConfig(); code != 0 || cfg.URL != e.srv.URL || !strings.HasPrefix(cfg.Token, "nat_") {
+		t.Fatalf("login with the saved address: %d %s %+v", code, out2.String(), cfg)
+	}
 }

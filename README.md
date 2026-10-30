@@ -148,7 +148,9 @@ or the last node that could take the pods, asks again first: it would take the g
 ## Deploy from the command line / CI
 
 Create a token under **Settings → API tokens** (for CI: role **Deployer**, limited to one project), then use the
-`nectar` CLI (binaries for Linux, macOS and Windows are attached to every release; `make cli` builds it):
+`nectar` CLI. `install.sh` puts it on the server (`/usr/local/bin/nectar`, already pointed at the local panel, so
+`nectar login` only asks for the token; `--no-cli` skips it). For your own machine, binaries for Linux, macOS and
+Windows are attached to every release, and `make cli` builds it:
 
 ```bash
 nectar login --url https://panel.apps.example.com          # asks for the token, saves it in ~/.config/nectar
