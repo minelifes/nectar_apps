@@ -1215,7 +1215,7 @@ class _ChoiceTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) trailing!,
+              ?trailing,
               const SizedBox(width: 8),
               Icon(
                 selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,

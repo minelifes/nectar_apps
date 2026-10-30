@@ -123,8 +123,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               if (feed != null) Expanded(flex: 2, child: feed),
             ],
           )
-        else if (server != null)
-          server,
+        else
+          ?server,
         const SizedBox(height: NectarTokens.gapLarge),
         SectionLabel(
           'Projects',

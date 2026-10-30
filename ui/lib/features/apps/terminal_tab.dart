@@ -92,7 +92,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     _decoder = const Utf8Decoder(allowMalformed: true).startChunkedConversion(_TermSink(_terminal));
     try {
       await api.get('/apps/${widget.app.id}/pods'); // renews an expired access token before it goes into the URL
-      final ch = WebSocketChannel.connect(api.wsUri('/apps/${widget.app.id}/exec/ws', {if (_pod != null) 'pod': _pod!}));
+      final ch = WebSocketChannel.connect(api.wsUri('/apps/${widget.app.id}/exec/ws', {'pod': ?_pod}));
       _ch = ch;
       await ch.ready;
       if (!mounted) {
@@ -114,18 +114,19 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
       return;
     }
     if (m is! Map) return;
-    switch (m['t']) {
+    final msg = m; // promoted, also inside the closures below
+    switch (msg['t']) {
       case 's':
         setState(() {
           _state = 'open';
-          _message = 'Connected to ${m['pod']}';
+          _message = 'Connected to ${msg['pod']}';
         });
-        _terminal.write('\x1b[2m— ${m['pod']} —\x1b[0m\r\n');
+        _terminal.write('\x1b[2m— ${msg['pod']} —\x1b[0m\r\n');
         _send({'t': 'r', 'c': _cols, 'r': _rows});
       case 'o':
-        _decoder.add(base64Decode('${m['b']}'));
+        _decoder.add(base64Decode('${msg['b']}'));
       case 'x':
-        _closed('${m['msg'] ?? 'Session ended'}');
+        _closed('${msg['msg'] ?? 'Session ended'}');
     }
   }
 

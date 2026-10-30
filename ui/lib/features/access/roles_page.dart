@@ -150,7 +150,7 @@ class _RoleEditorState extends ConsumerState<_RoleEditor> {
     final isNew = role == null || role.id == 0;
     final canManage = ref.watch(sessionProvider).can('role.manage');
     return AlertDialog(
-      title: Text(isNew ? (role == null ? 'New role' : 'New role from ${widget.role?.name}') : role!.name),
+      title: Text(role == null || role.id == 0 ? (role == null ? 'New role' : 'New role from ${widget.role?.name}') : role.name),
       content: SizedBox(
         width: 720,
         child: SingleChildScrollView(
@@ -214,7 +214,7 @@ class _RoleEditorState extends ConsumerState<_RoleEditor> {
         ),
       ),
       actions: [
-        if (!isNew && !role!.builtin && canManage)
+        if (role != null && role.id != 0 && !role.builtin && canManage)
           TextButton(onPressed: _delete, style: TextButton.styleFrom(foregroundColor: c.failed), child: const Text('Delete')),
         if (!isNew && canManage) TextButton(onPressed: _clone, child: const Text('Clone')),
         TextButton(onPressed: () => Navigator.pop(context), child: Text(_locked ? 'Close' : 'Cancel')),

@@ -96,7 +96,7 @@ class BuildsTab extends ConsumerWidget {
                 ? Text('No build yet.', style: TextStyle(color: c.muted))
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [for (final b in list) _BuildRow(app: app, build: b, canCancel: canBuild)],
+                    children: [for (final b in list) _BuildRow(app: app, info: b, canCancel: canBuild)],
                   ),
           ),
         ),
@@ -165,16 +165,16 @@ class _WebhookBox extends ConsumerWidget {
 }
 
 class _BuildRow extends ConsumerWidget {
-  const _BuildRow({required this.app, required this.build, required this.canCancel});
+  const _BuildRow({required this.app, required this.info, required this.canCancel});
 
   final App app;
-  final BuildInfo build;
+  final BuildInfo info;
   final bool canCancel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = NectarColors.of(context);
-    final b = build;
+    final b = info;
     final took = b.finishedAt != null && b.startedAt != null ? b.finishedAt!.difference(b.startedAt!) : null;
     return ListTile(
       contentPadding: EdgeInsets.zero,

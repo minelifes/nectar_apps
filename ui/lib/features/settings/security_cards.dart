@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../api/client.dart';
 import '../../api/models.dart';
+import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
 import '../../theme/theme.dart';

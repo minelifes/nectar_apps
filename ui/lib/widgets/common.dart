@@ -27,7 +27,7 @@ class NCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(child: Text(title!, style: Theme.of(context).textTheme.titleMedium)),
-                if (trailing != null) trailing!,
+                ?trailing,
               ],
             ),
             const SizedBox(height: 14),
@@ -125,7 +125,7 @@ class SectionLabel extends StatelessWidget {
         child: Row(
           children: [
             Expanded(child: Text(text.toUpperCase(), style: Theme.of(context).textTheme.labelSmall)),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
       );

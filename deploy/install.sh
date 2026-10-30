@@ -295,7 +295,10 @@ fetch_adopt_bin() {
 	curl -fsSL "$base/$asset" -o "$tmp" || die "download failed: $base/$asset"
 	want="$(curl -fsSL "$base/$asset.sha256" | awk '{print $1}')" || die "download failed: $base/$asset.sha256"
 	got="$(sha256sum "$tmp" 2>/dev/null | awk '{print $1}' || openssl dgst -sha256 -r "$tmp" | awk '{print $1}')"
-	[ -n "$want" ] && [ "$want" = "$got" ] || { rm -f "$tmp"; die "checksum mismatch for $asset"; }
+	if [ -z "$want" ] || [ "$want" != "$got" ]; then
+		rm -f "$tmp"
+		die "checksum mismatch for $asset"
+	fi
 	install -m 0755 "$tmp" "$ADOPT_BIN"
 	rm -f "$tmp"
 }
@@ -688,7 +691,9 @@ store_cluster_secrets() {
 
 # ----------------------------------------------------------------- join --
 do_join() {
-	[ -n "$JOIN_URL" ] && [ -n "$JOIN_TOKEN" ] || die "--join needs the server URL and --token (shown under Server → Add node)"
+	if [ -z "$JOIN_URL" ] || [ -z "$JOIN_TOKEN" ]; then
+		die "--join needs the server URL and --token (shown under Server → Add node)"
+	fi
 	k3s_present && die "k3s is already installed on this machine"
 	server_host="$(printf '%s' "$JOIN_URL" | sed -E 's#^https?://##; s#[:/].*$##')"
 	info "This machine joins the cluster at $JOIN_URL as a k3s agent (worker node)."
@@ -773,7 +778,9 @@ print_summary() {
 
 do_install() {
 	if [ -n "$RESTORE_KIT" ] || [ -n "$RESTORE_MASTER_KEY" ]; then
-		[ -n "$RESTORE_KIT" ] && [ -n "$RESTORE_MASTER_KEY" ] || die "--restore-kit and --master-key go together"
+		if [ -z "$RESTORE_KIT" ] || [ -z "$RESTORE_MASTER_KEY" ]; then
+			die "--restore-kit and --master-key go together"
+		fi
 		[ -r "$RESTORE_KIT" ] || die "cannot read $RESTORE_KIT"
 		grep -q '"repository"' "$RESTORE_KIT" || die "$RESTORE_KIT is not a recovery kit"
 		! k3s_present || ! kc get ns "$NAMESPACE" >/dev/null 2>&1 || die "Nectar is already installed here: restore on a fresh server"

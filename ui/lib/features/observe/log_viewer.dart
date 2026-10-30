@@ -79,7 +79,7 @@ class _LogViewerState extends ConsumerState<LogViewer> {
         _pods = pods;
         _error = null;
       });
-      final ch = WebSocketChannel.connect(api.wsUri('/apps/${widget.app.id}/logs/ws', {'tail': '200', if (_pod != null) 'pod': _pod!}));
+      final ch = WebSocketChannel.connect(api.wsUri('/apps/${widget.app.id}/logs/ws', {'tail': '200', 'pod': ?_pod}));
       _ch = ch;
       await ch.ready;
       if (!mounted) {
@@ -104,13 +104,14 @@ class _LogViewerState extends ConsumerState<LogViewer> {
 
   void _onMessage(dynamic data) {
     if (data is! String) return;
-    final Object? msg;
+    final Object? decoded;
     try {
-      msg = jsonDecode(data);
+      decoded = jsonDecode(data);
     } on FormatException {
       return;
     }
-    if (msg is! Map) return;
+    if (decoded is! Map) return;
+    final msg = decoded; // promoted, also inside the closures below
     switch (msg['type']) {
       case 'line':
         final line = LogLine.fromJson(msg);
