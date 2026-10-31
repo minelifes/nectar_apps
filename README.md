@@ -305,6 +305,15 @@ can use the resumable [tus](https://tus.io) endpoint `POST /api/apps/{id}/upload
   answered by the gateway), gzip for text responses and HSTS. Needs the latest nectar-gateway; with an older
   gateway the domain keeps working without them and says so.
 
+## Releases
+
+Merging the release PR that release-please keeps open on `main` tags `vX.Y.Z`; `.github/workflows/release.yml`
+then publishes the image `ghcr.io/minelifes/nectar-apps:X.Y.Z`, the binaries, `release.json` and the update feed.
+Pre-releases: push a tag like `v1.3.0-beta.1`. Commit messages follow conventional commits (`fix:`, `feat:`,
+`feat!:` = breaking, `fix(security):`).
+
+**Release without a release PR:** label a pull request `release` (or `release:major`, `release:minor`, `release:patch`) and merge it into `main`. The workflow computes the next version from the conventional commits since the latest tag (the label can force the bump), tags the merge commit and publishes it the same way — no commit is added. release-please pauses while a tag is newer than `.release-please-manifest.json`; its open release PR is closed.
+
 ## Development
 
 Requirements: Go 1.26+. Everything else (Homebrew, Docker runtime, k3d, kubectl) is installed by the dev script.
