@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
 import '../../api/models.dart';
+import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
 import '../../generated/l10n.dart';
