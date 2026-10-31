@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
 import '../../api/session.dart';
+import '../../generated/l10n.dart';
 import 'auth_frame.dart';
 
 /// Chooses a password from a reset or invitation link (`/reset?token=…`).
@@ -62,18 +63,19 @@ class _ResetPageState extends ConsumerState<ResetPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final api = ref.watch(sessionProvider.notifier).api;
     if (api == null) {
-      return const AuthFrame(title: 'Choose a password', children: [Center(child: CircularProgressIndicator())]);
+      return AuthFrame(title: s.authChooseAPassword, children: [Center(child: CircularProgressIndicator())]);
     }
     _info ??= _load(api);
     if (_done) {
       return AuthFrame(
-        title: 'Password saved',
+        title: s.authPasswordSaved,
         children: [
-          const Text('Sign in with your new password and your authenticator code.'),
+          Text(s.authSignInWithYourNew),
           const SizedBox(height: 16),
-          FilledButton(onPressed: () => context.go('/login'), child: const Text('Sign in')),
+          FilledButton(onPressed: () => context.go('/login'), child: Text(s.loginButton)),
         ],
       );
     }
@@ -82,14 +84,14 @@ class _ResetPageState extends ConsumerState<ResetPage> {
       builder: (context, snap) {
         if (snap.hasError) {
           return AuthFrame(
-            title: 'Link expired',
+            title: s.authLinkExpired,
             children: [
               FormError(describeError(snap.error!)),
-              FilledButton(onPressed: () => context.go('/login'), child: const Text('Go to sign-in')),
+              FilledButton(onPressed: () => context.go('/login'), child: Text(s.authGoToSignIn)),
             ],
           );
         }
-        if (!snap.hasData) return const AuthFrame(title: 'Choose a password', children: [Center(child: CircularProgressIndicator())]);
+        if (!snap.hasData) return AuthFrame(title: s.authChooseAPassword, children: [Center(child: CircularProgressIndicator())]);
         final info = snap.data!;
         final invite = info['purpose'] == 'invite';
         final email = '${info['email']}';
@@ -108,14 +110,14 @@ class _ResetPageState extends ConsumerState<ResetPage> {
                     autofocus: true,
                     obscureText: true,
                     autofillHints: const [AutofillHints.newPassword],
-                    decoration: const InputDecoration(labelText: 'Password', helperText: 'At least 10 characters'),
+                    decoration: InputDecoration(labelText: s.loginPassword, helperText: s.authAtLeast10Characters),
                     validator: (v) => (v ?? '').length < 10 ? 'At least 10 characters' : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _repeat,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Repeat the password'),
+                    decoration: InputDecoration(labelText: s.authRepeatThePassword),
                     validator: (v) => v == _password.text ? null : 'The passwords differ',
                     onFieldSubmitted: (_) => _submit(api, email),
                   ),

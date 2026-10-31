@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../api/client.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -135,6 +136,7 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final t = _chosen;
     return AlertDialog(
@@ -148,7 +150,7 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
                 : _form(context, c, t),
       ),
       actions: [
-        if (t != null && _steps == null) TextButton(onPressed: _busy ? null : () => setState(() => _chosen = null), child: const Text('Back')),
+        if (t != null && _steps == null) TextButton(onPressed: _busy ? null : () => setState(() => _chosen = null), child: Text(s.projectBack)),
         TextButton(onPressed: () => Navigator.pop(context), child: Text(_steps == null ? 'Cancel' : 'Close')),
         if (t != null && _steps == null) FilledButton(onPressed: _busy ? null : _install, child: Text(_busy ? 'Installing…' : 'Install')),
         if (_steps != null && _appId > 0)
@@ -157,7 +159,7 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
               Navigator.pop(context);
               context.go('/apps/$_appId');
             },
-            child: const Text('Open the app'),
+            child: Text(s.projectOpenTheApp),
           ),
       ],
     );
@@ -200,7 +202,9 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
     );
   }
 
-  Widget _form(BuildContext context, NectarColors c, AppTemplate t) => SingleChildScrollView(
+  Widget _form(BuildContext context, NectarColors c, AppTemplate t) {
+    final s = S.of(context);
+    return SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -217,17 +221,18 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
             const SizedBox(height: 14),
             TextField(
               controller: _name,
-              decoration: const InputDecoration(labelText: 'Name', helperText: 'The app slug; its default domain is <name>-<project>.<base domain>'),
+              decoration: InputDecoration(labelText: s.backupName, helperText: s.projectTheAppSlugItsDefault),
             ),
             for (final i in t.inputs) ...[
               const SizedBox(height: 10),
               TextField(controller: _inputs[i.key], decoration: InputDecoration(labelText: i.label + (i.required ? ' *' : ''))),
             ],
             const SizedBox(height: 12),
-            Text('Passwords are generated and stored as secret variables. The app is deployed right away.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+            Text(s.projectPasswordsAreGeneratedAndStored, style: TextStyle(color: c.muted, fontSize: 12.5)),
           ],
         ),
       );
+  }
 }
 
 /// The steps of an apply / import / install.
@@ -348,10 +353,11 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final what = widget.compose ? 'docker-compose.yml' : 'nectar.yaml';
     return AlertDialog(
-      title: Text('Import $what'),
+      title: Text(s.projectImport(what)),
       content: SizedBox(
         width: 720,
         child: SingleChildScrollView(
@@ -370,9 +376,9 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                 ),
                 const SizedBox(height: 10),
                 Row(children: [
-                  OutlinedButton.icon(onPressed: _pick, icon: const Icon(Icons.file_open_outlined, size: 18), label: Text('Choose $what')),
+                  OutlinedButton.icon(onPressed: _pick, icon: const Icon(Icons.file_open_outlined, size: 18), label: Text(s.projectChoose(what))),
                   const SizedBox(width: 12),
-                  Text('or paste it below', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                  Text(s.projectOrPasteItBelow, style: TextStyle(color: c.muted, fontSize: 12.5)),
                 ]),
                 const SizedBox(height: 10),
                 TextField(
@@ -388,7 +394,7 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                   controlAffinity: ListTileControlAffinity.leading,
                   value: _deploy,
                   onChanged: (v) => setState(() => _deploy = v ?? true),
-                  title: const Text('Deploy the apps'),
+                  title: Text(s.projectDeployTheApps),
                 ),
                 if (_preview != null) ...[
                   const SectionLabel('Preview'),
@@ -407,7 +413,7 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: Text(_steps == null ? 'Cancel' : 'Close')),
         if (_steps == null) ...[
-          OutlinedButton(onPressed: _busy || _text.text.trim().isEmpty ? null : () => _run(dryRun: true), child: const Text('Check')),
+          OutlinedButton(onPressed: _busy || _text.text.trim().isEmpty ? null : () => _run(dryRun: true), child: Text(s.backupCheck)),
           FilledButton(onPressed: _busy || _text.text.trim().isEmpty ? null : () => _run(dryRun: false), child: Text(_busy ? 'Importing…' : 'Import')),
         ],
       ],
@@ -417,6 +423,7 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
 
 /// Shows the project's nectar.yaml with copy (and the CLI command to apply it).
 Future<void> showExportDialog(BuildContext context, WidgetRef ref, int projectId, String slug) async {
+  final s = S.of(context);
   try {
     final yaml = await ref.read(apiProvider).get('/projects/$projectId/export', options: Options(responseType: ResponseType.plain));
     if (!context.mounted) return;
@@ -433,11 +440,11 @@ Future<void> showExportDialog(BuildContext context, WidgetRef ref, int projectId
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: '$yaml'));
-              showSnack(ctx, 'Copied — apply it with: nectar apply -f nectar.yaml --project $slug');
+              showSnack(ctx, s.projectCopiedApplyItWithNectar(slug));
             },
-            child: const Text('Copy'),
+            child: Text(s.backupCopy),
           ),
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          FilledButton(onPressed: () => Navigator.pop(ctx), child: Text(s.actionClose)),
         ],
       ),
     );

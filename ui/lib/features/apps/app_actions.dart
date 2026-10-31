@@ -7,6 +7,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../auth/auth_frame.dart';
@@ -76,32 +77,33 @@ Future<Release?> rollbackTo(BuildContext context, WidgetRef ref, App app, Releas
 
 /// Deletes the app after the user types its slug. Returns true when deleted.
 Future<bool> deleteApp(BuildContext context, WidgetRef ref, App app) async {
+  final s = S.of(context);
   final ctl = TextEditingController();
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setState) => AlertDialog(
-        title: Text('Delete ${app.name}?'),
+        title: Text(s.appDelete(app.name)),
         content: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('This removes the app, its domains, releases and uploaded files from the server. It cannot be undone.'),
+              Text(s.appThisRemovesTheAppIts),
               const SizedBox(height: 14),
-              Text('Type ${app.slug} to confirm:', style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(s.appTypeToConfirm(app.slug), style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               TextField(controller: ctl, autofocus: true, style: monoStyle(ctx, size: 14), onChanged: (_) => setState(() {})),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.actionCancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: NectarColors.of(ctx).failed, foregroundColor: Colors.white),
             onPressed: ctl.text.trim() == app.slug ? () => Navigator.pop(ctx, true) : null,
-            child: const Text('Delete'),
+            child: Text(s.actionDelete),
           ),
         ],
       ),
@@ -127,7 +129,7 @@ Future<bool> _confirm(BuildContext context, String title, String message, String
         title: Text(title),
         content: SizedBox(width: 420, child: Text(message)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(S.of(context).actionCancel)),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(action)),
         ],
       ),
@@ -240,11 +242,12 @@ class _UploadDeployDialogState extends ConsumerState<_UploadDeployDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final art = _artifact;
     final progress = _progress;
     return AlertDialog(
-      title: const Text('Deploy a new version'),
+      title: Text(s.appDeployANewVersion),
       content: SizedBox(
         width: 460,
         child: Column(
@@ -264,9 +267,9 @@ class _UploadDeployDialogState extends ConsumerState<_UploadDeployDialog> {
               if (progress != null) ...[
                 ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(value: progress, minHeight: 6)),
                 const SizedBox(height: 4),
-                Text('Uploading… ${(progress * 100).round()}%', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text(s.appUploading((progress * 100).round()), style: TextStyle(color: c.muted, fontSize: 12.5)),
               ] else if (art != null) ...[
-                Text('${formatBytes(art.size)} uploaded and checked', style: TextStyle(color: c.running, fontSize: 12.5)),
+                Text(s.appUploadedAndChecked(formatBytes(art.size)), style: TextStyle(color: c.running, fontSize: 12.5)),
                 for (final w in art.detect.warnings)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
@@ -285,9 +288,9 @@ class _UploadDeployDialogState extends ConsumerState<_UploadDeployDialog> {
                   _cancel?.cancel();
                   Navigator.pop(context);
                 },
-          child: const Text('Cancel'),
+          child: Text(s.actionCancel),
         ),
-        SizedBox(width: 120, child: BusyButton(label: 'Deploy', busy: _deploying, onPressed: art == null ? null : _deploy)),
+        SizedBox(width: 120, child: BusyButton(label: s.appDeploy, busy: _deploying, onPressed: art == null ? null : _deploy)),
       ],
     );
   }
@@ -336,8 +339,10 @@ class _ChangeImageDialogState extends ConsumerState<_ChangeImageDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Deploy another image'),
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return AlertDialog(
+        title: Text(s.appDeployAnotherImage),
         content: SizedBox(
           width: 460,
           child: Column(
@@ -349,15 +354,16 @@ class _ChangeImageDialogState extends ConsumerState<_ChangeImageDialog> {
                 controller: _image,
                 autofocus: true,
                 style: monoStyle(context, size: 14),
-                decoration: const InputDecoration(labelText: 'Image'),
+                decoration: InputDecoration(labelText: s.appImage),
                 onSubmitted: (_) => _go(),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: const Text('Cancel')),
-          SizedBox(width: 120, child: BusyButton(label: 'Deploy', busy: _busy, onPressed: _go)),
+          TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: Text(s.actionCancel)),
+          SizedBox(width: 120, child: BusyButton(label: s.appDeploy, busy: _busy, onPressed: _go)),
         ],
       );
+  }
 }

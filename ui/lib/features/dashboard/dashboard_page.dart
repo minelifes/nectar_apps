@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/app_tile.dart';
 import '../../widgets/activity.dart';
@@ -63,6 +64,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final session = ref.watch(sessionProvider);
     final canServer = session.can('server.view');
     final projects = ref.watch(projectsWithAppsProvider);
@@ -94,7 +96,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           FilledButton.icon(
             onPressed: () => context.go('/apps/new'),
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('New app'),
+            label: Text(l.newApp),
           ),
       ],
       children: [
@@ -106,8 +108,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 children: [
                   const Icon(Icons.flag_rounded, color: NectarTokens.amber),
                   const SizedBox(width: 12),
-                  const Expanded(child: Text('Finish setting up: domain, HTTPS email and a sample app.')),
-                  FilledButton(onPressed: () => context.go('/welcome'), child: const Text('Continue setup')),
+                  Expanded(child: Text(l.dashboardFinishSettingUpDomainHttps)),
+                  FilledButton(onPressed: () => context.go('/welcome'), child: Text(l.dashboardContinueSetup)),
                 ],
               ),
             ),
@@ -128,7 +130,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         const SizedBox(height: NectarTokens.gapLarge),
         SectionLabel(
           'Projects',
-          trailing: TextButton(onPressed: () => context.go('/projects'), child: const Text('All projects')),
+          trailing: TextButton(onPressed: () => context.go('/projects'), child: Text(l.projectAllProjects)),
         ),
         AsyncBlock(
           value: projects,
@@ -149,19 +151,22 @@ class _ServerSection extends StatelessWidget {
   final AsyncValue<List<NodeInfo>> nodes;
 
   @override
-  Widget build(BuildContext context) => nodes.when(
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return nodes.when(
         skipLoadingOnRefresh: true,
         data: (list) => Column(
           children: [
             for (final n in list) Padding(padding: const EdgeInsets.only(bottom: NectarTokens.gap), child: NodeCard(node: n)),
           ],
         ),
-        loading: () => const NCard(title: 'Server', child: LoadingBlock(height: 140)),
+        loading: () => NCard(title: s.navServer, child: LoadingBlock(height: 140)),
         error: (e, _) => NCard(
-          title: 'Server',
+          title: s.navServer,
           child: ErrorBlock(error: e, compact: true),
         ),
       );
+  }
 }
 
 class _Stats extends StatelessWidget {
@@ -171,6 +176,7 @@ class _Stats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final apps = [for (final (_, a) in items) ...a];
     final running = apps.where((a) => toneFor(a.status) == StatusTone.running).length;
     final failing = apps.where((a) => toneFor(a.status) == StatusTone.failed || toneFor(a.status) == StatusTone.warning).length;
@@ -181,12 +187,12 @@ class _Stats extends StatelessWidget {
         spacing: NectarTokens.gap,
         runSpacing: NectarTokens.gap,
         children: [
-          _StatTile(label: 'Projects', value: '${items.length}', icon: Icons.folder_rounded),
-          _StatTile(label: 'Apps', value: '${apps.length}', icon: Icons.apps_rounded),
-          _StatTile(label: 'Running', value: '$running', icon: Icons.check_circle_rounded, tone: StatusTone.running),
-          if (deploying > 0) _StatTile(label: 'Deploying', value: '$deploying', icon: Icons.sync_rounded, tone: StatusTone.deploying),
+          _StatTile(label: s.navProjects, value: '${items.length}', icon: Icons.folder_rounded),
+          _StatTile(label: s.projectApps, value: '${apps.length}', icon: Icons.apps_rounded),
+          _StatTile(label: s.statusRunning, value: '$running', icon: Icons.check_circle_rounded, tone: StatusTone.running),
+          if (deploying > 0) _StatTile(label: s.statusDeploying, value: '$deploying', icon: Icons.sync_rounded, tone: StatusTone.deploying),
           _StatTile(
-            label: 'Need attention',
+            label: s.dashboardNeedAttention,
             value: '$failing',
             icon: Icons.warning_amber_rounded,
             tone: failing > 0 ? StatusTone.failed : StatusTone.stopped,
@@ -243,6 +249,7 @@ class _ProjectApps extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final theme = Theme.of(context);
     return Padding(
@@ -268,7 +275,7 @@ class _ProjectApps extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (apps.isEmpty)
-            Text('No apps yet.', style: TextStyle(color: c.muted, fontSize: 13.5))
+            Text(s.dashboardNoAppsYet, style: TextStyle(color: c.muted, fontSize: 13.5))
           else
             Wrap(
               spacing: 12,
@@ -287,18 +294,21 @@ class _NoProjects extends ConsumerWidget {
   final bool canCreate;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => NCard(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
+    return NCard(
         child: EmptyState(
           icon: Icons.rocket_launch_rounded,
-          title: 'Nothing deployed yet',
-          message: 'A project is a space for related apps with its own quota. Create one, then add your first app.',
+          title: s.dashboardNothingDeployedYet,
+          message: s.dashboardAProjectIsASpace,
           action: canCreate
               ? FilledButton.icon(
                   onPressed: () => showNewProjectDialog(context, ref),
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('New project'),
+                  label: Text(s.projectNewProject),
                 )
               : null,
         ),
       );
+  }
 }

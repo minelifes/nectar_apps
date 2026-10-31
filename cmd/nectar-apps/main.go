@@ -389,6 +389,9 @@ func serve() error {
 		keeper.Run(ctx)
 	}()
 	go alertEngine.Run(ctx)
+	alertEngine.Sender.Push = srv.SendPush // alert channels of kind "push" (Firebase; Settings → Push notifications)
+	go srv.RunEdge(ctx)                    // gateway replicas on extra edge nodes follow the primary's image
+	go srv.RunPreviews(ctx)                // delete pull request previews without activity
 
 	httpSrv := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -565,9 +568,10 @@ func admin(args []string) error {
 		if err := st.SetMFA(ctx, u.ID, "", false, nil); err != nil {
 			return err
 		}
+		_, _ = st.DeletePasskeys(ctx, u.ID, 0)
 		_ = st.DeleteUserSessions(ctx, u.ID, 0)
 		_ = st.Audit(ctx, nil, "cli", "user.mfa_reset", u.Email, "", nil)
-		fmt.Printf("Two-factor authentication of %s is off; all sessions were ended.\n", u.Email)
+		fmt.Printf("Two-factor authentication of %s is off, its passkeys are removed and all sessions were ended.\n", u.Email)
 	case "make-owner":
 		if err := st.SetOwner(ctx, u.ID, true); err != nil {
 			return err

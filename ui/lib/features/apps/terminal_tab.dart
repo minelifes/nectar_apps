@@ -9,6 +9,7 @@ import 'package:xterm/xterm.dart';
 import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 
 /// A shell inside a running container of the app (bash when the image has it, sh otherwise).
@@ -141,6 +142,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final open = _state == 'open';
     return Column(
@@ -154,9 +156,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
             DropdownButton<String?>(
               value: _pods.any((p) => p.name == _pod) ? _pod : null,
               underline: const SizedBox.shrink(),
-              hint: const Text('Newest pod'),
+              hint: Text(s.appNewestPod),
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('Newest pod')),
+                DropdownMenuItem<String?>(value: null, child: Text(s.appNewestPod)),
                 for (final p in _pods) DropdownMenuItem<String?>(value: p.name, child: Text(p.name)),
               ],
               onChanged: (v) {
@@ -174,7 +176,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
               OutlinedButton.icon(
                 onPressed: () => _ch?.sink.close(),
                 icon: const Icon(Icons.close_rounded, size: 18),
-                label: const Text('Disconnect'),
+                label: Text(s.appDisconnect),
               ),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -209,7 +211,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Changes inside the container are lost on restart, except on volumes. Every session is recorded in the audit log.',
+          s.appChangesInsideTheContainerAre,
           style: TextStyle(color: c.muted, fontSize: 12),
         ),
       ],

@@ -19,7 +19,7 @@ DATA_DIR  ?= .data
 NECTAR_KUBE_API     ?= http://127.0.0.1:8001
 NECTAR_INTERNAL_URL ?= http://host.k3d.internal:8080
 
-.PHONY: help build cli run dev test lint fmt tidy image dev-cluster dev-cluster-down shellcheck clean ui ui-setup ui-dev ui-test
+.PHONY: help build cli run dev test lint fmt tidy image dev-cluster dev-cluster-down shellcheck clean ui ui-setup ui-dev ui-l10n ui-test
 
 help: ## show this help
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[38;5;214m%-18s\033[0m %s\n", $$1, $$2}'
@@ -63,15 +63,18 @@ ui-setup: ## install fvm + the pinned Flutter, generate the platform folders (we
 	cd ui && ./tool/bootstrap.sh
 
 ui: ## build the Flutter web UI into web/dist (embedded by the next `make build`)
-	cd ui && fvm="$$($(ENSURE_FVM))" && "$$fvm" flutter build web --release --no-web-resources-cdn
+	cd ui && fvm="$$($(ENSURE_FVM))" && "$$fvm" dart run intl_utils:generate && "$$fvm" flutter build web --release --no-web-resources-cdn
 	find web/dist -mindepth 1 ! -name .keep -exec rm -rf {} +
 	cp -R ui/build/web/. web/dist/
 
 ui-dev: ## run the UI in Chrome against the local panel (make run in another terminal)
 	cd ui && fvm="$$($(ENSURE_FVM))" && "$$fvm" flutter run -d chrome --dart-define=NECTAR_API=http://localhost:8080
 
+ui-l10n: ## regenerate the translations (lib/l10n/intl_*.arb → lib/generated, Flutter Intl)
+	cd ui && fvm="$$($(ENSURE_FVM))" && "$$fvm" dart run intl_utils:generate
+
 ui-test: ## analyze + test the Flutter UI
-	cd ui && fvm="$$($(ENSURE_FVM))" && "$$fvm" flutter analyze && "$$fvm" flutter test
+	cd ui && fvm="$$($(ENSURE_FVM))" && "$$fvm" dart run intl_utils:generate && "$$fvm" flutter analyze && "$$fvm" flutter test
 
 dev-cluster: ## install k3d/kubectl/Docker if missing and start a local k3s cluster (k3d)
 	./scripts/dev-cluster.sh up

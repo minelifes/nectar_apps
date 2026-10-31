@@ -36,7 +36,15 @@ type Node struct {
 	// Unschedulable is set for cordoned nodes; Edge marks the node DNS points to (runs nectar-gateway).
 	Unschedulable bool `json:"unschedulable,omitempty"`
 	Edge          bool `json:"edge,omitempty"`
+	// EdgeReplica marks an extra edge node: it runs a nectar-gateway replica (label nectar.dev/edge-replica).
+	EdgeReplica bool `json:"edge_replica,omitempty"`
 }
+
+// Edge labels.
+const (
+	LabelEdge        = "nectar.dev/edge"         // the primary gateway's node
+	LabelEdgeReplica = "nectar.dev/edge-replica" // nodes with a gateway replica
+)
 
 type rawNodeList struct {
 	Items []struct {
@@ -114,7 +122,8 @@ func (c *Client) ListNodes(ctx context.Context) ([]Node, error) {
 			Allocatable:    toResources(it.Status.Allocatable),
 			Roles:          []string{},
 			Unschedulable:  it.Spec.Unschedulable,
-			Edge:           it.Metadata.Labels["nectar.dev/edge"] == "true",
+			Edge:           it.Metadata.Labels[LabelEdge] == "true",
+			EdgeReplica:    it.Metadata.Labels[LabelEdgeReplica] == "true",
 		}
 		for _, cond := range it.Status.Conditions {
 			if cond.Type == "Ready" {

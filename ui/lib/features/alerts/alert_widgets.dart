@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/models.dart';
 import '../../core/format.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 
@@ -110,6 +111,7 @@ class FiringAlertsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     if (alerts.isEmpty) return const SizedBox.shrink();
     final c = NectarColors.of(context);
     final critical = alerts.any((a) => a.critical);
@@ -133,14 +135,14 @@ class FiringAlertsCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
-                if (showAll) TextButton(onPressed: () => context.go('/alerts'), child: const Text('All alerts')),
+                if (showAll) TextButton(onPressed: () => context.go('/alerts'), child: Text(s.alertAllAlerts)),
               ],
             ),
             for (final a in alerts.take(5)) AlertTile(alert: a, dense: true),
             if (alerts.length > 5)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text('and ${alerts.length - 5} more', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                child: Text(s.alertAndMore(alerts.length - 5), style: TextStyle(color: c.muted, fontSize: 12.5)),
               ),
           ],
         ),

@@ -6,6 +6,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/activity.dart';
 import '../../widgets/app_tile.dart';
@@ -24,6 +25,7 @@ class ProjectPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final project = ref.watch(projectProvider(id));
     final apps = ref.watch(projectAppsProvider(id));
     final activity = ref.watch(projectActivityProvider(id));
@@ -36,7 +38,7 @@ class ProjectPage extends ConsumerWidget {
 
     final canCreate = ref.watch(sessionProvider.select((s) => s.can('app.create', projectId: id)));
     final back = IconButton(
-      tooltip: 'All projects',
+      tooltip: l.projectAllProjects,
       icon: const Icon(Icons.arrow_back_rounded),
       onPressed: () => context.go('/projects'),
     );
@@ -44,7 +46,7 @@ class ProjectPage extends ConsumerWidget {
     return project.when(
       skipLoadingOnRefresh: true,
       loading: () => const LoadingBlock(height: 320),
-      error: (e, _) => PageScaffold(title: 'Project', leading: back, children: [ErrorBlock(error: e, onRetry: refresh)]),
+      error: (e, _) => PageScaffold(title: l.projectProject, leading: back, children: [ErrorBlock(error: e, onRetry: refresh)]),
       data: (p) => PageScaffold(
         title: p.name,
         subtitle: p.adopted ? '${p.namespace} · adopted namespace' : p.namespace,
@@ -55,16 +57,16 @@ class ProjectPage extends ConsumerWidget {
             OutlinedButton.icon(
               onPressed: () => showTemplateGallery(context, id),
               icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-              label: const Text('One-click app'),
+              label: Text(l.oneClickApp),
             ),
           if (canCreate)
             FilledButton.icon(
               onPressed: () => context.go('/apps/new?project=$id'),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('New app'),
+              label: Text(l.newApp),
             ),
           PopupMenuButton<String>(
-            tooltip: 'Import / export',
+            tooltip: l.projectImportExport,
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (v) => switch (v) {
               'compose' => showImportDialog(context, id),
@@ -74,10 +76,10 @@ class ProjectPage extends ConsumerWidget {
               _ => null,
             },
             itemBuilder: (_) => [
-              if (canCreate) const PopupMenuItem(value: 'compose', child: Text('Import docker-compose.yml')),
-              if (canCreate) const PopupMenuItem(value: 'yaml', child: Text('Apply nectar.yaml')),
-              const PopupMenuItem(value: 'export', child: Text('Export nectar.yaml')),
-              const PopupMenuItem(value: 'env', child: Text('New environment (copy)…')),
+              if (canCreate) PopupMenuItem(value: 'compose', child: Text(l.projectImportDockerComposeYml)),
+              if (canCreate) PopupMenuItem(value: 'yaml', child: Text(l.projectApplyNectarYaml)),
+              PopupMenuItem(value: 'export', child: Text(l.projectExportNectarYaml)),
+              PopupMenuItem(value: 'env', child: Text(l.projectNewEnvironmentCopy)),
             ],
           ),
         ],
@@ -93,7 +95,7 @@ class ProjectPage extends ConsumerWidget {
                   EnvGroupsCard(projectId: id),
                   if (activity.hasValue) ...[
                     const SizedBox(height: NectarTokens.gap),
-                    ActivityCard(entries: activity.value!, title: 'Activity'),
+                    ActivityCard(entries: activity.value!, title: l.projectActivity),
                   ],
                 ],
               );
@@ -134,6 +136,7 @@ class _AppsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -145,13 +148,13 @@ class _AppsSection extends StatelessWidget {
               ? NCard(
                   child: EmptyState(
                     icon: Icons.add_box_rounded,
-                    title: 'No apps in this project yet',
-                    message: 'Deploy a JAR, a binary, a static site, Node, Python, PHP or any Docker image.',
+                    title: s.projectNoAppsInThisProject,
+                    message: s.projectDeployAJarABinary,
                     action: canCreate
                         ? FilledButton.icon(
                             onPressed: () => context.go('/apps/new?project=$projectId'),
                             icon: const Icon(Icons.add_rounded, size: 18),
-                            label: const Text('New app'),
+                            label: Text(s.newApp),
                           )
                         : null,
                   ),
@@ -176,6 +179,7 @@ class _QuotaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final q = project.quota;
     final cpu = apps.fold<int>(0, (s, a) => s + a.requestedCpu);
@@ -184,34 +188,34 @@ class _QuotaCard extends StatelessWidget {
     String of(String used, int limit, String Function(int) fmt) => limit <= 0 ? '$used · no limit' : '$used / ${fmt(limit)}';
 
     return NCard(
-      title: 'Resources',
+      title: l.projectResources,
       trailing: Text(q == null ? 'Unlimited' : 'Quota', style: TextStyle(color: c.muted, fontSize: 12.5)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           UsageBar(
-            label: 'CPU requested',
+            label: l.projectCpuRequested,
             value: ratio(cpu, q?.cpuMillicores ?? 0),
             unlimited: (q?.cpuMillicores ?? 0) <= 0,
             trailing: of(formatCpu(cpu), q?.cpuMillicores ?? 0, formatCpu),
           ),
           const SizedBox(height: 16),
           UsageBar(
-            label: 'Memory requested',
+            label: l.projectMemoryRequested,
             value: ratio(mem, q?.memoryMb ?? 0),
             unlimited: (q?.memoryMb ?? 0) <= 0,
             trailing: of(formatMb(mem), q?.memoryMb ?? 0, formatMb),
           ),
           const SizedBox(height: 16),
           UsageBar(
-            label: 'Apps',
+            label: l.projectApps,
             value: ratio(apps.length, q?.apps ?? 0),
             unlimited: (q?.apps ?? 0) <= 0,
             trailing: of('${apps.length}', q?.apps ?? 0, (n) => '$n'),
           ),
           const SizedBox(height: 14),
           Text(
-            'Requests of all replicas. Live usage arrives with the metrics view.',
+            l.projectRequestsOfAllReplicasLive,
             style: TextStyle(color: c.muted, fontSize: 12),
           ),
         ],

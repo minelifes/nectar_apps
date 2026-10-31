@@ -7,6 +7,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -22,6 +23,7 @@ class EnvTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     final canEdit = session.can('env.edit', projectId: app.projectId);
     final canReveal = session.can('env.secrets.view', projectId: app.projectId);
@@ -31,7 +33,7 @@ class EnvTab extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         NCard(
-          title: 'Environment variables',
+          title: s.appEnvironmentVariables,
           child: AsyncBlock(
             value: env,
             onRetry: () => ref.invalidate(appEnvProvider(app.id)),
@@ -44,7 +46,7 @@ class EnvTab extends ConsumerWidget {
         _LinkedDatabases(app: app),
         const SizedBox(height: NectarTokens.gap),
         NCard(
-          title: 'Config files',
+          title: s.appConfigFiles,
           child: AsyncBlock(
             value: files,
             onRetry: () => ref.invalidate(appFilesProvider(app.id)),
@@ -57,8 +59,9 @@ class EnvTab extends ConsumerWidget {
 }
 
 void _savedHint(BuildContext context, WidgetRef ref, App app) {
+  final s = S.of(context);
   ref.invalidate(appLiveProvider(app.id)); // shows the "not live yet" banner
-  showSnack(context, 'Saved. Redeploy the app to apply.');
+  showSnack(context, s.savedRedeploy);
 }
 
 class _EnvCard extends ConsumerStatefulWidget {
@@ -95,10 +98,11 @@ class _EnvCardState extends ConsumerState<_EnvCard> {
   }
 
   Future<void> _save() async {
+    final s = S.of(context);
     final vars = _vars.where((v) => v.key.isNotEmpty || (v.value ?? '').isNotEmpty).toList();
     for (final v in vars) {
       if (!envKeyRe.hasMatch(v.key)) {
-        showSnack(context, 'Invalid variable name "${v.key}": use letters, digits and _', error: true);
+        showSnack(context, s.projectInvalidVariableNameUseLetters(v.key), error: true);
         return;
       }
     }
@@ -117,12 +121,13 @@ class _EnvCardState extends ConsumerState<_EnvCard> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     if (!widget.canEdit) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_vars.isEmpty) Text('No variables.', style: TextStyle(color: c.muted)),
+          if (_vars.isEmpty) Text(s.appNoVariables, style: TextStyle(color: c.muted)),
           for (final v in _vars)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
@@ -140,7 +145,7 @@ class _EnvCardState extends ConsumerState<_EnvCard> {
         Row(
           children: [
             if (hidden && widget.canReveal)
-              TextButton.icon(onPressed: _reveal, icon: const Icon(Icons.visibility_outlined, size: 18), label: const Text('Reveal secrets')),
+              TextButton.icon(onPressed: _reveal, icon: const Icon(Icons.visibility_outlined, size: 18), label: Text(s.appRevealSecrets)),
             const Spacer(),
             if (_dirty)
               TextButton(
@@ -149,7 +154,7 @@ class _EnvCardState extends ConsumerState<_EnvCard> {
                   _dirty = false;
                   _gen++;
                 }),
-                child: const Text('Discard'),
+                child: Text(s.appDiscard),
               ),
             const SizedBox(width: 8),
             FilledButton(onPressed: !_dirty || _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save variables')),
@@ -215,19 +220,21 @@ class _FilesCardState extends ConsumerState<_FilesCard> {
   }
 
   Future<void> _remove(AppFile f) async {
-    if (!await confirmAction(context, 'Remove ${f.path}?', 'The file disappears from the containers with the next deploy.', 'Remove', danger: true)) return;
+    final s = S.of(context);
+    if (!await confirmAction(context, s.appRemove2(f.path), s.appTheFileDisappearsFromThe, s.backupRemove2, danger: true)) return;
     await _save(List.of(_files)..remove(f));
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_files.isEmpty)
           Text(
-            'Mount files such as application.yml, a .env file or a certificate at any path in the container.',
+            s.appMountFilesSuchAsApplication,
             style: TextStyle(color: c.muted, fontSize: 13),
           ),
         for (final f in _files)
@@ -238,7 +245,7 @@ class _FilesCardState extends ConsumerState<_FilesCard> {
             subtitle: Text('${formatBytes(f.content?.length ?? f.size)}${f.secret ? ' · secret' : ''}', style: TextStyle(color: c.muted, fontSize: 12)),
             onTap: () => _edit(f),
             trailing: widget.canEdit
-                ? IconButton(tooltip: 'Remove', icon: const Icon(Icons.delete_outline_rounded, size: 18), onPressed: _saving ? null : () => _remove(f))
+                ? IconButton(tooltip: s.backupRemove2, icon: const Icon(Icons.delete_outline_rounded, size: 18), onPressed: _saving ? null : () => _remove(f))
                 : null,
           ),
         if (widget.canEdit)
@@ -247,7 +254,7 @@ class _FilesCardState extends ConsumerState<_FilesCard> {
             child: TextButton.icon(
               onPressed: _saving ? null : () => _edit(null),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Add file'),
+              label: Text(s.appAddFile),
             ),
           ),
       ],
@@ -291,6 +298,7 @@ class _FileDialogState extends State<_FileDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
       title: Text(widget.file == null ? 'Add a config file' : widget.file!.path),
@@ -304,7 +312,7 @@ class _FileDialogState extends State<_FileDialog> {
               controller: _path,
               enabled: widget.canEdit,
               style: monoStyle(context, size: 13.5),
-              decoration: const InputDecoration(labelText: 'Path in the container', hintText: '/app/config/application.yml'),
+              decoration: InputDecoration(labelText: s.appPathInTheContainer, hintText: '/app/config/application.yml'),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -314,7 +322,7 @@ class _FileDialogState extends State<_FileDialog> {
               maxLines: 18,
               style: monoStyle(context, size: 13),
               decoration: InputDecoration(
-                labelText: 'Content',
+                labelText: s.appContent,
                 alignLabelWithHint: true,
                 hintText: _kept ? 'Secret content is kept. Type here to replace it.' : null,
               ),
@@ -324,8 +332,8 @@ class _FileDialogState extends State<_FileDialog> {
               contentPadding: EdgeInsets.zero,
               value: _secret,
               onChanged: widget.canEdit ? (v) => setState(() => _secret = v) : null,
-              title: const Text('Secret'),
-              subtitle: Text('Hidden in the panel unless revealed (always encrypted at rest)', style: TextStyle(color: c.muted, fontSize: 12)),
+              title: Text(s.appSecret),
+              subtitle: Text(s.appHiddenInThePanelUnless, style: TextStyle(color: c.muted, fontSize: 12)),
             ),
             if (_error != null) Text(_error!, style: TextStyle(color: c.failed)),
           ],
@@ -333,7 +341,7 @@ class _FileDialogState extends State<_FileDialog> {
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: Text(widget.canEdit ? 'Cancel' : 'Close')),
-        if (widget.canEdit) FilledButton(onPressed: _ok, child: const Text('Save file')),
+        if (widget.canEdit) FilledButton(onPressed: _ok, child: Text(s.appSaveFile)),
       ],
     );
   }
@@ -347,16 +355,17 @@ class _LinkedDatabases extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final links = ref.watch(appAddonsProvider(app.id));
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Databases',
-      trailing: TextButton(onPressed: () => context.go('/projects/${app.projectId}'), child: const Text('Project databases')),
+      title: s.appDatabases,
+      trailing: TextButton(onPressed: () => context.go('/projects/${app.projectId}'), child: Text(s.appProjectDatabases)),
       child: AsyncBlock(
         value: links,
         loadingHeight: 60,
         data: (list) => list.isEmpty
-            ? Text('No database linked. Add one on the project page and link it to this app.', style: TextStyle(color: c.muted, fontSize: 13))
+            ? Text(s.appNoDatabaseLinkedAddOne, style: TextStyle(color: c.muted, fontSize: 13))
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -368,7 +377,7 @@ class _LinkedDatabases extends ConsumerWidget {
                       subtitle: Text(l.env.join(', '), style: monoStyle(context, size: 11.5, color: c.muted)),
                       onTap: () => context.go('/addons/${l.addon.id}'),
                     ),
-                  Text('Your own variables with the same names win.', style: TextStyle(color: c.muted, fontSize: 12)),
+                  Text(s.appYourOwnVariablesWithThe, style: TextStyle(color: c.muted, fontSize: 12)),
                 ],
               ),
       ),

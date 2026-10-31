@@ -5,6 +5,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -53,6 +54,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
   }
 
   Future<void> _start() async {
+    final s = S.of(context);
     setState(() => _starting = true);
     try {
       await ref.read(apiProvider).post('/updates/apply', data: {widget.component: _version});
@@ -60,7 +62,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
       ref.invalidate(updatesProvider);
       if (mounted) {
         Navigator.pop(context);
-        showSnack(context, 'Update started');
+        showSnack(context, s.updateUpdateStarted);
       }
     } on Object catch (e) {
       if (mounted) {
@@ -72,6 +74,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final plan = _plan;
     final steps = plan == null ? const <UpdateStep>[] : [for (final s in (plan['plan'] as Map?)?['steps'] as List? ?? const []) UpdateStep.fromJson(s)];
@@ -79,7 +82,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
     final warnings = plan == null ? const <String>[] : [for (final w in plan['warnings'] as List? ?? const []) '$w'];
     final releases = plan == null ? const <ReleaseInfo>[] : [for (final r in plan['releases'] as List? ?? const []) ReleaseInfo.fromJson(r)];
     return AlertDialog(
-      title: Text('Update ${componentNames[widget.component]}'),
+      title: Text(l.updateUpdate(componentNames[widget.component] ?? widget.component)),
       content: SizedBox(
         width: 620,
         child: SingleChildScrollView(
@@ -89,7 +92,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
             children: [
               DropdownButtonFormField<String>(
                 initialValue: _version,
-                decoration: const InputDecoration(labelText: 'Version'),
+                decoration: InputDecoration(labelText: l.updateVersion),
                 items: [
                   for (final r in widget.state.available)
                     DropdownMenuItem(
@@ -116,8 +119,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
                 for (final n in notes) Text(n, style: TextStyle(color: c.muted, fontSize: 12.5)),
                 const SizedBox(height: 6),
                 Text(
-                  'Each step: the database is backed up, the image is switched, and the panel waits until the new version is '
-                  'healthy (and the gateway serves its canary and keeps every route). If a check fails it rolls back on its own.',
+                  l.updateEachStepTheDatabaseIs,
                   style: TextStyle(color: c.muted, fontSize: 12.5),
                 ),
                 if (warnings.isNotEmpty) ...[
@@ -162,7 +164,7 @@ class _UpdateDialogState extends ConsumerState<_UpdateDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.actionCancel)),
         FilledButton(
           onPressed: _loading || _error != null || _starting || steps.isEmpty ? null : _start,
           child: Text(_starting ? 'Starting…' : 'Update now'),

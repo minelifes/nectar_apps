@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/client.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 
@@ -79,6 +80,7 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
       });
 
   Future<void> _save() async {
+        final s = S.of(context);
     setState(() => _saving = true);
     final body = {
       'panel': {..._comp['panel']!, 'feed_url': _panelFeed.text.trim()},
@@ -96,7 +98,7 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
       await ref.read(apiProvider).put('/updates/settings', data: body);
       _dirty = false;
       ref.invalidate(updatesProvider);
-      if (mounted) showSnack(context, 'Update settings saved');
+      if (mounted) showSnack(context, s.updateUpdateSettingsSaved);
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     } finally {
@@ -105,6 +107,7 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
   }
 
   Widget _policyRow(String comp, String label, Map<String, String> policies, {bool beta = true}) {
+    final l = S.of(context);
     final m = _comp[comp]!;
     final policy = policies.containsKey(m['policy']) ? '${m['policy']}' : policies.keys.first;
     return Padding(
@@ -121,7 +124,7 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
               key: ValueKey('$comp-$policy'),
               initialValue: policy,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Policy', isDense: true),
+              decoration: InputDecoration(labelText: l.updatePolicy, isDense: true),
               items: [for (final e in policies.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
               onChanged: (v) {
                 if (v != null) _set(comp, 'policy', v);
@@ -130,7 +133,7 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
           ),
           if (beta)
             SegmentedButton<String>(
-              segments: const [ButtonSegment(value: 'stable', label: Text('Stable')), ButtonSegment(value: 'beta', label: Text('Beta'))],
+              segments: [ButtonSegment(value: 'stable', label: Text(l.updateStable)), ButtonSegment(value: 'beta', label: Text(l.updateBeta))],
               selected: {m['channel'] == 'beta' ? 'beta' : 'stable'},
               onSelectionChanged: (s) => _set(comp, 'channel', s.first),
             )
@@ -139,7 +142,7 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
               width: 160,
               child: TextField(
                 controller: _k3sChannel,
-                decoration: const InputDecoration(labelText: 'Channel', hintText: 'stable, latest, v1.31', isDense: true),
+                decoration: InputDecoration(labelText: l.updateChannel, hintText: l.updateStableLatestV131, isDense: true),
                 onChanged: (_) => _dirty = true,
               ),
             ),
@@ -150,9 +153,10 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Automatic updates',
+      title: s.updateAutomaticUpdates,
       trailing: FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -160,7 +164,7 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
           _policyRow('panel', 'Panel', _policies),
           _policyRow('gateway', 'Gateway', _policies),
           _policyRow('k3s', 'k3s', _k3sPolicies, beta: false),
-          Text('Major and breaking releases are never installed automatically. A release that failed its checks is not retried.',
+          Text(s.updateMajorAndBreakingReleasesAre,
               style: TextStyle(color: c.muted, fontSize: 12.5)),
           const SizedBox(height: 18),
           const SectionLabel('Maintenance window'),
@@ -186,22 +190,22 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
             children: [
               SizedBox(
                 width: 110,
-                child: TextField(controller: _start, decoration: const InputDecoration(labelText: 'From', hintText: '03:00', isDense: true), onChanged: (_) => _dirty = true),
+                child: TextField(controller: _start, decoration: InputDecoration(labelText: s.updateFrom, hintText: '03:00', isDense: true), onChanged: (_) => _dirty = true),
               ),
               SizedBox(
                 width: 110,
-                child: TextField(controller: _end, decoration: const InputDecoration(labelText: 'To', hintText: '05:00', isDense: true), onChanged: (_) => _dirty = true),
+                child: TextField(controller: _end, decoration: InputDecoration(labelText: s.backupTo, hintText: '05:00', isDense: true), onChanged: (_) => _dirty = true),
               ),
               SizedBox(
                 width: 220,
                 child: TextField(
-                    controller: _tz, decoration: const InputDecoration(labelText: 'Time zone', hintText: 'UTC, Europe/Kyiv', isDense: true), onChanged: (_) => _dirty = true),
+                    controller: _tz, decoration: InputDecoration(labelText: s.updateTimeZone, hintText: s.updateUtcEuropeKyiv, isDense: true), onChanged: (_) => _dirty = true),
               ),
               SizedBox(
                 width: 180,
                 child: DropdownButtonFormField<int>(
                   initialValue: const [1, 3, 6, 12, 24].contains(_interval) ? _interval : 6,
-                  decoration: const InputDecoration(labelText: 'Check every', isDense: true),
+                  decoration: InputDecoration(labelText: s.updateCheckEvery, isDense: true),
                   items: [for (final h in const [1, 3, 6, 12, 24]) DropdownMenuItem(value: h, child: Text(h == 1 ? '1 hour' : '$h hours'))],
                   onChanged: (v) => setState(() {
                     _interval = v ?? 6;
@@ -212,26 +216,26 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
             ],
           ),
           const SizedBox(height: 6),
-          Text('No days and no times = any time. A window like 22:00–02:00 crosses midnight. k3s upgrades use the same window.',
+          Text(s.updateNoDaysAndNoTimes,
               style: TextStyle(color: c.muted, fontSize: 12.5)),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
-            title: const Text('Update sources', style: TextStyle(fontSize: 14)),
+            title: Text(s.updateUpdateSources, style: TextStyle(fontSize: 14)),
             childrenPadding: const EdgeInsets.only(bottom: 8),
             children: [
               TextField(
                 controller: _panelFeed,
-                decoration: const InputDecoration(labelText: 'Panel feed URL', hintText: 'https://minelifes.github.io/nectar_apps/updates.json', isDense: true),
+                decoration: InputDecoration(labelText: s.updatePanelFeedUrl, hintText: 'https://minelifes.github.io/nectar_apps/updates.json', isDense: true),
                 onChanged: (_) => _dirty = true,
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: _gatewayFeed,
-                decoration: const InputDecoration(labelText: 'Gateway feed URL', hintText: 'https://minelifes.github.io/nectar_gateway/updates.json', isDense: true),
+                decoration: InputDecoration(labelText: s.updateGatewayFeedUrl, hintText: 'https://minelifes.github.io/nectar_gateway/updates.json', isDense: true),
                 onChanged: (_) => _dirty = true,
               ),
               const SizedBox(height: 6),
-              Text('Empty = the official feeds. When a feed cannot be read, the panel asks the GitHub Releases API instead.',
+              Text(s.updateEmptyTheOfficialFeedsWhen,
                   style: TextStyle(color: c.muted, fontSize: 12.5)),
             ],
           ),

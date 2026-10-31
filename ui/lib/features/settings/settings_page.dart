@@ -6,18 +6,23 @@ import '../../api/session.dart';
 import '../../core/locale.dart';
 import '../../core/theme_mode.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/hex.dart';
+import 'passkeys_card.dart';
+import 'push_card.dart';
 import 'registries_card.dart';
 import 'security_cards.dart';
+import 'sso_card.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final session = ref.watch(sessionProvider);
     final mode = ref.watch(themeModeProvider);
     final settings = ref.watch(panelSettingsProvider);
@@ -25,12 +30,12 @@ class SettingsPage extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return PageScaffold(
-      title: 'Settings',
+      title: l.navSettings,
       maxWidth: 820,
       children: [
         if (user != null)
           NCard(
-            title: 'Account',
+            title: l.settingAccount,
             child: Row(
               children: [
                 HexBadge(
@@ -47,7 +52,7 @@ class SettingsPage extends ConsumerWidget {
                       if (user.isOwner)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text('Owner', style: TextStyle(color: NectarTokens.amber, fontSize: 12, fontWeight: FontWeight.w600)),
+                          child: Text(l.settingOwner, style: TextStyle(color: NectarTokens.amber, fontSize: 12, fontWeight: FontWeight.w600)),
                         ),
                     ],
                   ),
@@ -55,7 +60,7 @@ class SettingsPage extends ConsumerWidget {
                 OutlinedButton.icon(
                   onPressed: () => ref.read(sessionProvider.notifier).logout(),
                   icon: const Icon(Icons.logout_rounded, size: 18),
-                  label: const Text('Sign out'),
+                  label: Text(l.logout),
                 ),
               ],
             ),
@@ -63,6 +68,8 @@ class SettingsPage extends ConsumerWidget {
         if (user != null) ...[
           const SizedBox(height: NectarTokens.gap),
           const TwoFactorCard(),
+          const SizedBox(height: NectarTokens.gap),
+          const PasskeysCard(),
           const SizedBox(height: NectarTokens.gap),
           const SessionsCard(),
         ],
@@ -73,22 +80,22 @@ class SettingsPage extends ConsumerWidget {
               if (session.can('user.manage'))
                 ListTile(
                   leading: const Icon(Icons.people_alt_outlined),
-                  title: const Text('Users'),
-                  subtitle: const Text('Invite people and give them roles, everywhere or per project'),
+                  title: Text(l.acceUsers),
+                  subtitle: Text(l.settingInvitePeopleAndGiveThem),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => context.go('/users'),
                 ),
               ListTile(
                 leading: const Icon(Icons.admin_panel_settings_outlined),
-                title: const Text('Roles'),
-                subtitle: const Text('Permission sets; clone a built-in role to make your own'),
+                title: Text(l.acceRoles),
+                subtitle: Text(l.settingPermissionSetsCloneABuilt),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.go('/roles'),
               ),
               ListTile(
                 leading: const Icon(Icons.key_rounded),
-                title: const Text('API tokens'),
-                subtitle: const Text('For the nectar CLI, GitHub Actions and scripts'),
+                title: Text(l.acceApiTokens),
+                subtitle: Text(l.settingForTheNectarCliGithub),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.go('/tokens'),
               ),
@@ -105,24 +112,24 @@ class SettingsPage extends ConsumerWidget {
                 if (session.can('backup.manage'))
                   ListTile(
                     leading: const Icon(Icons.backup_outlined),
-                    title: const Text('Backups'),
-                    subtitle: const Text('Plans, targets, restore and the recovery kit'),
+                    title: Text(l.navBackups),
+                    subtitle: Text(l.settingPlansTargetsRestoreAndThe),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => context.go('/backups'),
                   ),
                 if (session.can('server.view'))
                   ListTile(
                     leading: const Icon(Icons.system_update_alt_rounded),
-                    title: const Text('Updates'),
-                    subtitle: const Text('Panel, gateway and k3s versions, automatic updates, history and rollback'),
+                    title: Text(l.updateUpdates),
+                    subtitle: Text(l.settingPanelGatewayAndK3sVersions),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => context.go('/updates'),
                   ),
                 if (session.can('server.view'))
                   ListTile(
                     leading: const Icon(Icons.notifications_outlined),
-                    title: const Text('Alerts'),
-                    subtitle: const Text('Rules and notification channels'),
+                    title: Text(l.navAlerts),
+                    subtitle: Text(l.settingRulesAndNotificationChannels),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => context.go('/alerts'),
                   ),
@@ -132,45 +139,45 @@ class SettingsPage extends ConsumerWidget {
         ],
         const SizedBox(height: NectarTokens.gap),
         NCard(
-          title: context.l10n.settingsAppearance,
+          title: l.settingsAppearance,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SegmentedButton<ThemeMode>(
                 segments: [
-                  ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_outlined, size: 18), label: Text(context.l10n.themeDark)),
-                  ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_outlined, size: 18), label: Text(context.l10n.themeLight)),
-                  ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_outlined, size: 18), label: Text(context.l10n.themeSystem)),
+                  ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_outlined, size: 18), label: Text(l.themeDark)),
+                  ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_outlined, size: 18), label: Text(l.themeLight)),
+                  ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_outlined, size: 18), label: Text(l.themeSystem)),
                 ],
                 selected: {mode},
                 showSelectedIcon: false,
                 onSelectionChanged: (s) => ref.read(themeModeProvider.notifier).set(s.first),
               ),
               const SizedBox(height: 14),
-              Text(context.l10n.settingsLanguage, style: Theme.of(context).textTheme.titleSmall),
+              Text(l.settingsLanguage, style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 6),
               SegmentedButton<String>(
                 segments: [
-                  ButtonSegment(value: '', label: Text(context.l10n.languageSystem)),
-                  ButtonSegment(value: 'en', label: Text(context.l10n.languageEnglish)),
-                  ButtonSegment(value: 'uk', label: Text(context.l10n.languageUkrainian)),
+                  ButtonSegment(value: '', label: Text(l.languageSystem)),
+                  ButtonSegment(value: 'en', label: Text(l.languageEnglish)),
+                  ButtonSegment(value: 'uk', label: Text(l.languageUkrainian)),
                 ],
                 selected: {ref.watch(localeProvider)?.languageCode ?? ''},
                 showSelectedIcon: false,
                 onSelectionChanged: (s) => ref.read(localeProvider.notifier).set(s.first.isEmpty ? null : Locale(s.first)),
               ),
               const SizedBox(height: 6),
-              Text(context.l10n.settingsLanguageHint, style: TextStyle(color: NectarColors.of(context).muted, fontSize: 12.5)),
+              Text(l.settingsLanguageHint, style: TextStyle(color: NectarColors.of(context).muted, fontSize: 12.5)),
             ],
           ),
         ),
         const SizedBox(height: NectarTokens.gap),
         NCard(
-          title: 'Server',
+          title: l.navServer,
           trailing: session.canChangeServer
               ? TextButton(
                   onPressed: () => ref.read(sessionProvider.notifier).disconnect(),
-                  child: const Text('Use another server'),
+                  child: Text(l.authUseAnotherServer),
                 )
               : null,
           child: Column(
@@ -200,7 +207,7 @@ class SettingsPage extends ConsumerWidget {
                   child: TextButton.icon(
                     onPressed: () => context.go('/welcome'),
                     icon: const Icon(Icons.tune_rounded, size: 18),
-                    label: const Text('Domain, HTTPS email and sample app (setup wizard)'),
+                    label: Text(l.settingDomainHttpsEmailAndSample),
                   ),
                 ),
             ],
@@ -212,16 +219,20 @@ class SettingsPage extends ConsumerWidget {
           const SizedBox(height: NectarTokens.gap),
           const AccessCard(),
           const SizedBox(height: NectarTokens.gap),
+          const SsoCard(),
+          const SizedBox(height: NectarTokens.gap),
+          const PushCard(),
+          const SizedBox(height: NectarTokens.gap),
           const RegistriesCard(),
         ],
         const SizedBox(height: NectarTokens.gap),
         NCard(
-          title: 'About',
+          title: l.settingAbout,
           child: Row(
             children: [
               const NectarMark(size: 34),
               const SizedBox(width: 12),
-              const Expanded(child: Text('Nectar Apps · © TechBrain LLC · Nectar Source License')),
+              Expanded(child: Text(l.settingNectarAppsTechbrainLlcNectar)),
               TextButton(
                 onPressed: () => showLicensePage(
                   context: context,
@@ -229,7 +240,7 @@ class SettingsPage extends ConsumerWidget {
                   applicationVersion: session.version?.version,
                   applicationIcon: const Padding(padding: EdgeInsets.all(12), child: NectarMark(size: 48)),
                 ),
-                child: const Text('Licenses'),
+                child: Text(l.settingLicenses),
               ),
             ],
           ),

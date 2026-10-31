@@ -6,6 +6,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gauge.dart';
@@ -44,19 +45,19 @@ class _DiskCardState extends ConsumerState<DiskCard> {
   }
 
   Future<void> _pruneImages() async {
+    final s = S.of(context);
     final ok = await confirmAction(
       context,
-      'Remove unused images?',
-      'Deletes the container images that no container on the server uses right now: old releases, stopped apps and '
-          'images pulled ahead of time. They are downloaded again when needed, so the next deploy or start of those apps takes longer.',
-      'Remove images',
+      s.serverRemoveUnusedImages,
+      s.serverDeletesTheContainerImagesThat,
+      s.serverRemoveImages,
     );
     if (!ok || !mounted) return;
     setState(() => _pruning = true);
     try {
       await ref.read(apiProvider).post('/server/image-cleanup', data: <String, dynamic>{});
       ref.invalidate(serverDiskProvider);
-      if (mounted) showSnack(context, 'Image cleanup started');
+      if (mounted) showSnack(context, s.serverImageCleanupStarted);
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     } finally {
@@ -66,15 +67,16 @@ class _DiskCardState extends ConsumerState<DiskCard> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final disk = ref.watch(serverDiskProvider);
     final session = ref.watch(sessionProvider);
     final canManage = session.can('server.manage');
     final canSettings = session.can('settings.manage');
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Disk',
+      title: s.serverDisk,
       trailing: IconButton(
-        tooltip: 'Refresh',
+        tooltip: s.actionRefresh,
         icon: const Icon(Icons.refresh_rounded, size: 18),
         onPressed: () => ref.invalidate(serverDiskProvider),
       ),
@@ -91,7 +93,7 @@ class _DiskCardState extends ConsumerState<DiskCard> {
                 Text(n.error, style: TextStyle(color: c.muted, fontSize: 12.5))
               else ...[
                 UsageBar(
-                  label: 'Server disk',
+                  label: s.serverServerDisk,
                   value: n.fsTotal > 0 ? n.fsUsed / n.fsTotal : 0,
                   trailing: '${formatBytes(n.fsUsed)} of ${formatBytes(n.fsTotal)}',
                 ),
@@ -108,7 +110,7 @@ class _DiskCardState extends ConsumerState<DiskCard> {
             ],
             if (d.volumeTotal > 0) ...[
               UsageBar(
-                label: 'Panel data volume',
+                label: s.serverPanelDataVolume,
                 value: (d.volumeTotal - d.volumeFree) / d.volumeTotal,
                 trailing: '${formatBytes(d.volumeTotal - d.volumeFree)} of ${formatBytes(d.volumeTotal)}',
               ),
@@ -125,8 +127,7 @@ class _DiskCardState extends ConsumerState<DiskCard> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Kept: the last ${d.settings.keepArtifacts} uploads per app (and every upload a live release uses), '
-              '${d.settings.auditDays} days of audit log, ${d.settings.alertDays} days of resolved alerts. Cleanup runs every hour.',
+              s.serverKeptTheLastUploadsPer(d.settings.keepArtifacts, d.settings.auditDays, d.settings.alertDays),
               style: TextStyle(color: c.muted, fontSize: 12.5),
             ),
             if (canManage || canSettings) ...[
@@ -151,14 +152,14 @@ class _DiskCardState extends ConsumerState<DiskCard> {
                     TextButton.icon(
                       onPressed: () => showDialog<void>(context: context, builder: (_) => _RetentionDialog(settings: d.settings)),
                       icon: const Icon(Icons.tune_rounded, size: 18),
-                      label: const Text('Retention'),
+                      label: Text(s.serverRetention),
                     ),
                 ],
               ),
             ],
             if (d.cleanups.isNotEmpty) ...[
               const SizedBox(height: 16),
-              Text('Image cleanups', style: Theme.of(context).textTheme.titleSmall),
+              Text(s.serverImageCleanups, style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: 6),
               for (final j in d.cleanups.take(5)) _CleanupRow(job: j),
             ],
@@ -276,13 +277,14 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     Widget num(TextEditingController ctl, String label, String help) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: TextField(controller: ctl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: label, helperText: help)),
         );
     return AlertDialog(
-      title: const Text('Retention'),
+      title: Text(s.serverRetention),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
@@ -297,8 +299,8 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
                 contentPadding: EdgeInsets.zero,
                 value: _logHistory,
                 onChanged: (v) => setState(() => _logHistory = v),
-                title: const Text('Keep app logs'),
-                subtitle: const Text('Stores every app\'s output on the panel\'s disk, searchable on the Logs tab after restarts and deploys.'),
+                title: Text(s.serverKeepAppLogs),
+                subtitle: Text(s.serverStoresEveryAppSOutput),
               ),
               if (_logHistory) ...[
                 num(_logDays, 'Log history, days', '1–90'),
@@ -306,23 +308,22 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
               ],
               TextField(
                 controller: _dataDir,
-                decoration: const InputDecoration(labelText: 'k3s data directory', helperText: 'Used to find crictl for image cleanup'),
+                decoration: InputDecoration(labelText: s.serverK3sDataDirectory, helperText: s.serverUsedToFindCrictlFor),
               ),
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _prepull,
                 onChanged: (v) => setState(() => _prepull = v),
-                title: const Text('Keep images on every node'),
-                subtitle: const Text('Pre-pulls busybox and the runtime images your apps use, so new nodes and moved pods start '
-                    'without downloading them. Image cleanup keeps them.'),
+                title: Text(s.serverKeepImagesOnEveryNode),
+                subtitle: Text(s.serverPrePullsBusyboxAndThe),
               ),
               if (_prepull)
                 TextField(
                   controller: _images,
                   minLines: 1,
                   maxLines: 4,
-                  decoration: const InputDecoration(labelText: 'Extra images', helperText: 'One per line, e.g. postgres:17 (up to 20)'),
+                  decoration: InputDecoration(labelText: s.serverExtraImages, helperText: s.serverOnePerLineEG),
                 ),
               if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: c.failed))),
             ],
@@ -330,7 +331,7 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
         FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
       ],
     );

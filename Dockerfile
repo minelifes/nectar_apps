@@ -9,7 +9,7 @@ COPY scripts/ensure-fvm.sh scripts/
 COPY ui/.fvmrc ui/pubspec.yaml ui/pubspec.lock* ui/
 RUN FVM="$(./scripts/ensure-fvm.sh)" && cd ui && "$FVM" flutter pub get
 COPY ui/ ui/
-RUN cd ui && "$HOME/.local/bin/fvm" flutter build web --release --no-web-resources-cdn
+RUN cd ui && "$HOME/.local/bin/fvm" dart run intl_utils:generate && "$HOME/.local/bin/fvm" flutter build web --release --no-web-resources-cdn
 
 FROM --platform=$BUILDPLATFORM golang:1.26 AS build
 ARG TARGETOS TARGETARCH VERSION=dev COMMIT=none

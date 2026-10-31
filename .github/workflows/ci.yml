@@ -43,6 +43,8 @@ jobs:
       - name: fvm + Flutter pinned in ui/.fvmrc
         run: echo "FVM=$(../scripts/ensure-fvm.sh)" >> "$GITHUB_ENV"
       - run: $FVM flutter pub get
+      - name: translations (lib/l10n/*.arb → lib/generated)
+        run: $FVM dart run intl_utils:generate
       - name: analyze
         run: $FVM flutter analyze
       - name: test

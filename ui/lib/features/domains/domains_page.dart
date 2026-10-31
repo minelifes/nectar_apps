@@ -7,6 +7,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -27,10 +28,11 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final overview = ref.watch(domainsOverviewProvider);
     return PageScaffold(
-      title: 'Domains',
-      subtitle: 'Every domain of every app you can see, with its HTTPS and DNS state.',
+      title: s.navDomains,
+      subtitle: s.domainEveryDomainOfEveryApp,
       onRefresh: () async => ref.invalidate(domainsOverviewProvider),
       children: [
         AsyncBlock(
@@ -50,6 +52,7 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
   }
 
   Widget _list(BuildContext context, DomainsOverview o) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final q = _query.toLowerCase();
     final rows = o.domains.where((r) {
@@ -62,7 +65,7 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
       };
     }).toList();
     return NCard(
-      title: 'All domains',
+      title: l.gatewayAllDomains,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -74,15 +77,15 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
               SizedBox(
                 width: 260,
                 child: TextField(
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded, size: 18), hintText: 'Search domains, apps, projects', isDense: true),
+                  decoration: InputDecoration(prefixIcon: Icon(Icons.search_rounded, size: 18), hintText: l.domainSearchDomainsAppsProjects, isDense: true),
                   onChanged: (v) => setState(() => _query = v.trim()),
                 ),
               ),
               SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'all', label: Text('All')),
-                  ButtonSegment(value: 'custom', label: Text('Custom')),
-                  ButtonSegment(value: 'problems', label: Text('Problems')),
+                segments: [
+                  ButtonSegment(value: 'all', label: Text(l.domainAll)),
+                  ButtonSegment(value: 'custom', label: Text(l.domainCustom)),
+                  ButtonSegment(value: 'problems', label: Text(l.domainProblems)),
                 ],
                 selected: {_filter},
                 onSelectionChanged: (s) => setState(() => _filter = s.first),
@@ -92,9 +95,9 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
           ),
           const SizedBox(height: 12),
           if (o.domains.isEmpty)
-            const EmptyState(icon: Icons.language_rounded, title: 'No domains yet', message: 'Web apps get a domain under the base domain when they are created; add your own on the app page.')
+            EmptyState(icon: Icons.language_rounded, title: l.domainNoDomainsYet, message: l.domainWebAppsGetADomain)
           else if (rows.isEmpty)
-            Padding(padding: const EdgeInsets.all(12), child: Text('Nothing matches.', style: TextStyle(color: c.muted)))
+            Padding(padding: const EdgeInsets.all(12), child: Text(l.domainNothingMatches, style: TextStyle(color: c.muted)))
           else
             for (final r in rows) ...[const Divider(height: 1), _DomainTile(row: r, overview: o)],
         ],
@@ -117,6 +120,7 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
   bool _busy = false;
 
   Future<void> _toggleAuto(bool on) async {
+    final s = S.of(context);
     setState(() => _busy = true);
     try {
       final api = ref.read(apiProvider);
@@ -132,7 +136,7 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
       if (dns is Map && dns['conflict'] != null) {
         showSnack(context, '${dns['conflict']}', error: true);
       } else {
-        showSnack(context, on ? 'New domains get their DNS records automatically' : 'Automatic DNS records off');
+        showSnack(context, on ? 'New domains get their DNS records automatically' : s.domainAutomaticDnsRecordsOff);
       }
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
@@ -143,6 +147,7 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final o = widget.overview;
     final c = NectarColors.of(context);
     final canManage = ref.watch(sessionProvider).can('settings.manage');
@@ -159,14 +164,14 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
       if (o.baseHost.isNotEmpty) ('www.your-domain.com', 'CNAME', o.baseHost),
     ];
     return NCard(
-      title: 'DNS setup',
+      title: l.domainDnsSetup,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (ips.isEmpty)
-            Text('The server\'s public IP is unknown. Set it in the setup wizard (Settings → Domain, HTTPS email and sample app) so the records can be shown and checked.', style: TextStyle(color: c.warning))
+            Text(l.domainTheServerSPublicIp, style: TextStyle(color: c.warning))
           else
-            Text('Point domains at this server with these records at your DNS provider:', style: TextStyle(color: c.muted, fontSize: 13)),
+            Text(l.domainPointDomainsAtThisServer, style: TextStyle(color: c.muted, fontSize: 13)),
           const SizedBox(height: 8),
           for (final (name, type, value) in records)
             Padding(
@@ -177,7 +182,7 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
                   SizedBox(width: 64, child: Text(type, style: monoStyle(context, size: 12.5, color: c.muted))),
                   Expanded(flex: 4, child: SelectableText(value, style: monoStyle(context, size: 12.5))),
                   IconButton(
-                    tooltip: 'Copy',
+                    tooltip: l.backupCopy,
                     visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.copy_rounded, size: 15),
                     onPressed: () => Clipboard.setData(ClipboardData(text: value)),
@@ -187,7 +192,7 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
             ),
           if (o.baseDomain.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text('The *.${o.baseDomain} record serves every app\'s default domain. A CNAME to ${o.baseHost} works for subdomains of your own domains once it exists.',
+            Text(l.domainTheRecordServesEveryApp(o.baseDomain, o.baseHost),
                 style: TextStyle(color: c.muted, fontSize: 12.5)),
           ],
           const Divider(height: 24),
@@ -195,11 +200,11 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
             contentPadding: EdgeInsets.zero,
             value: o.dnsAuto,
             onChanged: canManage && !_busy && (o.dnsAvailable || o.dnsAuto) ? _toggleAuto : null,
-            title: const Text('Create DNS records automatically'),
+            title: Text(l.domainCreateDnsRecordsAutomatically),
             subtitle: Text(
               o.dnsAvailable
                   ? 'Through the gateway\'s DNS provider: one *.${o.baseDomain.isEmpty ? '<base domain>' : o.baseDomain} record, plus a record for each custom domain. Records someone else created are never changed.'
-                  : 'Needs a DNS provider in the gateway (Gateway → Certificates → DNS provider) and nectar-gateway 1.3 or newer.',
+                  : 'Needs a DNS provider in the gateway (Gateway → Certificates → DNS provider) and the latest nectar-gateway.',
               style: TextStyle(fontSize: 12.5, color: c.muted),
             ),
           ),
@@ -252,6 +257,7 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final r = widget.row;
     final d = r.domain;
@@ -308,7 +314,7 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
             const Padding(padding: EdgeInsets.all(10), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
           else
             PopupMenuButton<String>(
-              tooltip: 'Actions',
+              tooltip: s.domainActions,
               onSelected: (v) => switch (v) {
                 'open' => context.go('/apps/${r.appId}'),
                 'check' => _check(),
@@ -317,11 +323,11 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
                 _ => null,
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'open', child: Text('Open app')),
-                const PopupMenuItem(value: 'check', child: Text('Check DNS')),
+                PopupMenuItem(value: 'open', child: Text(s.domainOpenApp)),
+                PopupMenuItem(value: 'check', child: Text(s.domainCheckDns)),
                 if (r.canManage && widget.overview.dnsAvailable && !d.host.startsWith('*.') && d.dnsState != 'covered')
                   PopupMenuItem(value: 'dns', child: Text(d.dnsState == 'managed' ? 'Update DNS record' : 'Create DNS record')),
-                if (r.canManage) const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                if (r.canManage) PopupMenuItem(value: 'edit', child: Text(s.backupEdit)),
               ],
             ),
         ],

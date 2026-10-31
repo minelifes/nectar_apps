@@ -7,6 +7,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -17,11 +18,12 @@ class TokensPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     final mine = ref.watch(myTokensProvider);
     return PageScaffold(
-      title: 'API tokens',
-      subtitle: 'For CI and scripts. A token acts as you, limited to a role and a project when you choose them.',
+      title: s.acceApiTokens,
+      subtitle: s.acceForCiAndScriptsA,
       maxWidth: 980,
       onRefresh: () async {
         ref.invalidate(myTokensProvider);
@@ -31,20 +33,20 @@ class TokensPage extends ConsumerWidget {
         FilledButton.icon(
           onPressed: () => showDialog<void>(context: context, builder: (_) => const _NewTokenDialog()),
           icon: const Icon(Icons.key_rounded, size: 18),
-          label: const Text('New token'),
+          label: Text(s.acceNewToken),
         ),
       ],
       children: [
         NCard(
-          title: 'Your tokens',
+          title: s.acceYourTokens,
           child: AsyncBlock(
             value: mine,
             onRetry: () => ref.invalidate(myTokensProvider),
             data: (list) => list.isEmpty
-                ? const EmptyState(
+                ? EmptyState(
                     icon: Icons.key_off_rounded,
-                    title: 'No tokens yet',
-                    message: 'Create one for GitHub Actions or the nectar CLI. A Deployer token for one project is enough to deploy.',
+                    title: s.acceNoTokensYet,
+                    message: s.acceCreateOneForGithubActions,
                   )
                 : _TokenList(tokens: list, own: true),
           ),
@@ -54,11 +56,11 @@ class TokensPage extends ConsumerWidget {
         if (session.can('token.manage')) ...[
           const SizedBox(height: NectarTokens.gap),
           NCard(
-            title: 'Everyone\'s tokens',
+            title: s.acceEveryoneSTokens,
             child: AsyncBlock(
               value: ref.watch(allTokensProvider),
               onRetry: () => ref.invalidate(allTokensProvider),
-              data: (list) => list.isEmpty ? const Text('No tokens.') : _TokenList(tokens: list, own: false),
+              data: (list) => list.isEmpty ? Text(s.acceNoTokens) : _TokenList(tokens: list, own: false),
             ),
           ),
         ],
@@ -74,7 +76,8 @@ class _TokenList extends ConsumerWidget {
   final bool own;
 
   Future<void> _revoke(BuildContext context, WidgetRef ref, ApiTokenInfo t) async {
-    if (!await confirmAction(context, 'Revoke ${t.name}?', 'Scripts and pipelines that use it stop working immediately.', 'Revoke', danger: true)) return;
+    final s = S.of(context);
+    if (!await confirmAction(context, s.acceRevoke(t.name), s.acceScriptsAndPipelinesThatUse, s.acceRevoke2, danger: true)) return;
     try {
       await ref.read(apiProvider).delete(own ? '/me/tokens/${t.id}' : '/tokens/${t.id}');
       ref.invalidate(myTokensProvider);
@@ -86,6 +89,7 @@ class _TokenList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return Column(
       children: [
@@ -104,7 +108,7 @@ class _TokenList extends ConsumerWidget {
               ].join(' · '),
               style: TextStyle(fontSize: 12.5, color: t.expired ? c.failed : c.muted),
             ),
-            trailing: IconButton(tooltip: 'Revoke', icon: const Icon(Icons.delete_outline_rounded), onPressed: () => _revoke(context, ref, t)),
+            trailing: IconButton(tooltip: s.acceRevoke2, icon: const Icon(Icons.delete_outline_rounded), onPressed: () => _revoke(context, ref, t)),
           ),
       ],
     );
@@ -116,13 +120,14 @@ class _UsageCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final url = ref.watch(sessionProvider.select((s) => s.serverUrl)) ?? 'https://panel.example.com';
     final snippet = 'nectar login --url $url\nnectar deploy shop/api --file target/app.jar\n\n'
         '# or in GitHub Actions (examples/github-actions in the repository):\n'
         '- uses: minelifes/nectar_apps@v0\n  with:\n    url: \${{ secrets.NECTAR_URL }}\n    token: \${{ secrets.NECTAR_TOKEN }}\n    app: shop/api\n    file: target/app.jar';
     return NCard(
-      title: 'Using a token',
+      title: l.acceUsingAToken,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -132,7 +137,7 @@ class _UsageCard extends ConsumerWidget {
             child: SelectableText(snippet, style: monoStyle(context, size: 12, color: const Color(0xFFD9DBE0))),
           ),
           const SizedBox(height: 8),
-          Text('Any HTTP client works too: Authorization: Bearer nat_… on the API (see api/openapi.yaml).', style: TextStyle(color: c.muted, fontSize: 12.5)),
+          Text(l.acceAnyHttpClientWorksToo, style: TextStyle(color: c.muted, fontSize: 12.5)),
         ],
       ),
     );
@@ -181,17 +186,18 @@ class _NewTokenDialogState extends ConsumerState<_NewTokenDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     if (_token != null) {
       return AlertDialog(
-        title: const Text('Copy your token'),
+        title: Text(s.acceCopyYourToken),
         content: SizedBox(
           width: 560,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('It is shown only now. Store it as a secret (e.g. NECTAR_TOKEN in GitHub).'),
+              Text(s.acceItIsShownOnlyNow),
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.all(10),
@@ -205,33 +211,33 @@ class _NewTokenDialogState extends ConsumerState<_NewTokenDialog> {
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: _token!));
-              showSnack(context, 'Copied');
+              showSnack(context, s.backupCopied);
             },
-            child: const Text('Copy'),
+            child: Text(s.backupCopy),
           ),
-          FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+          FilledButton(onPressed: () => Navigator.pop(context), child: Text(s.backupDone)),
         ],
       );
     }
     final roles = ref.watch(rolesProvider);
     final projects = ref.watch(projectsProvider);
     return AlertDialog(
-      title: const Text('New API token'),
+      title: Text(s.acceNewApiToken),
       content: SizedBox(
         width: 480,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name', hintText: 'GitHub Actions: shop')),
+            TextField(controller: _name, decoration: InputDecoration(labelText: s.backupName, hintText: s.acceGithubActionsShop)),
             const SizedBox(height: 10),
             DropdownButtonFormField<int>(
               initialValue: _role,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Rights'),
+              decoration: InputDecoration(labelText: s.acceRights),
               items: [
-                const DropdownMenuItem(value: 0, child: Text('Everything you may do')),
-                for (final r in roles.value ?? const <RoleInfo>[]) DropdownMenuItem(value: r.id, child: Text('Only ${r.name}')),
+                DropdownMenuItem(value: 0, child: Text(s.acceEverythingYouMayDo)),
+                for (final r in roles.value ?? const <RoleInfo>[]) DropdownMenuItem(value: r.id, child: Text(s.acceOnly(r.name))),
               ],
               onChanged: (v) => setState(() => _role = v ?? 0),
             ),
@@ -239,32 +245,32 @@ class _NewTokenDialogState extends ConsumerState<_NewTokenDialog> {
             DropdownButtonFormField<int>(
               initialValue: _project,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Projects'),
+              decoration: InputDecoration(labelText: s.navProjects),
               items: [
-                const DropdownMenuItem(value: 0, child: Text('All projects')),
-                for (final p in projects.value ?? const <Project>[]) DropdownMenuItem(value: p.id, child: Text('Only ${p.name}')),
+                DropdownMenuItem(value: 0, child: Text(s.projectAllProjects)),
+                for (final p in projects.value ?? const <Project>[]) DropdownMenuItem(value: p.id, child: Text(s.acceOnly2(p.name))),
               ],
               onChanged: (v) => setState(() => _project = v ?? 0),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<int>(
               initialValue: _days,
-              decoration: const InputDecoration(labelText: 'Expires'),
-              items: const [
-                DropdownMenuItem(value: 30, child: Text('in 30 days')),
-                DropdownMenuItem(value: 90, child: Text('in 90 days')),
-                DropdownMenuItem(value: 365, child: Text('in a year')),
+              decoration: InputDecoration(labelText: s.acceExpires),
+              items: [
+                DropdownMenuItem(value: 30, child: Text(s.acceIn30Days)),
+                DropdownMenuItem(value: 90, child: Text(s.acceIn90Days)),
+                DropdownMenuItem(value: 365, child: Text(s.acceInAYear)),
                 DropdownMenuItem(value: 0, child: Text('never')),
               ],
               onChanged: (v) => setState(() => _days = v ?? 90),
             ),
             const SizedBox(height: 8),
-            Text('A token never has more rights than you. For CI: the Deployer role and one project.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+            Text(s.acceATokenNeverHasMore, style: TextStyle(color: c.muted, fontSize: 12.5)),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
         FilledButton(onPressed: _busy ? null : _create, child: Text(_busy ? 'Creating…' : 'Create')),
       ],
     );

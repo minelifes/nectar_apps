@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
 import '../../api/session.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import 'auth_frame.dart';
@@ -46,16 +47,17 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return AuthFrame(
-      title: 'Connect to your server',
-      subtitle: 'Nectar Apps runs on your own server. Enter the address of its panel.',
+      title: s.authConnectToYourServer,
+      subtitle: s.authNectarAppsRunsOnYour,
       children: [
         if (_error != null) FormError(_error!),
         TextField(
           controller: _url,
           style: monoStyle(context, size: 14),
-          decoration: const InputDecoration(labelText: 'Panel address', hintText: 'panel.apps.example.com'),
+          decoration: InputDecoration(labelText: s.authPanelAddress, hintText: 'panel.apps.example.com'),
           keyboardType: TextInputType.url,
           autocorrect: false,
           autofocus: true,
@@ -65,11 +67,11 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
         Padding(
           padding: const EdgeInsets.only(top: 8, bottom: 20),
           child: Text(
-            'Before the panel has a domain, open an SSH tunnel and use http://localhost:8480.',
+            s.authBeforeThePanelHasA,
             style: TextStyle(color: c.muted, fontSize: 12.5),
           ),
         ),
-        BusyButton(label: 'Connect', busy: _busy, onPressed: _connect),
+        BusyButton(label: s.authConnect, busy: _busy, onPressed: _connect),
       ],
     );
   }

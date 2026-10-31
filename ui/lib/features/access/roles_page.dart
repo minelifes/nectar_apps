@@ -5,6 +5,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 
@@ -14,14 +15,15 @@ class RolesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     final canEdit = session.can('role.manage');
     final roles = ref.watch(rolesProvider);
     final catalog = ref.watch(permissionCatalogProvider);
     final c = NectarColors.of(context);
     return PageScaffold(
-      title: 'Roles',
-      subtitle: 'A role is a set of permissions. Users get roles everywhere or for one project; API tokens can be limited to a role.',
+      title: s.acceRoles,
+      subtitle: s.acceARoleIsASet,
       maxWidth: 980,
       onRefresh: () async => ref.invalidate(rolesProvider),
       actions: [
@@ -29,7 +31,7 @@ class RolesPage extends ConsumerWidget {
           FilledButton.icon(
             onPressed: () => showRoleEditor(context, ref, catalog: catalog.value!),
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('New role'),
+            label: Text(s.acceNewRole),
           ),
       ],
       children: [
@@ -65,7 +67,7 @@ class RolesPage extends ConsumerWidget {
         if (!canEdit)
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Text('Changing roles needs role.manage.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+            child: Text(s.acceChangingRolesNeedsRoleManage, style: TextStyle(color: c.muted, fontSize: 12.5)),
           ),
       ],
     );
@@ -132,8 +134,9 @@ class _RoleEditorState extends ConsumerState<_RoleEditor> {
   }
 
   Future<void> _delete() async {
+    final s = S.of(context);
     final r = _role!;
-    if (!await confirmAction(context, 'Delete role ${r.name}?', 'Roles still assigned to users cannot be deleted.', 'Delete', danger: true)) return;
+    if (!await confirmAction(context, s.acceDeleteRole(r.name), s.acceRolesStillAssignedToUsers, s.actionDelete, danger: true)) return;
     try {
       await ref.read(apiProvider).delete('/roles/${r.id}');
       ref.invalidate(rolesProvider);
@@ -145,6 +148,7 @@ class _RoleEditorState extends ConsumerState<_RoleEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final role = _role;
     final isNew = role == null || role.id == 0;
@@ -161,12 +165,12 @@ class _RoleEditorState extends ConsumerState<_RoleEditor> {
               if (role?.builtin ?? false)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Text('Built-in roles cannot be changed. Clone it to make your own version.', style: TextStyle(color: c.muted)),
+                  child: Text(s.acceBuiltInRolesCannotBe, style: TextStyle(color: c.muted)),
                 ),
               if (!_locked) ...[
-                TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name')),
+                TextField(controller: _name, decoration: InputDecoration(labelText: s.backupName)),
                 const SizedBox(height: 10),
-                TextField(controller: _desc, decoration: const InputDecoration(labelText: 'Description')),
+                TextField(controller: _desc, decoration: InputDecoration(labelText: s.acceDescription)),
                 const SizedBox(height: 14),
               ],
               for (final g in widget.catalog) ...[
@@ -183,7 +187,7 @@ class _RoleEditorState extends ConsumerState<_RoleEditor> {
                             _perms.addAll(keys);
                           }
                         }),
-                        child: const Text('all / none'),
+                        child: Text(s.acceAllNone),
                       ),
                   ],
                 ),
@@ -208,17 +212,17 @@ class _RoleEditorState extends ConsumerState<_RoleEditor> {
                 ),
                 const SizedBox(height: 6),
               ],
-              Text('"Global only" permissions have no effect when the role is given for one project.', style: TextStyle(color: c.muted, fontSize: 12)),
+              Text(s.acceGlobalOnlyPermissionsHaveNo, style: TextStyle(color: c.muted, fontSize: 12)),
             ],
           ),
         ),
       ),
       actions: [
         if (role != null && role.id != 0 && !role.builtin && canManage)
-          TextButton(onPressed: _delete, style: TextButton.styleFrom(foregroundColor: c.failed), child: const Text('Delete')),
-        if (!isNew && canManage) TextButton(onPressed: _clone, child: const Text('Clone')),
+          TextButton(onPressed: _delete, style: TextButton.styleFrom(foregroundColor: c.failed), child: Text(s.actionDelete)),
+        if (!isNew && canManage) TextButton(onPressed: _clone, child: Text(s.acceClone)),
         TextButton(onPressed: () => Navigator.pop(context), child: Text(_locked ? 'Close' : 'Cancel')),
-        if (!_locked) FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
+        if (!_locked) FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave)),
       ],
     );
   }

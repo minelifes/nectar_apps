@@ -6,6 +6,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -16,7 +17,8 @@ class RegistriesCard extends ConsumerWidget {
   const RegistriesCard({super.key});
 
   Future<void> _remove(BuildContext context, WidgetRef ref, RegistryLogin l) async {
-    if (!await confirmAction(context, 'Remove the login for ${l.host}?', 'Apps can no longer pull private images from it.', 'Remove', danger: true)) return;
+    final s = S.of(context);
+    if (!await confirmAction(context, s.settingRemoveTheLoginFor(l.host), s.settingAppsCanNoLongerPull, s.backupRemove2, danger: true)) return;
     try {
       await ref.read(apiProvider).delete('/settings/registries/${l.id}');
       ref.invalidate(registriesProvider);
@@ -27,14 +29,15 @@ class RegistriesCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final data = ref.watch(registriesProvider);
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Registries',
+      title: s.settingRegistries,
       trailing: TextButton.icon(
         onPressed: () => showDialog<void>(context: context, builder: (_) => const _LoginDialog()),
         icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Add login'),
+        label: Text(s.settingAddLogin),
       ),
       child: AsyncBlock(
         value: data,
@@ -59,7 +62,7 @@ class RegistriesCard extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
             if (r.logins.isEmpty)
-              Text('No private registry logins. Public images (Docker Hub, GHCR public packages, …) need none.', style: TextStyle(color: c.muted, fontSize: 12.5))
+              Text(s.settingNoPrivateRegistryLoginsPublic, style: TextStyle(color: c.muted, fontSize: 12.5))
             else
               for (final l in r.logins)
                 ListTile(
@@ -67,11 +70,11 @@ class RegistriesCard extends ConsumerWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.vpn_key_outlined, size: 20),
                   title: Text(l.host, style: monoStyle(context, size: 13)),
-                  subtitle: Text('${l.username} · changed ${timeAgo(l.updatedAt)}', style: TextStyle(color: c.muted, fontSize: 12)),
-                  trailing: IconButton(tooltip: 'Remove', icon: const Icon(Icons.delete_outline_rounded, size: 18), onPressed: () => _remove(context, ref, l)),
+                  subtitle: Text(s.settingChanged(l.username, timeAgo(l.updatedAt)), style: TextStyle(color: c.muted, fontSize: 12)),
+                  trailing: IconButton(tooltip: s.backupRemove2, icon: const Icon(Icons.delete_outline_rounded, size: 18), onPressed: () => _remove(context, ref, l)),
                 ),
             const SizedBox(height: 4),
-            Text('Logins are stored encrypted and given to every project as an image pull secret; builds use them for base images.',
+            Text(s.settingLoginsAreStoredEncryptedAnd,
                 style: TextStyle(color: c.muted, fontSize: 12)),
           ],
         ),
@@ -115,28 +118,31 @@ class _LoginDialogState extends ConsumerState<_LoginDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Registry login'),
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return AlertDialog(
+        title: Text(s.settingRegistryLogin),
         content: SizedBox(
           width: 440,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: _host, decoration: const InputDecoration(labelText: 'Registry', hintText: 'ghcr.io, docker.io, registry.gitlab.com')),
+              TextField(controller: _host, decoration: InputDecoration(labelText: s.settingRegistry, hintText: s.settingGhcrIoDockerIoRegistry)),
               const SizedBox(height: 10),
-              TextField(controller: _user, decoration: const InputDecoration(labelText: 'User name')),
+              TextField(controller: _user, decoration: InputDecoration(labelText: s.settingUserName)),
               const SizedBox(height: 10),
               TextField(
                 controller: _password,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password or access token', helperText: 'GHCR: a token with read:packages'),
+                decoration: InputDecoration(labelText: s.settingPasswordOrAccessToken, helperText: s.settingGhcrATokenWithRead),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
+          FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave)),
         ],
       );
+  }
 }

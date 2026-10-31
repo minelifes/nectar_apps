@@ -6,6 +6,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 
 /// Adds a backup plan, or edits [plan] (schedule, retention, paused).
@@ -127,6 +128,7 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final p = widget.plan;
     Widget keep(TextEditingController ctl, String label) => Expanded(
@@ -154,7 +156,7 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                     return DropdownButtonFormField<_Subject>(
                       initialValue: _subject,
                       isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'What'),
+                      decoration: InputDecoration(labelText: l.backupWhat),
                       items: [for (final s in snap.data!) DropdownMenuItem(value: s, child: Text(s.label, overflow: TextOverflow.ellipsis))],
                       onChanged: (v) => setState(() => _subject = v),
                     );
@@ -163,7 +165,7 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   initialValue: _target,
-                  decoration: const InputDecoration(labelText: 'To'),
+                  decoration: InputDecoration(labelText: l.backupTo),
                   items: [for (final t in widget.targets) DropdownMenuItem(value: t.id, child: Text(t.name))],
                   onChanged: (v) => setState(() => _target = v ?? _target),
                 ),
@@ -171,10 +173,10 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
               ],
               DropdownButtonFormField<String>(
                 initialValue: _customOn ? '*' : _schedule,
-                decoration: const InputDecoration(labelText: 'When'),
+                decoration: InputDecoration(labelText: l.backupWhen),
                 items: [
                   for (final (v, label) in _schedules) DropdownMenuItem(value: v, child: Text(label)),
-                  const DropdownMenuItem(value: '*', child: Text('Custom (cron)')),
+                  DropdownMenuItem(value: '*', child: Text(l.backupCustomCron)),
                 ],
                 onChanged: (v) => setState(() {
                   _customOn = v == '*';
@@ -186,11 +188,11 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                   padding: const EdgeInsets.only(top: 12),
                   child: TextField(
                     controller: _custom,
-                    decoration: const InputDecoration(labelText: 'Cron expression (UTC)', hintText: '30 2 * * *', helperText: 'minute hour day month weekday'),
+                    decoration: InputDecoration(labelText: l.backupCronExpressionUtc, hintText: '30 2 * * *', helperText: l.backupMinuteHourDayMonthWeekday),
                   ),
                 ),
               const SizedBox(height: 16),
-              Text('Keep', style: Theme.of(context).textTheme.titleSmall),
+              Text(l.backupKeep, style: Theme.of(context).textTheme.titleSmall),
               Row(
                 children: [
                   keep(_daily, 'Daily'),
@@ -201,13 +203,13 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                 ],
               ),
               const SizedBox(height: 6),
-              Text('Older snapshots are removed after each backup.', style: TextStyle(color: c.muted, fontSize: 12)),
+              Text(l.backupOlderSnapshotsAreRemovedAfter, style: TextStyle(color: c.muted, fontSize: 12)),
               if (p != null)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _enabled,
                   onChanged: (v) => setState(() => _enabled = v),
-                  title: const Text('Scheduled backups on'),
+                  title: Text(l.backupScheduledBackupsOn),
                 ),
               if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: c.failed))),
             ],
@@ -215,7 +217,7 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.actionCancel)),
         FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
       ],
     );

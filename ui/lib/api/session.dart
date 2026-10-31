@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/passkeys.dart';
+import '../core/push.dart';
 import '../core/server_config.dart';
 import 'client.dart';
 import 'models.dart';
@@ -134,6 +136,9 @@ class SessionController extends Notifier<SessionState> {
 
   String get _client => (_config?.useTokens ?? false) ? 'mobile' : 'web';
 
+  /// True for the web panel (cookie sessions): only there can single sign-on finish (the provider redirects the browser back).
+  bool get cookieAuth => _config != null && !_config!.useTokens;
+
   Future<void> _startSession(Object? response) async {
     final m = response is Map ? response : const {};
     if (_config?.useTokens ?? false) {
@@ -152,6 +157,14 @@ class SessionController extends Notifier<SessionState> {
     if (res is Map && res['mfa_required'] == true) return res['mfa_token'] as String?;
     await _startSession(res);
     return null;
+  }
+
+  /// Signs in with a passkey of this host (web panel; no email or password, no second factor).
+  Future<void> loginWithPasskey() async {
+    final start = await api!.post('/auth/passkey/options', options: Api.public) as Map;
+    final credential = await getPasskey(Map<String, dynamic>.from(start['options'] as Map));
+    final res = await api!.post('/auth/passkey', data: {'flow': start['flow'], 'credential': credential}, options: Api.public);
+    await _startSession(res);
   }
 
   /// Second step of a two-factor sign-in: an authenticator code or a recovery code.
@@ -175,6 +188,7 @@ class SessionController extends Notifier<SessionState> {
   }
 
   Future<void> logout() async {
+    await PushService.instance.unregister(api);
     try {
       await api?.post('/auth/logout');
     } on ApiException {

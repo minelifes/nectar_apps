@@ -5,6 +5,7 @@ analyzer:
     - android/**
     - ios/**
     - macos/**
+    - lib/generated/** # Flutter Intl output (intl_utils): regenerated, never edited by hand
 include: package:flutter_lints/flutter.yaml
 
 linter:

@@ -46,7 +46,7 @@ func (s *Server) joinInfo(w http.ResponseWriter, r *http.Request, p *principal) 
 		"requirements": []string{
 			"A Linux machine that reaches " + host + " on port 6443/tcp (Kubernetes API) and 8472/udp (pod network).",
 			"On the server, allow the new machine through the firewall: sudo ufw allow from <new-ip>.",
-			"The new node runs apps; nectar-gateway (ports 80/443) stays on the edge node DNS points to.",
+			"The new node runs apps. To serve traffic there too (a second gateway on ports 80/443), make it an edge node on the Server page.",
 		},
 	})
 }
@@ -96,6 +96,13 @@ func (s *Server) nodeAction(w http.ResponseWriter, r *http.Request, p *principal
 		}
 		s.audit(r, p, "node.drain", name, res)
 		writeJSON(w, http.StatusOK, res)
+	case "edge-on", "edge-off":
+		if err := s.setEdgeReplica(ctx, node, name, action == "edge-on"); err != nil {
+			writeError(w, http.StatusConflict, err.Error())
+			return
+		}
+		s.audit(r, p, "node."+action, name, nil)
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	default:
 		writeError(w, http.StatusNotFound, "unknown action")
 	}

@@ -6,6 +6,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../auth/auth_frame.dart';
@@ -79,9 +80,10 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
-      title: const Text('New project'),
+      title: Text(s.projectNewProject),
       content: SizedBox(
         width: 420,
         child: Form(
@@ -94,7 +96,7 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
               TextFormField(
                 controller: _name,
                 autofocus: true,
-                decoration: const InputDecoration(labelText: 'Name', hintText: 'My Shop'),
+                decoration: InputDecoration(labelText: s.backupName, hintText: s.projectMyShop),
                 textInputAction: TextInputAction.next,
                 validator: (v) => (v ?? '').trim().isEmpty ? 'Enter a name' : null,
               ),
@@ -102,7 +104,7 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
               TextFormField(
                 controller: _slug,
                 style: monoStyle(context, size: 14),
-                decoration: const InputDecoration(labelText: 'Slug'),
+                decoration: InputDecoration(labelText: s.projectSlug),
                 onChanged: (_) => _slugEdited = true,
                 onFieldSubmitted: (_) => _create(),
                 validator: (v) => _slugRe.hasMatch((v ?? '').trim()) ? null : '1–30 lowercase letters, digits or dashes',
@@ -120,8 +122,8 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        SizedBox(width: 120, child: BusyButton(label: 'Create', busy: _busy, onPressed: _create)),
+        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: Text(s.actionCancel)),
+        SizedBox(width: 120, child: BusyButton(label: s.projectCreate, busy: _busy, onPressed: _create)),
       ],
     );
   }

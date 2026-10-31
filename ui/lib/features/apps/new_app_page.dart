@@ -9,6 +9,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -327,6 +328,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Future<void> _deploy({bool force = false}) async {
+    final l = S.of(context);
     final api = ref.read(apiProvider);
     final app = _app!;
     final rt = _runtime!;
@@ -356,7 +358,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
         await api.post('/apps/${app.id}/builds', data: {'deploy': true});
         ref.invalidate(projectAppsProvider(app.projectId));
         if (mounted) {
-          showSnack(context, 'Build started: it deploys ${app.name} when it is done');
+          showSnack(context, l.appBuildStartedItDeploysWhen(app.name));
           context.go('/apps/${app.id}');
         }
         return;
@@ -380,20 +382,21 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Future<void> _close() async {
+    final s = S.of(context);
     final app = _app;
     if (app != null && !_deploying) {
       final discard = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Leave the wizard?'),
-          content: Text('"${app.name}" was created but not deployed yet. Keep it to finish later, or discard it.'),
+          title: Text(s.appLeaveTheWizard),
+          content: Text(s.appWasCreatedButNotDeployed(app.name)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(s.actionCancel)),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.backupKeep)),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: NectarColors.of(ctx).failed),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Discard'),
+              child: Text(s.appDiscard),
             ),
           ],
         ),
@@ -405,7 +408,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
           ref.invalidate(projectAppsProvider(app.projectId));
           ref.invalidate(projectsProvider);
         } on Object catch (e) {
-          if (mounted) showSnack(context, 'Could not discard: ${describeError(e)}', error: true);
+          if (mounted) showSnack(context, s.appCouldNotDiscard(describeError(e)), error: true);
           return;
         }
       }
@@ -424,6 +427,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final wide = MediaQuery.sizeOf(context).width >= 980;
     final steps = _steps;
     final index = steps.indexOf(_step);
@@ -435,7 +439,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
         ? null
         : Row(
             children: [
-              if (index > 0) OutlinedButton(onPressed: _busy ? null : _back, child: const Text('Back')),
+              if (index > 0) OutlinedButton(onPressed: _busy ? null : _back, child: Text(s.projectBack)),
               const Spacer(),
               if (_step != WizardStep.review)
                 SizedBox(
@@ -450,7 +454,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                 if (_forceOffered)
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: OutlinedButton(onPressed: _busy ? null : () => _deploy(force: true), child: const Text('Deploy anyway')),
+                    child: OutlinedButton(onPressed: _busy ? null : () => _deploy(force: true), child: Text(s.appDeployAnyway)),
                   ),
                 SizedBox(width: 160, child: BusyButton(label: _fromGit ? 'Build & deploy' : 'Deploy', busy: _busy, onPressed: _deploy)),
               ],
@@ -464,7 +468,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (!wide && !_deploying) ...[
-              Text('Step ${index + 1} of ${steps.length}', style: theme.textTheme.labelSmall),
+              Text(s.appStepOf(index + 1, steps.length), style: theme.textTheme.labelSmall),
               const SizedBox(height: 6),
               ClipRRect(
                 borderRadius: BorderRadius.circular(99),
@@ -483,10 +487,10 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
     );
 
     return PageScaffold(
-      title: 'New app',
+      title: s.newApp,
       subtitle: _app == null ? null : '${_app!.name} · ${runtimeInfo(_app!.runtime).label}',
       maxWidth: 1080,
-      actions: [IconButton(tooltip: 'Close', icon: const Icon(Icons.close_rounded), onPressed: _busy ? null : _close)],
+      actions: [IconButton(tooltip: s.actionClose, icon: const Icon(Icons.close_rounded), onPressed: _busy ? null : _close)],
       children: [
         if (wide)
           Row(
@@ -505,7 +509,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                         onTap: !_deploying && i < index && !_busy ? () => _go(steps[i]) : null,
                       ),
                     if (_deploying)
-                      _StepItem(number: steps.length + 1, title: 'Deploy', state: _deployOk == true ? 1 : 0, onTap: null),
+                      _StepItem(number: steps.length + 1, title: s.appDeploy, state: _deployOk == true ? 1 : 0, onTap: null),
                   ],
                 ),
               ),
@@ -519,7 +523,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Text(
-              '${_app!.name} is saved as "not deployed"; you can close the wizard and continue later from the app page.',
+              s.appIsSavedAsNotDeployed(_app!.name),
               style: TextStyle(color: c.muted, fontSize: 12.5),
             ),
           ),
@@ -541,6 +545,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   // ------------------------------------------------------------------- steps --
 
   Widget _projectStep() {
+        final l = S.of(context);
     final projects = ref.watch(projectsProvider);
     final canCreate = ref.watch(sessionProvider.select((s) => s.can('project.create')));
     return AsyncBlock(
@@ -549,7 +554,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
       data: (list) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (list.isEmpty) const Text('There are no projects yet. Create one first.'),
+          if (list.isEmpty) Text(l.appThereAreNoProjectsYet),
           for (final p in list)
             _ChoiceTile(
               selected: _projectId == p.id,
@@ -570,7 +575,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                   }
                 },
                 icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('New project'),
+                label: Text(l.projectNewProject),
               ),
             ),
         ],
@@ -579,6 +584,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Widget _typeStep() {
+    final s = S.of(context);
     final runtimes = ref.watch(runtimesProvider);
     final locked = _app != null;
     return AsyncBlock(
@@ -588,9 +594,9 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (locked)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(bottom: 12),
-              child: Text('The type is fixed once the app exists. Discard the app to choose another type.'),
+              child: Text(s.appTheTypeIsFixedOnce),
             ),
           Wrap(
             spacing: 12,
@@ -632,6 +638,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Widget _versionStep() {
+    final l = S.of(context);
     final rt = _runtime!;
     if (rt.takesImage) {
       return Column(
@@ -641,9 +648,9 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
             Align(
               alignment: Alignment.centerLeft,
               child: SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(value: false, icon: Icon(Icons.inventory_2_outlined, size: 18), label: Text('Existing image')),
-                  ButtonSegment(value: true, icon: Icon(Icons.merge_type_rounded, size: 18), label: Text('Build from Git')),
+                segments: [
+                  ButtonSegment(value: false, icon: Icon(Icons.inventory_2_outlined, size: 18), label: Text(l.appExistingImage)),
+                  ButtonSegment(value: true, icon: Icon(Icons.merge_type_rounded, size: 18), label: Text(l.appBuildFromGit)),
                 ],
                 selected: {_fromGit},
                 onSelectionChanged: (s) => setState(() => _fromGit = s.first),
@@ -658,13 +665,12 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
             controller: _image,
             enabled: _app == null,
             style: monoStyle(context, size: 14),
-            decoration: const InputDecoration(labelText: 'Image', hintText: 'ghcr.io/acme/shop:1.4.2'),
+            decoration: InputDecoration(labelText: l.appImage, hintText: l.appGhcrIoAcmeShop1),
             autocorrect: false,
           ),
           const SizedBox(height: 8),
           Text(
-            'Any public image, or a private one with a login under Settings → Registries. Pin a version tag (not :latest) '
-            'so deploys and rollbacks are reproducible.',
+            l.appAnyPublicImageOrA,
             style: TextStyle(color: NectarColors.of(context).muted, fontSize: 12.5),
           ),
           ],
@@ -688,6 +694,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Widget _nameStep() {
+    final s = S.of(context);
     final settings = ref.watch(panelSettingsProvider);
     final projects = ref.watch(projectsProvider);
     final project = projects.hasValue ? projects.value!.where((p) => p.id == _projectId).firstOrNull : null;
@@ -699,7 +706,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
         TextField(
           controller: _name,
           autofocus: _app == null,
-          decoration: const InputDecoration(labelText: 'Name', hintText: 'Shop API'),
+          decoration: InputDecoration(labelText: s.backupName, hintText: s.appShopApi),
           textInputAction: TextInputAction.next,
         ),
         const SizedBox(height: 14),
@@ -707,7 +714,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
           controller: _slug,
           enabled: _app == null,
           style: monoStyle(context, size: 14),
-          decoration: const InputDecoration(labelText: 'Slug', helperText: 'Used in Kubernetes names and the default domain'),
+          decoration: InputDecoration(labelText: s.projectSlug, helperText: s.appUsedInKubernetesNamesAnd),
           onChanged: (_) => _slugEdited = true,
         ),
         if (_kind == 'web') ...[
@@ -716,7 +723,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
             controller: _port,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(labelText: 'Port your app listens on', helperText: 'Also available to the app as \$PORT'),
+            decoration: InputDecoration(labelText: s.appPortYourAppListensOn, helperText: s.appAlsoAvailableToTheApp),
           ),
           const SizedBox(height: 18),
           ValueListenableBuilder(
@@ -737,15 +744,14 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                     Expanded(
                       child: host == null
                           ? Text(
-                              'No base domain is set, so the app gets no domain automatically. '
-                              'Set one in Settings, or add a domain on the app page later.',
+                              s.appNoBaseDomainIsSet,
                               style: TextStyle(color: c.muted, fontSize: 13),
                             )
                           : Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 SelectableText('https://$host', style: monoStyle(context, size: 13.5)),
-                                Text('default domain, with a Let\'s Encrypt certificate', style: TextStyle(color: c.muted, fontSize: 12)),
+                                Text(s.appDefaultDomainWithALet, style: TextStyle(color: c.muted, fontSize: 12)),
                               ],
                             ),
                     ),
@@ -760,7 +766,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
           TextField(
             controller: _schedule,
             style: monoStyle(context, size: 14),
-            decoration: const InputDecoration(labelText: 'Schedule (cron)', helperText: 'e.g. */15 * * * * = every 15 minutes, @daily'),
+            decoration: InputDecoration(labelText: s.appScheduleCron, helperText: s.appEG15Every15),
           ),
         ],
       ],
@@ -768,6 +774,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Widget _artifactStep() {
+    final s = S.of(context);
     final rt = _runtime!;
     final c = NectarColors.of(context);
     final art = _artifact;
@@ -812,7 +819,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                     borderRadius: BorderRadius.circular(99),
                     child: LinearProgressIndicator(value: progress, minHeight: 6),
                   ),
-                  TextButton(onPressed: () => _cancel?.cancel(), child: const Text('Cancel upload')),
+                  TextButton(onPressed: () => _cancel?.cancel(), child: Text(s.appCancelUpload)),
                 ],
               ],
             ),
@@ -822,7 +829,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
           const SizedBox(height: 12),
           FormError(_uploadError!),
           if (_file != null && _file!.canRetry)
-            Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: _upload, child: const Text('Retry upload'))),
+            Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: _upload, child: Text(s.appRetryUpload))),
         ],
         if (art != null) ...[const SizedBox(height: 16), _detectView(art.detect)],
       ],
@@ -830,6 +837,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Widget _detectView(DetectResult d) {
+    final s = S.of(context);
     final rt = _runtime!;
     final c = NectarColors.of(context);
     final facts = <String>[
@@ -867,8 +875,8 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
               children: [
                 const Icon(Icons.lightbulb_outline_rounded, size: 18, color: NectarTokens.amber),
                 const SizedBox(width: 10),
-                Expanded(child: Text('This file suits ${suggested.label} better than the version you chose.')),
-                TextButton(onPressed: () => setState(() => _version = suggested.id), child: Text('Use ${suggested.label}')),
+                Expanded(child: Text(s.appThisFileSuitsBetterThan(suggested.label))),
+                TextButton(onPressed: () => setState(() => _version = suggested.id), child: Text(s.appUse(suggested.label))),
               ],
             ),
           ),
@@ -886,6 +894,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Widget _resourcesStep() {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final preset = _customResources ? null : presetFor(_cpu, _memory);
     final app = _app!;
@@ -909,7 +918,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                 }),
               ),
             _PresetCard(
-              title: 'Custom',
+              title: s.domainCustom,
               subtitle: preset == null ? '${formatCpu(_cpu)} · ${formatMb(_memory)}' : 'your values',
               selected: preset == null,
               onTap: () => setState(() => _customResources = true),
@@ -922,7 +931,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
             children: [
               Expanded(
                 child: _NumberField(
-                  label: 'CPU (millicores)',
+                  label: s.appCpuMillicores,
                   value: _cpu,
                   onChanged: (v) => setState(() => _cpu = v),
                 ),
@@ -930,7 +939,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: _NumberField(
-                  label: 'Memory (MB)',
+                  label: s.appMemoryMb,
                   value: _memory,
                   onChanged: (v) => setState(() => _memory = v),
                 ),
@@ -972,7 +981,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
           TextField(
             controller: _schedule,
             style: monoStyle(context, size: 14),
-            decoration: const InputDecoration(labelText: 'Schedule (cron)'),
+            decoration: InputDecoration(labelText: s.appScheduleCron),
           ),
         ],
       ],
@@ -980,6 +989,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Widget _settingsStep() {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -995,10 +1005,10 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'tcp', label: Text('Port open')),
-                  ButtonSegment(value: 'http', label: Text('HTTP')),
-                  ButtonSegment(value: 'none', label: Text('None')),
+                segments: [
+                  ButtonSegment(value: 'tcp', label: Text(s.appPortOpen)),
+                  ButtonSegment(value: 'http', label: Text(s.appHttp)),
+                  ButtonSegment(value: 'none', label: Text(s.appNone)),
                 ],
                 selected: {_healthType},
                 showSelectedIcon: false,
@@ -1010,14 +1020,14 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                   child: TextField(
                     controller: _healthPath,
                     style: monoStyle(context, size: 14),
-                    decoration: const InputDecoration(labelText: 'Path', hintText: '/health'),
+                    decoration: InputDecoration(labelText: s.appPath, hintText: '/health'),
                   ),
                 ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Traffic only reaches a replica once its health check passes, so a broken release never replaces a working one.',
+            s.appTrafficOnlyReachesAReplica,
             style: TextStyle(color: c.muted, fontSize: 12.5),
           ),
         ],
@@ -1026,7 +1036,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
         TextField(
           controller: _args,
           style: monoStyle(context, size: 14),
-          decoration: const InputDecoration(hintText: '--spring.profiles.active=prod', helperText: 'Passed to your app as \$APP_ARGS'),
+          decoration: InputDecoration(hintText: s.appSpringProfilesActiveProd, helperText: s.appPassedToYourAppAs),
         ),
       ],
     );
@@ -1070,6 +1080,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   }
 
   Widget _deployView() {
+    final s = S.of(context);
     final app = _app!;
     final c = NectarColors.of(context);
     return Column(
@@ -1086,14 +1097,14 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
         ),
         const SizedBox(height: 22),
         if (_deployOk == null)
-          Text('You can leave this page; the deploy continues on the server.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+          Text(s.appYouCanLeaveThisPage, style: TextStyle(color: c.muted, fontSize: 12.5)),
         if (_deployOk != null)
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
               FilledButton(onPressed: () => context.go('/apps/${app.id}'), child: Text(_deployOk! ? 'Open ${app.name}' : 'Open the app to fix it')),
-              OutlinedButton(onPressed: () => context.go('/projects/${app.projectId}'), child: const Text('Back to the project')),
+              OutlinedButton(onPressed: () => context.go('/projects/${app.projectId}'), child: Text(s.appBackToTheProject)),
             ],
           ),
       ],

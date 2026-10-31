@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../api/session.dart';
-import '../core/locale.dart';
 import '../data/providers.dart';
+import '../generated/l10n.dart';
 import '../theme/tokens.dart';
 import '../widgets/hex.dart';
 import 'version_banner.dart';
@@ -14,15 +14,15 @@ class _Dest {
 
   /// The label in the interface language.
   String text(BuildContext context) {
-    final l = context.l10n;
+    final s = S.of(context);
     return switch (path) {
-      '/' => l.navDashboard,
-      '/projects' => l.navProjects,
-      '/domains' => l.navDomains,
-      '/server' => l.navServer,
-      '/alerts' => l.navAlerts,
-      '/backups' => l.navBackups,
-      '/settings' => l.navSettings,
+      '/' => s.navDashboard,
+      '/projects' => s.navProjects,
+      '/domains' => s.navDomains,
+      '/server' => s.navServer,
+      '/alerts' => s.navAlerts,
+      '/backups' => s.navBackups,
+      '/settings' => s.navSettings,
       _ => label,
     };
   }
@@ -215,6 +215,7 @@ class _UserChip extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final user = session.user!;
     return Container(
@@ -244,7 +245,7 @@ class _UserChip extends ConsumerWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Sign out',
+            tooltip: s.logout,
             icon: const Icon(Icons.logout_rounded, size: 18),
             onPressed: () => ref.read(sessionProvider.notifier).logout(),
           ),

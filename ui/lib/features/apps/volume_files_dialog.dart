@@ -11,6 +11,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -90,15 +91,16 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
   }
 
   Future<void> _upload() async {
+    final s = S.of(context);
     final res = await FilePicker.platform.pickFiles(withData: true);
     final f = res?.files.single;
     if (f == null || f.bytes == null) return;
     if (f.size > 64 * 1024 * 1024) {
-      if (mounted) showSnack(context, 'Files up to 64 MB can be uploaded here', error: true);
+      if (mounted) showSnack(context, s.appFilesUpTo64Mb, error: true);
       return;
     }
     final exists = _entries?.any((e) => e.name == f.name) ?? false;
-    if (exists && mounted && !await confirmAction(context, 'Replace ${f.name}?', 'The file in this folder is overwritten.', 'Replace')) return;
+    if (exists && mounted && !await confirmAction(context, s.appReplace(f.name), s.appTheFileInThisFolder, s.appReplace2)) return;
     await _write(_join(f.name), f.bytes!, 'Uploaded ${f.name}');
   }
 
@@ -122,6 +124,7 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
   }
 
   Future<void> _download(VolumeEntry e) async {
+    final s = S.of(context);
     final api = ref.read(apiProvider);
     if (!api.useTokens) {
       // the web build served by the panel: a plain download with the session cookie
@@ -134,7 +137,7 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
       final bytes = await _read(e);
       if (bytes == null) return;
       final saved = await FilePicker.platform.saveFile(fileName: e.name, bytes: bytes);
-      if (mounted && saved != null) showSnack(context, 'Saved ${e.name}');
+      if (mounted && saved != null) showSnack(context, s.appSaved(e.name));
     } on Object catch (err) {
       if (mounted) showSnack(context, describeError(err), error: true);
     } finally {
@@ -143,13 +146,14 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
   }
 
   Future<void> _edit(VolumeEntry e) async {
+    final s = S.of(context);
     setState(() => _busy = true);
     String? text;
     try {
       final bytes = await _read(e);
       text = utf8.decode(bytes ?? Uint8List(0), allowMalformed: false);
     } on FormatException {
-      if (mounted) showSnack(context, '${e.name} is not a text file — download it instead', error: true);
+      if (mounted) showSnack(context, s.appIsNotATextFile(e.name), error: true);
     } on Object catch (err) {
       if (mounted) showSnack(context, describeError(err), error: true);
     } finally {
@@ -173,19 +177,21 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
   }
 
   Future<void> _delete(VolumeEntry e) async {
+    final s = S.of(context);
     final what = e.isDir ? 'the folder ${e.name} and everything in it' : e.name;
-    if (!await confirmAction(context, 'Delete $what?', 'This cannot be undone (backups of the volume keep older copies).', 'Delete', danger: true)) return;
+    if (!await confirmAction(context, s.appDelete2(what), s.appThisCannotBeUndoneBackups, s.actionDelete, danger: true)) return;
     await _act({'action': 'delete', 'path': _join(e.name)}, 'Deleted ${e.name}');
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final parts = _path.split('/').where((p) => p.isNotEmpty).toList();
     return AlertDialog(
       title: Row(
         children: [
-          Expanded(child: Text('Files · ${widget.volume}')),
+          Expanded(child: Text(s.appFiles2(widget.volume))),
           if (_busy) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
         ],
       ),
@@ -210,32 +216,33 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
             ),
             Row(
               children: [
-                OutlinedButton.icon(onPressed: _busy || _entries == null ? null : _upload, icon: const Icon(Icons.upload_rounded, size: 18), label: const Text('Upload')),
+                OutlinedButton.icon(onPressed: _busy || _entries == null ? null : _upload, icon: const Icon(Icons.upload_rounded, size: 18), label: Text(s.appUpload)),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
-                    onPressed: _busy || _entries == null ? null : _newFolder, icon: const Icon(Icons.create_new_folder_outlined, size: 18), label: const Text('New folder')),
+                    onPressed: _busy || _entries == null ? null : _newFolder, icon: const Icon(Icons.create_new_folder_outlined, size: 18), label: Text(s.appNewFolder)),
                 const Spacer(),
-                IconButton(tooltip: 'Refresh', onPressed: _busy ? null : () => _load(), icon: const Icon(Icons.refresh_rounded, size: 18)),
+                IconButton(tooltip: s.actionRefresh, onPressed: _busy ? null : () => _load(), icon: const Icon(Icons.refresh_rounded, size: 18)),
               ],
             ),
             const SizedBox(height: 8),
             Expanded(child: _body(context, c)),
             const SizedBox(height: 6),
-            Text('Changes apply to the running app at once. New files get the owner of their folder.', style: TextStyle(color: c.muted, fontSize: 12)),
+            Text(s.appChangesApplyToTheRunning, style: TextStyle(color: c.muted, fontSize: 12)),
           ],
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionClose))],
     );
   }
 
   Widget _body(BuildContext context, NectarColors c) {
+    final s = S.of(context);
     if (_starting) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const CircularProgressIndicator(),
           const SizedBox(height: 12),
-          Text('Opening the volume…', style: TextStyle(color: c.muted)),
+          Text(s.appOpeningTheVolume, style: TextStyle(color: c.muted)),
         ]),
       );
     }
@@ -244,12 +251,12 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: c.failed)),
           const SizedBox(height: 8),
-          TextButton(onPressed: () => _load(), child: const Text('Try again')),
+          TextButton(onPressed: () => _load(), child: Text(s.actionRetry)),
         ]),
       );
     }
     final list = _entries ?? const <VolumeEntry>[];
-    if (list.isEmpty) return Center(child: Text('Empty folder', style: TextStyle(color: c.muted)));
+    if (list.isEmpty) return Center(child: Text(s.appEmptyFolder, style: TextStyle(color: c.muted)));
     return ListView.separated(
       itemCount: list.length + (_path == '/' ? 0 : 1),
       separatorBuilder: (_, _) => const Divider(height: 1),
@@ -279,7 +286,7 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
           onTap: _busy ? null : (e.isDir ? () => _load(_join(e.name)) : (e.type == 'file' && e.size <= _maxEdit ? () => _edit(e) : null)),
           trailing: PopupMenuButton<String>(
             enabled: !_busy,
-            tooltip: 'Actions',
+            tooltip: s.domainActions,
             onSelected: (v) => switch (v) {
               'edit' => _edit(e),
               'download' => _download(e),
@@ -288,10 +295,10 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
               _ => null,
             },
             itemBuilder: (_) => [
-              if (e.type == 'file' && e.size <= _maxEdit) const PopupMenuItem(value: 'edit', child: Text('Edit')),
-              if (e.type == 'file') const PopupMenuItem(value: 'download', child: Text('Download')),
-              const PopupMenuItem(value: 'rename', child: Text('Rename / move')),
-              const PopupMenuItem(value: 'delete', child: Text('Delete')),
+              if (e.type == 'file' && e.size <= _maxEdit) PopupMenuItem(value: 'edit', child: Text(s.backupEdit)),
+              if (e.type == 'file') PopupMenuItem(value: 'download', child: Text(s.appDownload)),
+              PopupMenuItem(value: 'rename', child: Text(s.appRenameMove)),
+              PopupMenuItem(value: 'delete', child: Text(s.actionDelete)),
             ],
           ),
         );
@@ -327,7 +334,9 @@ class _EditFileDialogState extends State<_EditFileDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return AlertDialog(
         title: Text(widget.name),
         content: SizedBox(
           width: 760,
@@ -343,8 +352,9 @@ class _EditFileDialogState extends State<_EditFileDialog> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, _ctl.text), child: const Text('Save')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, _ctl.text), child: Text(s.actionSave)),
         ],
       );
+  }
 }

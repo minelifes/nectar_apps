@@ -4,6 +4,8 @@
 Node, Python, PHP, Docker image), pick a runtime version, upload — it runs in its own Kubernetes space
 and is live at `myapp.yourdomain.com` behind [nectar_gateway](https://github.com/minelifes/nectar_gateway).
 
+📖 **Documentation:** [minelifes.github.io/nectar_apps](https://minelifes.github.io/nectar_apps/) (source in [`docs/`](docs)).
+
 > 🚧 **Early development.** Deploys, Git builds, domains, alerts, databases, backups, updates and the web terminal work; they have
 > not yet been tested on many real servers. Expect rough edges.
 
@@ -88,7 +90,7 @@ new server:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/minelifes/nectar_apps/main/deploy/install.sh \
-  | sudo bash -s -- --domain apps.example.com --restore-kit kit.json --master-key 'KEY'
+  | sudo bash -s -- --base-domain apps.example.com --restore-kit kit.json --master-key 'KEY'
 ```
 
 The panel restores its database first, then recreates the databases (with their latest dumps) and redeploys
@@ -113,6 +115,10 @@ made before the rotation still need the old key, so keep that too until the new 
 
 - **Two-factor authentication** (any authenticator app) under Settings → Security, with 10 one-time recovery
   codes. Settings also lists your sessions and signs out the ones you don't recognize.
+- **Passkeys** (Settings → Passkeys, web panel): sign in with Touch ID, Face ID, Windows Hello, a phone or a
+  security key — no email, password or code. A passkey counts as both factors and belongs to the panel's
+  address (one made at `panel.example.com` does not work at another address of the panel). Resetting a user's
+  two-factor authentication also removes their passkeys.
 - **IP allowlist** (Settings → Access): only the listed addresses or networks reach the panel. The panel
   refuses a list that would lock you out, and connections from the server itself or a private network
   (e.g. an SSH tunnel to the panel) always pass.
@@ -153,6 +159,15 @@ pull through a k3s mirror (`/etc/rancher/k3s/registries.yaml`). The installer ma
 that file; if the file already has `mirrors:` or `configs:` of yours, it leaves it alone and prints the entries
 to merge.
 
+**Preview environments:** switch on **A preview for every pull request** in the app's Git source (Builds tab →
+Edit) and let the webhook also send pull request events (GitLab: merge request events). Each pull request into
+the app's branch then gets its own app in the same project — `<app>-pr<N>`, a copy with the app's settings,
+variables and config files, at `<app>-pr<N>-<project>.<base domain>` — built from the pull request's head,
+rebuilt on new commits and deleted when the pull request is closed or merged (or after 14 days without activity).
+Previews start without database links unless you allow them to use the app's databases, and pull requests from
+forks are skipped unless allowed (their code would run with the app's secrets). With an access token that may
+write commit statuses, the pull request shows the result as `nectar/preview` with a link to the preview.
+
 Images from private registries (GHCR, Docker Hub, GitLab, your own) work with a login under **Settings →
 Registries**; every project gets it as an image pull secret, and builds use it for base images.
 
@@ -163,6 +178,13 @@ the cluster and sets up the registry mirror. Apps then spread over the nodes; ne
 80/443 from the edge node your DNS points to. Each node card can stop new pods (cordon), move its pods away
 (drain, respecting disruption budgets) and remove a drained worker from the cluster. Draining the edge node,
 or the last node that could take the pods, asks again first: it would take the gateway or the panel offline.
+
+**Several edge nodes.** On a node card, **Serve traffic too (edge node)** starts a nectar-gateway replica on that
+node (DaemonSet `nectar-gateway-edge`, label `nectar.dev/edge-replica=true`): it copies routes, certificates and
+IP blocks from the main gateway every few seconds, so the node answers on 80/443 like the main edge node, and
+Let's Encrypt challenges work whichever node they reach. DNS records the panel manages then list every edge
+node (round-robin; a node that goes down should also be taken out of DNS: **Stop serving traffic**). Open ports
+80 and 443 on that machine. Needs the latest nectar-gateway.
 
 ## One-click apps, docker-compose and nectar.yaml
 
@@ -243,7 +265,16 @@ can use the resumable [tus](https://tus.io) endpoint `POST /api/apps/{id}/upload
 - **Users and roles:** Settings → Users invites people (by email, or a link to share) and gives them roles
   everywhere or per project; Settings → Roles shows the permission matrix, and built-in roles can be cloned
   into your own. A project's **Members** card lets people with `project.members` add colleagues to it.
+- **Single sign-on** (Settings → Sign-in providers): GitHub, Google or any OpenID Connect provider (Authentik,
+  Keycloak, Zitadel, Okta, Entra ID …). Register the callback URL the card shows at the provider, paste the
+  client ID and secret, and the login page gets a button. Without **allowed domains** only existing users can
+  sign in with it (matched by verified email); with them, **create users** adds people on their first sign-in
+  with a default role, and OIDC **group → role** mappings are applied at every sign-in.
 - **API tokens** act as their user, optionally limited to a role and a project, and can expire.
+- **Native push (optional):** Settings → Push notifications takes your own Firebase project (service account key,
+  sender id, Android/Apple app ids; iPhone and Mac also need your APNs key uploaded to Firebase and the Push
+  Notifications capability in Xcode). Signed-in Nectar apps then register themselves, and an Alerts channel of
+  kind **Mobile app** delivers there (tapping a notification opens its page). Without Firebase, use ntfy or Telegram.
 - **On your phone:** add an ntfy or Telegram channel under Alerts. Besides incidents (app down, crash loop,
   out of memory, …) the panel can tell you when a deploy fails or finishes (Alerts → Rules → Deploy failed /
   Deploy finished).
@@ -268,10 +299,10 @@ can use the resumable [tus](https://tus.io) endpoint `POST /api/apps/{id}/upload
   Cloudflare) switch on **Create DNS records automatically**: the gateway creates one `*.<base domain>` record
   for every default domain and an A/AAAA record for each custom domain you add, re-points them when the
   server's IP changes and removes a record with its domain. Records someone else created are never changed
-  (the domain shows "existing records"). Needs nectar-gateway 1.3 or newer.
+  (the domain shows "existing records"). Needs the latest nectar-gateway.
 - **Redirects, access, headers** (domain dialog): ordered redirect rules (`/old → /new`, or `/blog/… →
   https://blog.example.com/…`), an IP allowlist (others get 403), response and request headers, CORS (preflights
-  answered by the gateway), gzip for text responses and HSTS. Needs nectar-gateway 1.3 or newer; with an older
+  answered by the gateway), gzip for text responses and HSTS. Needs the latest nectar-gateway; with an older
   gateway the domain keeps working without them and says so.
 
 ## Development

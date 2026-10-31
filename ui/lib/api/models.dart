@@ -110,11 +110,13 @@ class NodeInfo {
     this.usage,
     this.unschedulable = false,
     this.edge = false,
+    this.edgeReplica = false,
   });
 
-  /// Cordoned (no new pods); edge = runs nectar-gateway (DNS points here).
+  /// Cordoned (no new pods); edge = runs nectar-gateway (DNS points here); edgeReplica = runs a gateway replica.
   final bool unschedulable;
   final bool edge;
+  final bool edgeReplica;
 
   final String name;
   final bool ready;
@@ -149,6 +151,7 @@ class NodeInfo {
       usage: m['usage'] == null ? null : NodeResources.fromJson(m['usage']),
       unschedulable: _bool(m['unschedulable']),
       edge: _bool(m['edge']),
+      edgeReplica: _bool(m['edge_replica']),
     );
   }
 }
@@ -639,7 +642,7 @@ class RedirectRule {
   Map<String, dynamic> toJson() => {'from': from, 'to': to, 'code': code, if (prefix) 'prefix': true};
 }
 
-/// The gateway's per-domain HTTP options (gateway 1.3+, feature web-options).
+/// The gateway's per-domain HTTP options (feature web-options).
 class WebOptions {
   const WebOptions({
     this.redirects = const [],
@@ -1243,6 +1246,7 @@ class AlertChannel {
         'telegram' => 'chat ${_str(config['chat_id'])}',
         'email' => _str(config['to']),
         'webhook' => _str(config['url']),
+        'push' => _str(config['to']).isEmpty ? 'everyone who can see the server' : _str(config['to']),
         _ => kind,
       };
 
@@ -2502,7 +2506,17 @@ class AppSourceInfo {
     required this.webhookSecret,
     required this.buildCpu,
     required this.buildMemory,
+    this.previews = false,
+    this.previewDatabases = false,
+    this.previewForks = false,
+    this.previewTtlDays = 14,
   });
+
+  /// Preview environments: every pull request into the branch gets its own copy of the app.
+  final bool previews;
+  final bool previewDatabases;
+  final bool previewForks;
+  final int previewTtlDays; // 0 = never expire
 
   final String repoUrl;
   final String branch;
@@ -2528,6 +2542,56 @@ class AppSourceInfo {
       webhookSecret: _str(m['webhook_secret']),
       buildCpu: _int(m['build_cpu_millicores']),
       buildMemory: _int(m['build_memory_mb']),
+      previews: _bool(m['previews']),
+      previewDatabases: _bool(m['preview_databases']),
+      previewForks: _bool(m['preview_forks']),
+      previewTtlDays: m['preview_ttl_days'] == null ? 14 : _int(m['preview_ttl_days']),
+    );
+  }
+}
+
+/// A preview environment (GET /apps/{id}/previews).
+class PreviewInfo {
+  const PreviewInfo({
+    required this.appId,
+    required this.slug,
+    required this.number,
+    required this.title,
+    required this.url,
+    required this.author,
+    required this.commitSha,
+    required this.status,
+    required this.liveUrl,
+    required this.parent,
+    required this.updatedAt,
+  });
+
+  final int appId;
+  final String slug;
+  final int number;
+  final String title;
+  final String url; // the pull request page
+  final String author;
+  final String commitSha;
+  final String status;
+  final String liveUrl;
+  final String parent; // slug of the parent app (preview_of only)
+  final DateTime? updatedAt;
+
+  factory PreviewInfo.fromJson(Object? j) {
+    final m = _map(j);
+    return PreviewInfo(
+      appId: _int(m['app_id']),
+      slug: _str(m['slug']),
+      number: _int(m['number']),
+      title: _str(m['title']),
+      url: _str(m['url']),
+      author: _str(m['author']),
+      commitSha: _str(m['commit_sha']),
+      status: _str(m['status']),
+      liveUrl: _str(m['live_url']),
+      parent: _str(m['parent']),
+      updatedAt: DateTime.tryParse(_str(m['updated_at'])),
     );
   }
 }

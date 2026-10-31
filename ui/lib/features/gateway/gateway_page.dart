@@ -6,6 +6,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -25,16 +26,17 @@ class _GatewayPageState extends ConsumerState<GatewayPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     if (!session.can('server.view')) {
-      return const PageScaffold(
-        title: 'Gateway',
-        children: [NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: 'No access', message: 'Your role does not include server.view.'))],
+      return PageScaffold(
+        title: s.serverGateway,
+        children: [NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: s.noAccess, message: s.gatewayYourRoleDoesNotInclude))],
       );
     }
     return PageScaffold(
-      title: 'Gateway',
-      subtitle: 'nectar-gateway serves every domain on ports 80/443: routes, certificates, rate limits and blocked IPs.',
+      title: s.serverGateway,
+      subtitle: s.gatewayNectarGatewayServesEveryDomain,
       onRefresh: () async {
         ref.invalidate(gatewayRoutesProvider);
         ref.invalidate(gatewayHealthProvider);
@@ -72,6 +74,7 @@ class _Routes extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final routes = ref.watch(gatewayRoutesProvider);
     final health = ref.watch(gatewayHealthProvider).value ?? const {};
     final c = NectarColors.of(context);
@@ -80,7 +83,7 @@ class _Routes extends ConsumerWidget {
         value: routes,
         onRetry: () => ref.invalidate(gatewayRoutesProvider),
         data: (list) {
-          if (list.isEmpty) return const EmptyState(icon: Icons.alt_route_rounded, title: 'No routes', message: 'Domains of your apps appear here.');
+          if (list.isEmpty) return EmptyState(icon: Icons.alt_route_rounded, title: l.gatewayNoRoutes, message: l.gatewayDomainsOfYourAppsAppear);
           final down = list.where((r) => health[r.id]?.up == false).length;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,7 +129,7 @@ class _Routes extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: 8),
-              Text('Rate limits, timeouts and body limits are set per domain on the app page (Domains → edit).',
+              Text(l.gatewayRateLimitsTimeoutsAndBody,
                   style: TextStyle(color: c.muted, fontSize: 12.5)),
             ],
           );
@@ -141,6 +144,7 @@ class _Certificates extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final routes = ref.watch(gatewayRoutesProvider);
     final c = NectarColors.of(context);
     return NCard(
@@ -164,8 +168,7 @@ class _Certificates extends ConsumerWidget {
                   subtitle: Text(_certText(r), style: TextStyle(fontSize: 12.5, color: _certColor(context, r))),
                 ),
               const SizedBox(height: 6),
-              Text('Let\'s Encrypt certificates renew automatically about 30 days before they expire; the "Certificate expiring" alert '
-                  'warns when one does not.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+              Text(s.gatewayLetSEncryptCertificatesRenew, style: TextStyle(color: c.muted, fontSize: 12.5)),
             ],
           );
         },
@@ -215,27 +218,26 @@ class _Wildcards extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final info = ref.watch(gatewayCertificatesProvider);
     final c = NectarColors.of(context);
     final api = ref.read(apiProvider);
     return NCard(
-      title: 'Wildcard certificates',
+      title: l.gatewayWildcardCertificates,
       child: AsyncBlock(
         value: info,
         onRetry: () => ref.invalidate(gatewayCertificatesProvider),
         data: (i) {
           if (!i.supported) {
-            return Text('One certificate for *.your-domain serves every app at once, with no Let\'s Encrypt order per app. '
-                'This needs nectar-gateway 1.2.2 or newer: update it under Settings → Updates.', style: TextStyle(color: c.muted));
+            return Text(l.gatewayOneCertificateForYourDomain, style: TextStyle(color: c.muted));
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('A wildcard certificate (*.example.com) is proved over DNS: the gateway adds a TXT record through your DNS '
-                  'provider. Apps under it get HTTPS the moment they are created.', style: TextStyle(color: c.muted, fontSize: 13)),
+              Text(l.gatewayAWildcardCertificateExampleCom, style: TextStyle(color: c.muted, fontSize: 13)),
               const SizedBox(height: 10),
               if (!i.acme)
-                Text('The gateway\'s Let\'s Encrypt client is off: set the Let\'s Encrypt email (Settings → Gateway) first.', style: TextStyle(color: c.warning))
+                Text(l.gatewayTheGatewaySLetS, style: TextStyle(color: c.warning))
               else
                 Wrap(
                   spacing: 8,
@@ -252,21 +254,21 @@ class _Wildcards extends ConsumerWidget {
                     if (canManage && i.dns)
                       TextButton(
                         onPressed: () async {
-                          if (!await confirmAction(context, 'Remove the DNS provider?', 'Wildcard certificates stop renewing until you set it again.', 'Remove', danger: true)) return;
+                          if (!await confirmAction(context, l.gatewayRemoveTheDnsProvider, l.gatewayWildcardCertificatesStopRenewingUntil, l.backupRemove2, danger: true)) return;
                           if (!context.mounted) return;
                           await _run(context, ref, () => api.put('/gateway/settings', data: {'dns_provider': ''}));
                         },
-                        child: const Text('Remove'),
+                        child: Text(l.backupRemove2),
                       ),
                     if (canManage && i.dns && i.baseWildcard.isNotEmpty && !i.hasBaseWildcard)
                       FilledButton.icon(
                         onPressed: () => _run(context, ref, () => api.post('/gateway/certificates', data: {'base_domain': true}),
                             'Ordering ${i.baseWildcard} — this takes a minute or two'),
                         icon: const Icon(Icons.add_moderator_outlined, size: 18),
-                        label: Text('Get ${i.baseWildcard}'),
+                        label: Text(l.gatewayGet(i.baseWildcard)),
                       ),
                     if (canManage && i.dns)
-                      OutlinedButton(onPressed: () => showDialog<void>(context: context, builder: (_) => const _WildcardDialog()), child: const Text('Other domain…')),
+                      OutlinedButton(onPressed: () => showDialog<void>(context: context, builder: (_) => const _WildcardDialog()), child: Text(l.gatewayOtherDomain)),
                   ],
                 ),
               if (i.certificates.isNotEmpty) const SizedBox(height: 8),
@@ -289,14 +291,14 @@ class _Wildcards extends ConsumerWidget {
                           onSelected: (a) async {
                             if (a == 'renew') {
                               await _run(context, ref, () => api.post('/gateway/certificates/${cert.id}/renew'), 'Renewing ${cert.domain}');
-                            } else if (await confirmAction(context, 'Delete ${cert.domain}?',
-                                'Hosts it serves fall back to their own Let\'s Encrypt certificates (ordered per host).', 'Delete', danger: true)) {
+                            } else if (await confirmAction(context, l.gatewayDelete(cert.domain),
+                                l.gatewayHostsItServesFallBack, l.actionDelete, danger: true)) {
                               if (context.mounted) await _run(context, ref, () => api.delete('/gateway/certificates/${cert.id}'));
                             }
                           },
                           itemBuilder: (_) => [
-                            if (cert.acme) const PopupMenuItem(value: 'renew', child: Text('Renew now')),
-                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                            if (cert.acme) PopupMenuItem(value: 'renew', child: Text(l.gatewayRenewNow)),
+                            PopupMenuItem(value: 'delete', child: Text(l.actionDelete)),
                           ],
                         )
                       : null,
@@ -344,6 +346,7 @@ class _DnsDialogState extends ConsumerState<_DnsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
       title: Text(widget.configured ? 'Change the Cloudflare token' : 'Cloudflare for wildcard certificates'),
@@ -353,17 +356,16 @@ class _DnsDialogState extends ConsumerState<_DnsDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('In Cloudflare: My Profile → API Tokens → Create Token → "Edit zone DNS", limited to your zone '
-                '(permissions Zone:Read and DNS:Edit). The token is stored in the gateway and never shown again.',
+            Text(s.gatewayInCloudflareMyProfileApi,
                 style: TextStyle(color: c.muted, fontSize: 13)),
             const SizedBox(height: 12),
-            TextField(controller: _token, obscureText: true, autofocus: true, decoration: const InputDecoration(labelText: 'API token'), onSubmitted: (_) => _save()),
+            TextField(controller: _token, obscureText: true, autofocus: true, decoration: InputDecoration(labelText: s.gatewayApiToken), onSubmitted: (_) => _save()),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
+        FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave)),
       ],
     );
   }
@@ -401,28 +403,31 @@ class _WildcardDialogState extends ConsumerState<_WildcardDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Wildcard certificate'),
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return AlertDialog(
+        title: Text(s.gatewayWildcardCertificate),
         content: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: _domain, autofocus: true, decoration: const InputDecoration(labelText: 'Domain', hintText: '*.example.com')),
+              TextField(controller: _domain, autofocus: true, decoration: InputDecoration(labelText: s.gatewayDomain, hintText: s.gatewayExampleCom)),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _apex,
                 onChanged: (v) => setState(() => _apex = v ?? true),
-                title: const Text('Also the domain itself (example.com)'),
+                title: Text(s.gatewayAlsoTheDomainItselfExample),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: _busy ? null : _create, child: const Text('Order')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
+          FilledButton(onPressed: _busy ? null : _create, child: Text(s.gatewayOrder)),
         ],
       );
+  }
 }
 
 /// How long a client that keeps exceeding a domain's rate limit is blocked (gateway setting).
@@ -433,24 +438,24 @@ class _RateLimitBlocking extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final settings = ref.watch(gatewaySettingsProvider);
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Rate limits',
+      title: s.gatewayRateLimits,
       child: AsyncBlock(
         value: settings,
         onRetry: () => ref.invalidate(gatewaySettingsProvider),
         data: (m) {
           if (!m.containsKey('rate_limit_block_minutes')) {
-            return Text('This nectar-gateway blocks a client over a rate limit for 24 hours. Update it to answer 429 instead.',
+            return Text(s.gatewayThisNectarGatewayBlocksA,
                 style: TextStyle(color: c.muted));
           }
           final cur = (m['rate_limit_block_minutes'] as num?)?.toInt() ?? 10;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Above a domain\'s rate limit a client gets 429 and may retry a second later. A client that keeps going '
-                  '(more than ten times the limit refused within a minute) is blocked:', style: TextStyle(color: c.muted, fontSize: 13)),
+              Text(s.gatewayAboveADomainSRate, style: TextStyle(color: c.muted, fontSize: 13)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -494,22 +499,23 @@ class _Blocked extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final blocked = ref.watch(blockedIpsProvider);
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Blocked IPs',
+      title: s.gatewayBlockedIps,
       trailing: canManage
           ? FilledButton.icon(
               onPressed: () => showDialog<void>(context: context, builder: (_) => const _BlockDialog()),
               icon: const Icon(Icons.block_rounded, size: 18),
-              label: const Text('Block IP'),
+              label: Text(s.gatewayBlockIp),
             )
           : null,
       child: AsyncBlock(
         value: blocked,
         onRetry: () => ref.invalidate(blockedIpsProvider),
         data: (list) => list.isEmpty
-            ? Text('Nobody is blocked. The gateway blocks scanners (requests for .env, wp-login …) by itself.', style: TextStyle(color: c.muted))
+            ? Text(s.gatewayNobodyIsBlockedTheGateway, style: TextStyle(color: c.muted))
             : Column(
                 children: [
                   for (final b in list)
@@ -525,7 +531,7 @@ class _Blocked extends ConsumerWidget {
                         ].join(' · '),
                         style: TextStyle(fontSize: 12.5, color: c.muted),
                       ),
-                      trailing: canManage ? TextButton(onPressed: () => _unblock(context, ref, b), child: const Text('Unblock')) : null,
+                      trailing: canManage ? TextButton(onPressed: () => _unblock(context, ref, b), child: Text(s.gatewayUnblock)) : null,
                     ),
                 ],
               ),
@@ -566,25 +572,27 @@ class _BlockDialogState extends ConsumerState<_BlockDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Block an IP'),
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return AlertDialog(
+        title: Text(s.gatewayBlockAnIp),
         content: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: _ip, decoration: const InputDecoration(labelText: 'IP address', hintText: '203.0.113.9')),
+              TextField(controller: _ip, decoration: InputDecoration(labelText: s.gatewayIpAddress, hintText: '203.0.113.9')),
               const SizedBox(height: 10),
-              TextField(controller: _reason, decoration: const InputDecoration(labelText: 'Reason (optional)')),
+              TextField(controller: _reason, decoration: InputDecoration(labelText: s.gatewayReasonOptional)),
               const SizedBox(height: 10),
               DropdownButtonFormField<int>(
                 initialValue: _hours,
-                decoration: const InputDecoration(labelText: 'For'),
-                items: const [
-                  DropdownMenuItem(value: 1, child: Text('1 hour')),
-                  DropdownMenuItem(value: 24, child: Text('1 day')),
-                  DropdownMenuItem(value: 168, child: Text('1 week')),
-                  DropdownMenuItem(value: 0, child: Text('until unblocked')),
+                decoration: InputDecoration(labelText: s.gatewayFor),
+                items: [
+                  DropdownMenuItem(value: 1, child: Text(s.gateway1Hour)),
+                  DropdownMenuItem(value: 24, child: Text(s.gateway1Day)),
+                  DropdownMenuItem(value: 168, child: Text(s.gateway1Week)),
+                  DropdownMenuItem(value: 0, child: Text(s.gatewayUntilUnblocked)),
                 ],
                 onChanged: (v) => setState(() => _hours = v ?? 24),
               ),
@@ -592,10 +600,11 @@ class _BlockDialogState extends ConsumerState<_BlockDialog> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: _block, child: const Text('Block')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
+          FilledButton(onPressed: _block, child: Text(s.gatewayBlock)),
         ],
       );
+  }
 }
 
 /// The gateway's latest requests over all domains (kept in the gateway's memory, newest first), with
@@ -625,14 +634,15 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final log = ref.watch(gatewayAccessLogProvider(_filter));
     final domains = {for (final r in ref.watch(gatewayRoutesProvider).value ?? const <GatewayRoute>[]) r.domain}.toList()..sort();
     if (_domain.isNotEmpty && !domains.contains(_domain)) domains.insert(0, _domain);
     return NCard(
-      title: 'Latest requests',
+      title: s.gatewayLatestRequests,
       trailing: IconButton(
-        tooltip: 'Refresh',
+        tooltip: s.actionRefresh,
         icon: const Icon(Icons.refresh_rounded, size: 18),
         onPressed: () => ref.invalidate(gatewayAccessLogProvider(_filter)),
       ),
@@ -648,9 +658,9 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                 child: DropdownButtonFormField<String>(
                   initialValue: _domain,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Domain', isDense: true),
+                  decoration: InputDecoration(labelText: s.gatewayDomain, isDense: true),
                   items: [
-                    const DropdownMenuItem(value: '', child: Text('All domains')),
+                    DropdownMenuItem(value: '', child: Text(s.gatewayAllDomains)),
                     for (final d in domains) DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)),
                   ],
                   onChanged: (v) => setState(() => _domain = v ?? ''),
@@ -660,9 +670,9 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                 width: 150,
                 child: DropdownButtonFormField<String>(
                   initialValue: _status,
-                  decoration: const InputDecoration(labelText: 'Status', isDense: true),
-                  items: const [
-                    DropdownMenuItem(value: '', child: Text('Any')),
+                  decoration: InputDecoration(labelText: s.gatewayStatus, isDense: true),
+                  items: [
+                    DropdownMenuItem(value: '', child: Text(s.gatewayAny)),
                     DropdownMenuItem(value: '2xx', child: Text('2xx')),
                     DropdownMenuItem(value: '3xx', child: Text('3xx')),
                     DropdownMenuItem(value: '4xx', child: Text('4xx')),
@@ -676,7 +686,7 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                 child: TextField(
                   controller: _ipField,
                   decoration: InputDecoration(
-                    labelText: 'Client IP',
+                    labelText: s.gatewayClientIp,
                     isDense: true,
                     suffixIcon: _ip.isEmpty
                         ? null
@@ -700,7 +710,7 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
             onRetry: () => ref.invalidate(gatewayAccessLogProvider(_filter)),
             data: (entries) {
               if (entries.isEmpty) {
-                return Text('No requests match. The gateway keeps the latest requests in memory (ACCESS_LOG_SIZE, 2000 by default).',
+                return Text(s.gatewayNoRequestsMatchTheGateway,
                     style: TextStyle(color: c.muted, fontSize: 13));
               }
               return Column(
@@ -724,7 +734,7 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                           Expanded(
                             child: Text('${e.host}${e.path}', maxLines: 1, overflow: TextOverflow.ellipsis, style: monoStyle(context, size: 12.5)),
                           ),
-                          SizedBox(width: 64, child: Text('${e.ms} ms', textAlign: TextAlign.right, style: TextStyle(color: c.muted, fontSize: 12))),
+                          SizedBox(width: 64, child: Text(s.gatewayMs(e.ms), textAlign: TextAlign.right, style: TextStyle(color: c.muted, fontSize: 12))),
                           SizedBox(
                             width: 128,
                             child: Align(
@@ -740,7 +750,7 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                           ),
                           if (widget.canBlock)
                             IconButton(
-                              tooltip: 'Block ${e.ip}',
+                              tooltip: s.gatewayBlock2(e.ip),
                               visualDensity: VisualDensity.compact,
                               icon: Icon(Icons.block_rounded, size: 16, color: c.muted),
                               onPressed: () => showDialog<void>(context: context, builder: (_) => _BlockDialog(ip: e.ip)),

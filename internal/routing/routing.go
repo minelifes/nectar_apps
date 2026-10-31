@@ -250,7 +250,7 @@ func (s *Syncer) Sync(ctx context.Context) error {
 		if want.Web != nil && !webOK {
 			// an older gateway would silently ignore the options: serve the route without them and say so
 			want.Web = nil
-			webNote = "redirect rules, allowlist, headers, CORS, compression and HSTS need nectar-gateway 1.3 or newer (update it)"
+			webNote = "redirect rules, allowlist, headers, CORS, compression and HSTS need the latest nectar-gateway (update it)"
 		}
 		if want.Web == nil && have.Web != nil {
 			want.Web = &gateway.Web{} // clears the options on the gateway ("web" omitted would keep them)

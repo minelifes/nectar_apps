@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api/session.dart';
 import '../core/client_version.dart';
 import '../data/providers.dart';
+import '../generated/l10n.dart';
 import '../theme/tokens.dart';
 
 /// Web: the panel was updated while this tab was open → offer a reload (the UI is embedded in the panel).
@@ -22,6 +23,7 @@ class _VersionBannerState extends ConsumerState<VersionBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final loaded = ref.watch(sessionProvider.select((s) => s.version));
     final latest = ref.watch(serverVersionProvider).value;
     if (loaded == null || latest == null) return const SizedBox.shrink();
@@ -44,10 +46,10 @@ class _VersionBannerState extends ConsumerState<VersionBanner> {
         icon: Icons.auto_awesome_rounded,
         text: 'Nectar Apps was updated to ${latest.version}. Reload to use the new version.',
         actions: [
-          TextButton(onPressed: () => setState(() => _dismissed = latest.version), child: const Text('Later')),
+          TextButton(onPressed: () => setState(() => _dismissed = latest.version), child: Text(l.shellLater)),
           FilledButton(
             onPressed: () => launchUrl(Uri.base, webOnlyWindowName: '_self'),
-            child: const Text('Reload'),
+            child: Text(l.shellReload),
           ),
         ],
       );

@@ -6,6 +6,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/chart.dart';
 import '../../widgets/common.dart';
@@ -36,16 +37,17 @@ class _ServerPageState extends ConsumerState<ServerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final canView = ref.watch(sessionProvider.select((s) => s.can('server.view')));
     if (!canView) {
-      return const PageScaffold(
-        title: 'Server',
+      return PageScaffold(
+        title: l.navServer,
         children: [
           NCard(
             child: EmptyState(
               icon: Icons.lock_outline_rounded,
-              title: 'No access',
-              message: 'Your role does not include viewing the server (server.view).',
+              title: l.noAccess,
+              message: l.serverYourRoleDoesNotInclude,
             ),
           ),
         ],
@@ -55,16 +57,16 @@ class _ServerPageState extends ConsumerState<ServerPage> {
     final history = ref.watch(serverMetricsProvider(_range));
     final events = ref.watch(serverEventsProvider);
     return PageScaffold(
-      title: 'Server',
-      subtitle: 'Cluster nodes, their resources and recent warnings.',
+      title: l.navServer,
+      subtitle: l.serverClusterNodesTheirResourcesAnd,
       onRefresh: _refresh,
       actions: [
-        OutlinedButton.icon(onPressed: () => context.go('/gateway'), icon: const Icon(Icons.alt_route_rounded, size: 18), label: const Text('Gateway')),
+        OutlinedButton.icon(onPressed: () => context.go('/gateway'), icon: const Icon(Icons.alt_route_rounded, size: 18), label: Text(l.serverGateway)),
         if (ref.watch(sessionProvider).can('server.manage'))
           OutlinedButton.icon(
             onPressed: () => showDialog<void>(context: context, builder: (_) => const AddNodeDialog()),
             icon: const Icon(Icons.add_to_queue_rounded, size: 18),
-            label: const Text('Add node'),
+            label: Text(l.serverAddNode),
           ),
         RangePicker(value: _range, options: usageRanges, onChanged: (r) => setState(() => _range = r)),
       ],
@@ -91,7 +93,7 @@ class _ServerPageState extends ConsumerState<ServerPage> {
         const VolumesCard(),
         const SizedBox(height: NectarTokens.gap),
         NCard(
-          title: 'Warnings',
+          title: l.serverWarnings,
           child: AsyncBlock(
             value: events,
             loadingHeight: 80,
@@ -111,30 +113,31 @@ class _NodeHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final pts = history.points;
     final last = pts.isEmpty ? null : pts.last;
     final cpu = ChartSeries(
-      label: 'CPU',
+      label: l.serverCpu,
       color: NectarTokens.amber,
       fill: true,
       points: [for (final p in pts) (p.t, p.cpuM.toDouble())],
     );
     final mem = ChartSeries(
-      label: 'Memory',
+      label: l.serverMemory,
       color: c.deploying,
       fill: true,
       points: [for (final p in pts) (p.t, p.memB.toDouble())],
     );
-    final rx = ChartSeries(label: 'In', color: c.running, points: [for (final p in pts) (p.t, p.rxBps.toDouble())]);
-    final tx = ChartSeries(label: 'Out', color: NectarTokens.amber, points: [for (final p in pts) (p.t, p.txBps.toDouble())]);
+    final rx = ChartSeries(label: l.serverIn, color: c.running, points: [for (final p in pts) (p.t, p.rxBps.toDouble())]);
+    final tx = ChartSeries(label: l.serverOut, color: NectarTokens.amber, points: [for (final p in pts) (p.t, p.txBps.toDouble())]);
     final charts = [
       ('CPU', TimeSeriesChart(series: [cpu], formatY: (v) => formatCpu(v.round()), yMax: history.cpuAllocM.toDouble())),
       ('Memory', TimeSeriesChart(series: [mem], formatY: (v) => formatBytes(v.round()), yMax: history.memAllocB.toDouble())),
       ('Network', TimeSeriesChart(series: [rx, tx], formatY: (v) => '${formatBytes(v.round())}/s')),
     ];
     return NCard(
-      title: 'History · ${history.name} · last $range',
+      title: l.serverHistoryLast(history.name, range),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -161,7 +164,7 @@ class _NodeHistoryCard extends StatelessWidget {
           if (last != null && last.diskTotal > 0) ...[
             const SizedBox(height: 20),
             UsageBar(
-              label: 'Disk',
+              label: l.serverDisk,
               value: last.diskUsed / last.diskTotal,
               trailing: '${formatBytes(last.diskUsed)} of ${formatBytes(last.diskTotal)}',
             ),

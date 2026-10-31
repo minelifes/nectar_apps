@@ -5,6 +5,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import 'alert_widgets.dart';
@@ -30,13 +31,14 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     if (!session.can('server.view')) {
-      return const PageScaffold(
-        title: 'Alerts',
+      return PageScaffold(
+        title: s.navAlerts,
         children: [
           NCard(
-            child: EmptyState(icon: Icons.lock_outline_rounded, title: 'No access', message: 'Your role does not include viewing the server (server.view).'),
+            child: EmptyState(icon: Icons.lock_outline_rounded, title: s.noAccess, message: s.serverYourRoleDoesNotInclude),
           ),
         ],
       );
@@ -50,8 +52,8 @@ class _AlertsPageState extends ConsumerState<AlertsPage> {
     ];
     final index = tabs.indexWhere((t) => t.$1 == _tab).clamp(0, tabs.length - 1);
     return PageScaffold(
-      title: 'Alerts',
-      subtitle: 'Get notified when apps go down, servers run out of resources or certificates are about to expire.',
+      title: s.navAlerts,
+      subtitle: s.alertGetNotifiedWhenAppsGo,
       onRefresh: _refresh,
       children: [
         NTabs(index: index, labels: [for (final t in tabs) t.$1], onChanged: (i) => setState(() => _tab = tabs[i].$1)),
@@ -67,6 +69,7 @@ class _Firing extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final firing = ref.watch(firingAlertsProvider);
     final channels = ref.watch(sessionProvider.select((s) => s.can('settings.manage'))) ? ref.watch(alertChannelsProvider) : null;
     return Column(
@@ -80,7 +83,7 @@ class _Firing extends ConsumerWidget {
                 children: [
                   Icon(Icons.notifications_paused_outlined, color: NectarColors.of(context).warning),
                   const SizedBox(width: 12),
-                  const Expanded(child: Text('No notification channel yet: alerts only show up here. Add ntfy, Telegram, email or a webhook under Channels.')),
+                  Expanded(child: Text(l.alertNoNotificationChannelYetAlerts)),
                 ],
               ),
             ),
@@ -183,6 +186,7 @@ class _RulesEditorState extends ConsumerState<_RulesEditor> {
       });
 
   Future<void> _save() async {
+        final s = S.of(context);
     final rules = <Map<String, dynamic>>[];
     for (final r in _rules) {
       final def = widget.config.def(r.kind);
@@ -190,7 +194,7 @@ class _RulesEditorState extends ConsumerState<_RulesEditor> {
       if (def != null && def.unit.isNotEmpty) {
         final v = double.tryParse(_thresholds[r.kind]!.text.trim().replaceAll(',', '.'));
         if (v == null) {
-          showSnack(context, '${def.title}: enter a number', error: true);
+          showSnack(context, s.alertEnterANumber(def.title), error: true);
           return;
         }
         threshold = v;
@@ -201,7 +205,7 @@ class _RulesEditorState extends ConsumerState<_RulesEditor> {
     try {
       await ref.read(apiProvider).put('/alerts/rules', data: {'rules': rules, 'panel_url': _panelUrl.text.trim(), 'repeat_hours': _repeat});
       ref.invalidate(alertConfigProvider);
-      if (mounted) showSnack(context, 'Alert rules saved');
+      if (mounted) showSnack(context, s.alertAlertRulesSaved);
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     } finally {
@@ -211,6 +215,7 @@ class _RulesEditorState extends ConsumerState<_RulesEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final edit = widget.canEdit;
     return Column(
@@ -229,24 +234,24 @@ class _RulesEditorState extends ConsumerState<_RulesEditor> {
         ),
         const SizedBox(height: NectarTokens.gap),
         NCard(
-          title: 'Notifications',
+          title: s.alertNotifications,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextField(
                 controller: _panelUrl,
                 enabled: edit,
-                decoration: const InputDecoration(
-                  labelText: 'Panel address for links',
+                decoration: InputDecoration(
+                  labelText: s.alertPanelAddressForLinks,
                   hintText: 'https://panel.example.com',
-                  helperText: 'Notifications link to the affected app. Leave empty for no links.',
+                  helperText: s.alertNotificationsLinkToTheAffected,
                 ),
                 onChanged: (_) => setState(() => _dirty = true),
               ),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const Expanded(child: Text('Remind me while an alert keeps firing')),
+                  Expanded(child: Text(s.alertRemindMeWhileAnAlert)),
                   DropdownButton<int>(
                     value: _repeatOptions.contains(_repeat) ? _repeat : 0,
                     items: [
@@ -275,13 +280,14 @@ class _RulesEditorState extends ConsumerState<_RulesEditor> {
         ] else
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text('Changing rules needs the settings.manage permission.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+            child: Text(s.alertChangingRulesNeedsTheSettings, style: TextStyle(color: c.muted, fontSize: 12.5)),
           ),
       ],
     );
   }
 
   Widget _ruleRow(BuildContext context, int i) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final r = _rules[i];
     final def = widget.config.def(r.kind);
@@ -334,7 +340,7 @@ class _RulesEditorState extends ConsumerState<_RulesEditor> {
             child: DropdownButtonFormField<int>(
               initialValue: _forOptions.contains(r.forSeconds) ? r.forSeconds : null,
               isDense: true,
-              decoration: const InputDecoration(isDense: true, labelText: 'For at least'),
+              decoration: InputDecoration(isDense: true, labelText: l.alertForAtLeast),
               items: [for (final s in _forOptions) DropdownMenuItem(value: s, child: Text(formatFor(s)))],
               onChanged: edit && r.enabled ? (v) => _set(i, r.copyWith(forSeconds: v ?? 0)) : null,
             ),
@@ -350,9 +356,10 @@ class _Channels extends ConsumerWidget {
   const _Channels();
 
   Future<void> _test(BuildContext context, WidgetRef ref, AlertChannel ch) async {
+    final s = S.of(context);
     try {
       await ref.read(apiProvider).post('/alerts/channels/${ch.id}/test');
-      if (context.mounted) showSnack(context, 'Test message sent to ${ch.name}');
+      if (context.mounted) showSnack(context, s.alertTestMessageSentTo(ch.name));
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
@@ -368,7 +375,8 @@ class _Channels extends ConsumerWidget {
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref, AlertChannel ch) async {
-    if (!await confirmAction(context, 'Delete ${ch.name}?', 'Alerts will no longer be sent there.', 'Delete', danger: true)) return;
+    final s = S.of(context);
+    if (!await confirmAction(context, s.alertDelete(ch.name), s.alertAlertsWillNoLongerBe, s.actionDelete, danger: true)) return;
     try {
       await ref.read(apiProvider).delete('/alerts/channels/${ch.id}');
       ref.invalidate(alertChannelsProvider);
@@ -379,24 +387,25 @@ class _Channels extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final channels = ref.watch(alertChannelsProvider);
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Channels',
+      title: s.alertChannels,
       trailing: FilledButton.icon(
         onPressed: () => showChannelDialog(context, ref),
         icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Add channel'),
+        label: Text(s.alertAddChannel),
       ),
       child: AsyncBlock(
         value: channels,
         onRetry: () => ref.invalidate(alertChannelsProvider),
         data: (list) {
           if (list.isEmpty) {
-            return const EmptyState(
+            return EmptyState(
               icon: Icons.campaign_outlined,
-              title: 'No channels yet',
-              message: 'ntfy is the quickest: install the ntfy app, subscribe to a topic name only you know, and add it here.',
+              title: s.alertNoChannelsYet,
+              message: s.alertNtfyIsTheQuickestInstall,
             );
           }
           return Column(
@@ -421,13 +430,13 @@ class _Channels extends ConsumerWidget {
                         ),
                       ),
                       Switch(value: list[i].enabled, onChanged: (v) => _toggle(context, ref, list[i], v)),
-                      IconButton(tooltip: 'Send a test', icon: const Icon(Icons.send_rounded, size: 18), onPressed: () => _test(context, ref, list[i])),
+                      IconButton(tooltip: s.alertSendATest, icon: const Icon(Icons.send_rounded, size: 18), onPressed: () => _test(context, ref, list[i])),
                       IconButton(
-                        tooltip: 'Edit',
+                        tooltip: s.backupEdit,
                         icon: const Icon(Icons.edit_outlined, size: 18),
                         onPressed: () => showChannelDialog(context, ref, channel: list[i]),
                       ),
-                      IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline_rounded, size: 18), onPressed: () => _delete(context, ref, list[i])),
+                      IconButton(tooltip: s.actionDelete, icon: const Icon(Icons.delete_outline_rounded, size: 18), onPressed: () => _delete(context, ref, list[i])),
                     ],
                   ),
                 ),

@@ -85,9 +85,11 @@ var columns = []column{
 }
 
 // sealedSettings are settings rows whose JSON has sealed fields: key → purpose, field ("" = the whole
-// value is a sealed string).
+// value is a sealed string, "*" = an object whose values are all sealed strings).
 var sealedSettings = []struct{ key, purpose, field string }{
 	{"smtp", "smtp", "password"},
+	{"sso_secrets", "sso", "*"},
+	{"push", "push", "service_account"},
 	{settingArtifactKey, "env", ""},
 }
 
@@ -209,6 +211,21 @@ func Reseal(ctx context.Context, st *store.Store, oldKey, newKey []byte) (Report
 				return rep, fmt.Errorf("setting %s: %w", ss.key, err)
 			}
 			b, _ := json.Marshal(nv)
+			out = string(b)
+		} else if ss.field == "*" {
+			var m map[string]string
+			if err := json.Unmarshal([]byte(raw), &m); err != nil {
+				return rep, fmt.Errorf("setting %s: %w", ss.key, err)
+			}
+			for k, v := range m {
+				if v == "" {
+					continue
+				}
+				if m[k], err = bx.reseal(ss.purpose, v); err != nil {
+					return rep, fmt.Errorf("setting %s.%s: %w", ss.key, k, err)
+				}
+			}
+			b, _ := json.Marshal(m)
 			out = string(b)
 		} else {
 			var m map[string]any

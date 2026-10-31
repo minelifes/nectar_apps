@@ -52,7 +52,7 @@ func TestAlertChannelsRulesAndDisk(t *testing.T) {
 		t.Fatalf("test message: %q", got)
 	}
 	mu.Unlock()
-	if code, v, _ := e.do(plain, "GET", "/api/alerts/channels", nil, auth...); code != 200 || len(v["channels"].([]any)) != 1 || len(v["kinds"].([]any)) != 4 {
+	if code, v, _ := e.do(plain, "GET", "/api/alerts/channels", nil, auth...); code != 200 || len(v["channels"].([]any)) != 1 || len(v["kinds"].([]any)) != 5 {
 		t.Fatalf("list: %d %v", code, v)
 	}
 

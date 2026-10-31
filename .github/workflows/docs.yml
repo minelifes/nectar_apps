@@ -1,0 +1,53 @@
+# Docs site: MkDocs Material from docs/ (+ api/openapi.yaml for the API reference) published to the
+# gh-pages branch next to updates.json (the update feed written by release.yml, which is kept).
+name: docs
+
+on:
+  push:
+    branches: [main]
+    paths: [docs/**, mkdocs.yml, api/openapi.yaml, .github/workflows/docs.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Build
+        run: |
+          pip install "mkdocs<2" "mkdocs-material==9.6.*"
+          cp api/openapi.yaml docs/openapi.yaml
+          mkdocs build --strict
+      - name: Publish to gh-pages (keeps updates.json)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for _ in 1 2 3; do
+            rm -rf /tmp/pages && git worktree prune
+            if git fetch origin gh-pages:gh-pages 2>/dev/null; then
+              git worktree add /tmp/pages gh-pages
+            else
+              git worktree add --detach /tmp/pages && (cd /tmp/pages && git checkout --orphan gh-pages && git rm -rf . -q)
+            fi
+            cd /tmp/pages
+            find . -mindepth 1 -maxdepth 1 ! -name .git ! -name updates.json -exec rm -rf {} +
+            cp -r "$GITHUB_WORKSPACE/site/." .
+            touch .nojekyll
+            git add -A
+            git diff --cached --quiet && exit 0
+            git commit -qm "docs: ${GITHUB_SHA::7}"
+            git push origin gh-pages && exit 0
+            cd "$GITHUB_WORKSPACE"
+            sleep 5
+          done
+          exit 1

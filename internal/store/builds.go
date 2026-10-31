@@ -64,27 +64,34 @@ func (s *Store) DeleteRegistryCredential(ctx context.Context, id int64) error {
 
 // AppSource is the Git repository an image app is built from. Token and WebhookSecret are sealed.
 type AppSource struct {
-	AppID         int64     `json:"app_id"`
-	RepoURL       string    `json:"repo_url"`
-	Branch        string    `json:"branch"`
-	ContextDir    string    `json:"context_dir"`
-	Dockerfile    string    `json:"dockerfile"`
-	Token         string    `json:"-"`
-	WebhookSecret string    `json:"-"`
-	AutoDeploy    bool      `json:"auto_deploy"`
-	BuildCPU      int64     `json:"build_cpu_millicores"`
-	BuildMemory   int64     `json:"build_memory_mb"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	AppID         int64  `json:"app_id"`
+	RepoURL       string `json:"repo_url"`
+	Branch        string `json:"branch"`
+	ContextDir    string `json:"context_dir"`
+	Dockerfile    string `json:"dockerfile"`
+	Token         string `json:"-"`
+	WebhookSecret string `json:"-"`
+	AutoDeploy    bool   `json:"auto_deploy"`
+	BuildCPU      int64  `json:"build_cpu_millicores"`
+	BuildMemory   int64  `json:"build_memory_mb"`
+	// Previews: every pull request into Branch gets its own copy of the app (see previews.go).
+	Previews         bool      `json:"previews"`
+	PreviewDatabases bool      `json:"preview_databases"` // previews keep the parent's database links
+	PreviewForks     bool      `json:"preview_forks"`     // also pull requests from forks (their code runs with the app's variables)
+	PreviewTTLDays   int       `json:"preview_ttl_days"`  // 0 = never expire
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
-const sourceCols = `app_id, repo_url, branch, context_dir, dockerfile, token, webhook_secret, auto_deploy, build_cpu, build_memory, updated_at`
+const sourceCols = `app_id, repo_url, branch, context_dir, dockerfile, token, webhook_secret, auto_deploy, build_cpu, build_memory,
+	previews, preview_databases, preview_forks, preview_ttl_days, updated_at`
 
 // GetAppSource returns the source of an app (ErrNotFound when the app is not built from Git).
 func (s *Store) GetAppSource(ctx context.Context, appID int64) (AppSource, error) {
 	var a AppSource
 	var updated int64
 	err := s.db.QueryRowContext(ctx, `SELECT `+sourceCols+` FROM app_sources WHERE app_id = ?`, appID).Scan(
-		&a.AppID, &a.RepoURL, &a.Branch, &a.ContextDir, &a.Dockerfile, &a.Token, &a.WebhookSecret, &a.AutoDeploy, &a.BuildCPU, &a.BuildMemory, &updated)
+		&a.AppID, &a.RepoURL, &a.Branch, &a.ContextDir, &a.Dockerfile, &a.Token, &a.WebhookSecret, &a.AutoDeploy, &a.BuildCPU, &a.BuildMemory,
+		&a.Previews, &a.PreviewDatabases, &a.PreviewForks, &a.PreviewTTLDays, &updated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return a, ErrNotFound
 	}
@@ -94,11 +101,14 @@ func (s *Store) GetAppSource(ctx context.Context, appID int64) (AppSource, error
 
 // SaveAppSource creates or replaces the source of an app.
 func (s *Store) SaveAppSource(ctx context.Context, a AppSource) (AppSource, error) {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO app_sources (`+sourceCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO app_sources (`+sourceCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (app_id) DO UPDATE SET repo_url = excluded.repo_url, branch = excluded.branch, context_dir = excluded.context_dir,
 		dockerfile = excluded.dockerfile, token = excluded.token, webhook_secret = excluded.webhook_secret, auto_deploy = excluded.auto_deploy,
-		build_cpu = excluded.build_cpu, build_memory = excluded.build_memory, updated_at = excluded.updated_at`,
-		a.AppID, a.RepoURL, a.Branch, a.ContextDir, a.Dockerfile, a.Token, a.WebhookSecret, b2i(a.AutoDeploy), a.BuildCPU, a.BuildMemory, s.unix())
+		build_cpu = excluded.build_cpu, build_memory = excluded.build_memory, previews = excluded.previews,
+		preview_databases = excluded.preview_databases, preview_forks = excluded.preview_forks, preview_ttl_days = excluded.preview_ttl_days,
+		updated_at = excluded.updated_at`,
+		a.AppID, a.RepoURL, a.Branch, a.ContextDir, a.Dockerfile, a.Token, a.WebhookSecret, b2i(a.AutoDeploy), a.BuildCPU, a.BuildMemory,
+		b2i(a.Previews), b2i(a.PreviewDatabases), b2i(a.PreviewForks), a.PreviewTTLDays, s.unix())
 	if isForeignKey(err) {
 		return a, ErrNotFound
 	}

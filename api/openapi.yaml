@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Nectar Apps API
-  version: 0.19.0
+  version: 0.25.0
   description: |
     Control-plane API of Nectar Apps. Single source of truth for the Flutter client (generated Dart client)
     and the Go handlers. Auth: session cookie `nectar_session` (web) or `Authorization: Bearer <token>`
@@ -130,6 +130,203 @@ paths:
       summary: End the current session
       responses:
         "204": { description: Logged out }
+  /auth/passkey/options:
+    post:
+      tags: [auth]
+      summary: Options for navigator.credentials.get (JSON form, discoverable credentials, user verification required) plus a one-time flow id (5 minutes)
+      security: []
+      responses:
+        "200": { description: "{flow, options}" }
+  /auth/passkey:
+    post:
+      tags: [auth]
+      summary: Sign in with a passkey (web session cookie). The passkey is both factors; the login limiter applies.
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [flow, credential], properties: { flow: { type: string }, credential: { type: object, description: PublicKeyCredential.toJSON() } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LoginResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /me/passkeys:
+    get:
+      tags: [auth]
+      summary: The caller's passkeys
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Passkey" } } } } }
+    post:
+      tags: [auth]
+      summary: Store a passkey created with the options of POST /me/passkeys/options
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [flow, credential], properties: { flow: { type: string }, name: { type: string }, credential: { type: object, description: PublicKeyCredential.toJSON() } } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Passkey" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /me/passkeys/options:
+    post:
+      tags: [auth]
+      summary: Options for navigator.credentials.create (resident key, user verification required, "none" attestation; existing passkeys excluded) plus a flow id
+      responses:
+        "200": { description: "{flow, options}" }
+  /me/passkeys/{pk}:
+    parameters: [{ name: pk, in: path, required: true, schema: { type: integer } }]
+    patch:
+      tags: [auth]
+      summary: Rename a passkey
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+      responses:
+        "204": { description: Renamed }
+    delete:
+      tags: [auth]
+      summary: Remove a passkey
+      responses:
+        "204": { description: Removed }
+  /auth/sso:
+    get:
+      tags: [auth]
+      summary: Enabled sign-in providers (the buttons of the login page)
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string }, kind: { type: string, enum: [github, google, oidc] } } } }
+  /auth/sso/{id}/start:
+    get:
+      tags: [auth]
+      summary: Redirect to the provider (authorization code flow with PKCE). `next` is the panel path to open afterwards.
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: next, in: query, schema: { type: string } }
+      responses:
+        "302": { description: To the provider's sign-in page }
+  /auth/sso/{id}/callback:
+    get:
+      tags: [auth]
+      summary: The provider's redirect target. Checks the state, the email domain and the user, sets the session cookie and redirects to `next`; on failure redirects to /login?sso_error=<message>.
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: code, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string } }
+      responses:
+        "302": { description: To the panel }
+  /push/config:
+    get:
+      tags: [push]
+      summary: Firebase options the Nectar app needs to register for push notifications (enabled false = do not register)
+      responses:
+        "200": { description: "{enabled, project_id, sender_id, android: {api_key, app_id}, apple: {api_key, app_id, bundle_id}}" }
+  /me/push-devices:
+    get:
+      tags: [push]
+      summary: This user's devices that receive push notifications
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PushDevice" } } } } }
+    put:
+      tags: [push]
+      summary: Register this device's FCM token (re-registering moves the token to the caller)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, platform]
+              properties:
+                token: { type: string }
+                platform: { type: string, enum: [android, ios, macos] }
+                name: { type: string }
+      responses:
+        "200": { description: OK }
+        "400": { $ref: "#/components/responses/Error" }
+  /me/push-devices/unregister:
+    post:
+      tags: [push]
+      summary: Forget a device token (the app signs out)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { token: { type: string } } } } } }
+      responses:
+        "204": { description: Removed }
+  /me/push-devices/{id}:
+    delete:
+      tags: [push]
+      summary: Remove one of this user's devices
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "204": { description: Removed }
+  /settings/push:
+    get:
+      tags: [settings]
+      summary: Push notification settings (the service account key is never returned; has_service_account, service_account_email, devices)
+      x-permission: settings.manage
+      responses:
+        "200": { description: OK }
+    put:
+      tags: [settings]
+      summary: Save the Firebase project. An empty service_account keeps the stored key (sealed with the master key).
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled: { type: boolean }
+                project_id: { type: string }
+                sender_id: { type: string }
+                service_account: { type: string, writeOnly: true, description: service account key JSON }
+                android: { type: object, properties: { api_key: { type: string }, app_id: { type: string } } }
+                apple: { type: object, properties: { api_key: { type: string }, app_id: { type: string }, bundle_id: { type: string } } }
+      responses:
+        "200": { description: OK }
+        "400": { $ref: "#/components/responses/Error" }
+  /settings/push/test:
+    post:
+      tags: [settings]
+      summary: Send a test notification to the caller's own devices
+      x-permission: settings.manage
+      responses:
+        "200": { description: "{sent: n}" }
+        "502": { $ref: "#/components/responses/Error" }
+  /settings/sso:
+    get:
+      tags: [settings]
+      summary: Sign-in providers with their callback URLs (client secrets are never returned, only has_secret)
+      x-permission: settings.manage
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  callback_base: { type: string }
+                  providers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        provider: { $ref: "#/components/schemas/SSOProvider" }
+                        has_secret: { type: boolean }
+                        callback_url: { type: string }
+    put:
+      tags: [settings]
+      summary: Replace the sign-in providers. An empty client_secret keeps the stored one.
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SSOProvider" } } } }
+      responses:
+        "200": { description: The saved providers, as GET returns them }
+        "400": { $ref: "#/components/responses/Error" }
 
   /me:
     get:
@@ -1022,6 +1219,71 @@ paths:
       responses:
         "200": { description: Steps, content: { application/json: { schema: { $ref: "#/components/schemas/ApplyResult" } } } }
         "400": { description: Invalid file }
+  /projects/{pid}/env-groups:
+    parameters: [{ name: pid, in: path, required: true, schema: { type: integer, format: int64 } }]
+    get:
+      tags: [projects]
+      summary: Env groups (variables shared by several apps); plain values with env.view, secrets with reveal=1
+      x-permission: project.view
+      parameters: [{ name: reveal, in: query, schema: { type: string, enum: ["1"] } }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name: { type: string }
+                    vars: { type: array, items: { type: object, properties: { key: { type: string }, value: { type: string }, secret: { type: boolean } } } }
+                    apps: { type: array, items: { type: string } }
+  /projects/{pid}/env-groups/{name}:
+    parameters:
+      - { name: pid, in: path, required: true, schema: { type: integer, format: int64 } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [projects]
+      summary: Create or replace a group ([{key, value, secret}]; an item without value keeps its value); apps using it become pending
+      x-permission: env.edit
+      responses: { "200": { description: Saved } }
+    delete:
+      tags: [projects]
+      summary: Delete a group (refused while apps use it)
+      x-permission: env.edit
+      responses: { "204": { description: Deleted }, "409": { description: In use } }
+  /apps/{id}/env-groups:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    put:
+      tags: [apps]
+      summary: The env groups the app gets (["shared", …]; its own variables win; ${group.KEY} references)
+      x-permission: env.edit
+      responses: { "200": { description: The app } }
+  /apps/{id}/clone:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [apps]
+      summary: Copy an app (settings, variables, config files, env groups; links in the same project) — not deployed
+      description: Needs app.create in the target project and env.view here.
+      requestBody: { content: { application/json: { schema: { type: object, properties: { slug: { type: string }, name: { type: string }, project_id: { type: integer, format: int64 } } } } } }
+      responses: { "201": { description: "{app, notes}" } }
+  /apps/{id}/promote:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [apps]
+      summary: Deploy this app's live build (image or artifact) to the app of the same slug in another project (environment)
+      description: Needs app.deploy in the target project. Settings and variables there stay.
+      requestBody: { content: { application/json: { schema: { type: object, properties: { project_id: { type: integer, format: int64 } } } } } }
+      responses: { "202": { description: "{release, app_id, build}" } }
+  /projects/{pid}/clone:
+    parameters: [{ name: pid, in: path, required: true, schema: { type: integer, format: int64 } }]
+    post:
+      tags: [projects]
+      summary: New environment - copy the project (env groups, new empty databases, apps); nothing is deployed
+      description: Needs project.create and env.view. environment labels the copy, source_environment this project.
+      requestBody: { content: { application/json: { schema: { type: object, properties: { slug: { type: string }, name: { type: string }, environment: { type: string }, source_environment: { type: string } } } } } }
+      responses: { "201": { description: "{project, notes}" } }
   /projects/{pid}/export:
     parameters: [{ name: pid, in: path, required: true, schema: { type: integer, format: int64 } }]
     get:
@@ -1881,6 +2143,23 @@ paths:
       x-permission: app.edit
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppSource" } } } }
+  /apps/{id}/previews:
+    get:
+      tags: [builds]
+      summary: Preview environments of an app (one per open pull request), and preview_of when the app itself is a preview
+      description: With `previews` on in the app's source, pull request events on the push webhook (GitHub/Gitea `pull_request`, GitLab `Merge Request Hook`) create the app `<app>-pr<N>` in the same project (a copy of the app; database links only with `preview_databases`; forks only with `preview_forks`), build it from `refs/pull/N/head` (`refs/merge-requests/N/head`), rebuild it on new commits and delete it when the pull request closes. The commit status `nectar/preview` is set when the source token may write statuses. Previews without activity for `preview_ttl_days` are deleted.
+      x-permission: app.view
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  previews: { type: array, items: { $ref: "#/components/schemas/Preview" } }
+                  preview_of: { $ref: "#/components/schemas/Preview" }
   /apps/{id}/builds:
     parameters: [{ $ref: "#/components/parameters/Id" }]
     get:
@@ -2014,10 +2293,10 @@ paths:
   /server/nodes/{name}/{action}:
     parameters:
       - { name: name, in: path, required: true, schema: { type: string } }
-      - { name: action, in: path, required: true, schema: { type: string, enum: [cordon, uncordon, drain] } }
+      - { name: action, in: path, required: true, schema: { type: string, enum: [cordon, uncordon, drain, edge-on, edge-off] } }
     post:
       tags: [server]
-      summary: Cordon / uncordon a node, or drain it (cordon + evict its pods; DaemonSet pods stay, disruption budgets are respected)
+      summary: Cordon / uncordon a node, drain it (cordon + evict its pods; DaemonSet pods stay, disruption budgets are respected), or make it an extra edge node (edge-on / edge-off)
       description: Drain is refused (409) on the edge node (nectar-gateway, all app traffic, runs there) and when no other ready, schedulable node can take the pods; `force=true` drains anyway.
       x-permission: server.manage
       parameters:
@@ -2026,6 +2305,34 @@ paths:
         "200": { description: OK }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /server/edge:
+    get:
+      tags: [server]
+      summary: Edge nodes — the primary gateway's node and the gateway replicas on extra edge nodes with their sync state
+      description: edge-on (POST /server/nodes/{name}/edge-on) labels a node nectar.dev/edge-replica=true; the panel runs the DaemonSet nectar-gateway-edge there (same image as the primary, PRIMARY_URL set) and points managed DNS records at every edge node. Needs a gateway with the `replicas` feature.
+      x-permission: server.view
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  primary: { type: string }
+                  supported: { type: boolean, description: the gateway can run replicas }
+                  replicas:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        node: { type: string }
+                        address: { type: string }
+                        ready: { type: boolean }
+                        synced: { type: boolean }
+                        last_seen: { type: string, format: date-time }
+                        version: { type: string }
+                        error: { type: string }
   /server/nodes/{name}:
     parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
     delete:
@@ -2223,6 +2530,58 @@ components:
       description: Error
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    Passkey:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        name: { type: string }
+        rp_id: { type: string, description: the panel host the passkey belongs to }
+        synced: { type: boolean, description: backup eligible (synced by a password manager) }
+        transports: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time }
+    Preview:
+      type: object
+      properties:
+        app_id: { type: integer }
+        parent_id: { type: integer }
+        slug: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        url: { type: string, description: the pull request page }
+        author: { type: string }
+        head_ref: { type: string }
+        commit_sha: { type: string }
+        provider: { type: string, enum: [github, gitlab, gitea] }
+        status: { type: string }
+        live_url: { type: string }
+        parent: { type: string, description: "preview_of only: the parent app's slug" }
+        updated_at: { type: string, format: date-time }
+    PushDevice:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        platform: { type: string, enum: [android, ios, macos] }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        last_seen: { type: string, format: date-time }
+    SSOProvider:
+      type: object
+      required: [id, kind, client_id]
+      properties:
+        id: { type: string, pattern: "^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$" }
+        kind: { type: string, enum: [github, google, oidc] }
+        name: { type: string, description: Button label }
+        client_id: { type: string }
+        client_secret: { type: string, writeOnly: true }
+        issuer: { type: string, description: "oidc: the provider's https URL (discovery is read from it)" }
+        allowed_domains: { type: array, items: { type: string } }
+        auto_create: { type: boolean, description: Create users on their first sign-in (needs allowed_domains) }
+        default_role: { type: string, description: Builtin role key or id for auto-created users }
+        group_roles: { type: object, additionalProperties: { type: string }, description: OIDC group → role }
+        enabled: { type: boolean }
     AppSourceInput:
       type: object
       required: [repo_url]
@@ -2235,6 +2594,10 @@ components:
         auto_deploy: { type: boolean, default: true }
         build_cpu_millicores: { type: integer, default: 2000 }
         build_memory_mb: { type: integer, default: 2048 }
+        previews: { type: boolean, description: "a preview app per pull request (see GET /apps/{id}/previews)" }
+        preview_databases: { type: boolean, description: previews keep the database links }
+        preview_forks: { type: boolean, description: also pull requests from forks }
+        preview_ttl_days: { type: integer, description: delete previews without activity after N days (0 = never), default 14 }
     AppSource:
       type: object
       properties:
@@ -2246,6 +2609,10 @@ components:
         auto_deploy: { type: boolean }
         build_cpu_millicores: { type: integer }
         build_memory_mb: { type: integer }
+        previews: { type: boolean, description: "a preview app per pull request (see GET /apps/{id}/previews)" }
+        preview_databases: { type: boolean, description: previews keep the database links }
+        preview_forks: { type: boolean, description: also pull requests from forks }
+        preview_ttl_days: { type: integer, description: delete previews without activity after N days (0 = never), default 14 }
         has_token: { type: boolean }
         webhook_url: { type: string }
         webhook_secret: { type: string }
@@ -2538,7 +2905,7 @@ components:
     AlertChannelInput:
       type: object
       properties:
-        kind: { type: string, enum: [ntfy, telegram, email, webhook], description: required on create, fixed afterwards }
+        kind: { type: string, enum: [ntfy, telegram, email, webhook, push], description: required on create, fixed afterwards }
         name: { type: string }
         enabled: { type: boolean }
         config: { $ref: "#/components/schemas/AlertChannelConfig" }
