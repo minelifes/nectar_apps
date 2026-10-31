@@ -78,6 +78,20 @@ func (d *Deployer) Restart(ctx context.Context, a store.App, p store.Project) er
 	return err
 }
 
+// RestartAddon restarts a database's pod (rolling restart of its StatefulSet).
+func (d *Deployer) RestartAddon(ctx context.Context, a store.Addon, p store.Project) error {
+	if a.Stopped {
+		return errors.New("the database is stopped: start it instead")
+	}
+	_, err := d.kube.Patch(ctx, "StatefulSet", p.Namespace, a.Slug, map[string]any{"spec": map[string]any{"template": map[string]any{
+		"metadata": map[string]any{"annotations": map[string]any{"nectar.dev/restarted-at": time.Now().UTC().Format(time.RFC3339)}},
+	}}})
+	if kube.IsNotFound(err) {
+		return ErrNotDeployed
+	}
+	return err
+}
+
 // Pending lists what changed since the live release and needs a deploy to take effect: "settings"
 // (config), "image" (runtime version or image) and "environment" (env vars or config files).
 func (d *Deployer) Pending(ctx context.Context, a store.App) ([]string, error) {

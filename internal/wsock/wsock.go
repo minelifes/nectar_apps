@@ -68,7 +68,11 @@ type Conn struct {
 	br     *bufio.Reader
 	wmu    sync.Mutex
 	client bool // we dialed: outgoing frames are masked, incoming ones are not
+	closed bool // a close frame was sent (RFC 6455 §5.5.1: exactly one; browsers fail the connection on a second)
 }
+
+// ErrClosed is returned by writes after the close frame was sent.
+var ErrClosed = errors.New("websocket: connection closed")
 
 // Upgrade completes the handshake. The caller has authenticated and checked the Origin already.
 func Upgrade(w http.ResponseWriter, r *http.Request) (*Conn, error) {
@@ -116,6 +120,12 @@ func (c *Conn) Ping() error { return c.write(opPing, nil) }
 func (c *Conn) write(op byte, p []byte) error {
 	c.wmu.Lock()
 	defer c.wmu.Unlock()
+	if c.closed {
+		return ErrClosed
+	}
+	if op == opClose {
+		c.closed = true
+	}
 	hdr := make([]byte, 2, 14)
 	hdr[0] = 0x80 | op
 	var maskBit byte

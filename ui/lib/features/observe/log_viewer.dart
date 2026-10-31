@@ -20,9 +20,10 @@ const _maxLines = 5000;
 /// Live logs of all pods of an app (or one pod) over a WebSocket: follows new pods after deploys,
 /// pause, search, wrap, copy and download.
 class LogViewer extends ConsumerStatefulWidget {
-  const LogViewer({super.key, required this.app, this.height = 520});
+  const LogViewer({super.key, required this.path, this.height = 520});
 
-  final App app;
+  /// API path of the workload: `/apps/5` or `/addons/3`.
+  final String path;
   final double height;
 
   @override
@@ -74,13 +75,13 @@ class _LogViewerState extends ConsumerState<LogViewer> {
     final api = ref.read(apiProvider);
     try {
       // also renews an expired access token before it goes into the WebSocket URL
-      final pods = listOf(await api.get('/apps/${widget.app.id}/pods'), PodBrief.fromJson);
+      final pods = listOf(await api.get('${widget.path}/pods'), PodBrief.fromJson);
       if (!mounted) return;
       setState(() {
         _pods = pods;
         _error = null;
       });
-      final ch = WebSocketChannel.connect(api.wsUri('/apps/${widget.app.id}/logs/ws', {'tail': '200', 'pod': ?_pod}));
+      final ch = WebSocketChannel.connect(api.wsUri('${widget.path}/logs/ws', {'tail': '200', 'pod': ?_pod}));
       _ch = ch;
       await ch.ready;
       if (!mounted) {
@@ -235,7 +236,7 @@ class _LogViewerState extends ConsumerState<LogViewer> {
                 tooltip: s.observeDownloadLast5000Lines,
                 icon: const Icon(Icons.download_rounded, size: 20),
                 onPressed: () => launchUrl(Uri.parse(
-                  '${api.baseUrl}/api/apps/${widget.app.id}/logs?format=text&tail=5000${_pod == null ? '' : '&pod=$_pod'}',
+                  '${api.baseUrl}/api${widget.path}/logs?format=text&tail=5000${_pod == null ? '' : '&pod=$_pod'}',
                 )),
               ),
             IconButton(
@@ -322,7 +323,7 @@ class _LogViewerState extends ConsumerState<LogViewer> {
 }
 
 /// The output of the previous (crashed) container of a pod.
-Future<void> showCrashLog(BuildContext context, WidgetRef ref, App app, String pod) => showDialog<void>(
+Future<void> showCrashLog(BuildContext context, WidgetRef ref, String path, String pod) => showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(S.of(context).observeBeforeTheLastRestart(pod)),
@@ -332,7 +333,7 @@ Future<void> showCrashLog(BuildContext context, WidgetRef ref, App app, String p
           child: FutureBuilder<List<LogLine>>(
             future: ref
                 .read(apiProvider)
-                .get('/apps/${app.id}/logs', query: {'pod': pod, 'previous': '1', 'tail': 300}).then((v) => listOf(v, LogLine.fromJson)),
+                .get('$path/logs', query: {'pod': pod, 'previous': '1', 'tail': 300}).then((v) => listOf(v, LogLine.fromJson)),
             builder: (ctx, snap) {
               if (snap.hasError) return ErrorBlock(error: snap.error!);
               if (!snap.hasData) return const LoadingBlock();

@@ -53,9 +53,25 @@ Workers with a port (e.g. MongoDB) and `internal_ports` are reachable by the pro
 
 ## One-click apps
 
-Project → **One-click app**: WordPress, Grafana, n8n, MinIO, MongoDB, RabbitMQ, Uptime Kuma, Gitea. Pick one,
-name it, install: the apps, a managed database where needed, volumes and generated passwords are created and
-deployed. `nectar templates` lists them and `nectar install <template> --project shop` installs one. The
+Project → **One-click app**. Search the gallery or filter it by category, pick a template, name it and
+install it. The panel creates the apps, a managed database where one is needed, the volumes and generated
+passwords, then deploys them. After installing, the dialog shows how the project's apps connect (the
+`*_URL` to use).
+
+| Category | Templates |
+|---|---|
+| Messaging | Mosquitto (MQTT), EMQX (MQTT with dashboard), Apache Kafka + Kafka UI, NATS (JetStream), RabbitMQ |
+| Databases | Redis, PostgreSQL, MySQL (managed databases), MongoDB, Memcached, ClickHouse, InfluxDB, Qdrant |
+| Search | Meilisearch, Typesense |
+| Monitoring | Grafana, Prometheus, Jaeger, Uptime Kuma |
+| Developer tools | Gitea, Mailpit, pgAdmin, Adminer, Verdaccio |
+| Auth | Keycloak |
+| Websites, automation, storage | WordPress, n8n, MinIO |
+
+Brokers and data stores without a login of their own (Kafka, NATS, Memcached, ClickHouse, Prometheus) run as
+workers, so only the project's apps can reach them. The MQTT brokers also open port 1883 on the server for
+devices; the node port is on the app's Overview. Tools with a web UI either have a login (Kafka UI, Mailpit,
+pgAdmin, Grafana) or say in their notes to restrict the domain with Allowed IPs (Jaeger, Adminer). `nectar templates` lists them and `nectar install <template> --project shop` installs one. The
 catalog is data (`internal/blueprint/templates.yaml`).
 
 ## docker-compose

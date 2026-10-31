@@ -64,7 +64,8 @@ class AddonsSection extends ConsumerWidget {
                       title: Text(list[i].name, style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text(
                         '${list[i].kindName} ${list[i].version} · ${list[i].host}:${list[i].port} · ${formatMb(list[i].sizeMb)}'
-                        '${list[i].links.isEmpty ? '' : ' · ${list[i].links.length} linked'}',
+                        '${list[i].links.isEmpty ? '' : ' · ${list[i].links.length} linked'}'
+                        '${list[i].shared ? ' · ${s.appSharedWithProject}' : ''}',
                         style: TextStyle(color: c.muted, fontSize: 12.5),
                       ),
                       trailing: StatusPill(status: list[i].liveStatus),

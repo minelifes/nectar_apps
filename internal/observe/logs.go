@@ -35,11 +35,25 @@ type Pod struct {
 	Restarts  int64     `json:"restarts"`
 	Role      string    `json:"role"`
 	StartedAt time.Time `json:"started_at"`
+	// Containers are the pod's containers (init containers excluded); apps deployed by the panel have "app".
+	Containers []string `json:"containers,omitempty"`
+	// Running lists the containers that are running now (a crash-looping pod stays in phase Running).
+	Running []string `json:"running,omitempty"`
 }
 
 // AppPods lists the pods of an app, oldest first.
 func AppPods(ctx context.Context, k LogKube, namespace, slug string) ([]Pod, error) {
-	objs, err := k.List(ctx, "Pod", namespace, "nectar.dev/app="+slug)
+	return Pods(ctx, k, namespace, "nectar.dev/app="+slug)
+}
+
+// AddonPods returns the pods of a database add-on (its StatefulSet), oldest first.
+func AddonPods(ctx context.Context, k LogKube, namespace, slug string) ([]Pod, error) {
+	return Pods(ctx, k, namespace, "nectar.dev/addon="+slug)
+}
+
+// Pods returns the pods matching a label selector, oldest first.
+func Pods(ctx context.Context, k LogKube, namespace, selector string) ([]Pod, error) {
+	objs, err := k.List(ctx, "Pod", namespace, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +63,12 @@ func AppPods(ctx context.Context, k LogKube, namespace, slug string) ([]Pod, err
 		p := Pod{Name: name, Phase: kube.Str(o, "status", "phase"), Role: kube.Str(o, "metadata", "labels", "nectar.dev/role")}
 		for _, cs := range kube.Slice(o, "status", "containerStatuses") {
 			p.Restarts += kube.Int(cs, "restartCount")
+			if kube.Field(cs, "state", "running") != nil {
+				p.Running = append(p.Running, kube.Str(cs, "name"))
+			}
+		}
+		for _, c := range kube.Slice(o, "spec", "containers") {
+			p.Containers = append(p.Containers, kube.Str(c, "name"))
 		}
 		if t, err := time.Parse(time.RFC3339, kube.Str(o, "metadata", "creationTimestamp")); err == nil {
 			p.StartedAt = t

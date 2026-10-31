@@ -18,6 +18,46 @@ import (
 	"nectar_apps/internal/wsock"
 )
 
+// ----------------------------------------------------------------- workload --
+
+// workload is what the observe endpoints (usage, events, pods, logs, terminal) look at: an app, or a
+// database add-on, which gets the same charts, logs and terminal as an app.
+type workload struct {
+	kind      string // "app" or "addon"
+	id        int64
+	slug      string
+	namespace string
+	ref       string // project/slug (audit trail, logs)
+	reqCPUm   int64  // requested resources of all replicas: the line the usage chart compares with
+	reqMemB   int64
+	replicas  int64
+}
+
+func appWorkload(app store.App, proj store.Project) workload {
+	replicas := int64(app.Config.Replicas)
+	return workload{kind: "app", id: app.ID, slug: app.Slug, namespace: proj.Namespace, ref: proj.Slug + "/" + app.Slug,
+		reqCPUm: app.Config.Resources.CPUMillicores * replicas, reqMemB: app.Config.Resources.MemoryMB * replicas << 20, replicas: replicas}
+}
+
+func addonWorkload(a store.Addon, proj store.Project) workload {
+	replicas := int64(1)
+	if a.Stopped {
+		replicas = 0
+	}
+	return workload{kind: "addon", id: a.ID, slug: a.Slug, namespace: proj.Namespace, ref: proj.Slug + "/" + a.Slug,
+		reqCPUm: a.CPUMillicores, reqMemB: a.MemoryMB << 20, replicas: replicas}
+}
+
+func (wl workload) pods(ctx context.Context, k observe.LogKube) ([]observe.Pod, error) {
+	if wl.kind == "addon" {
+		return observe.AddonPods(ctx, k, wl.namespace, wl.slug)
+	}
+	return observe.AppPods(ctx, k, wl.namespace, wl.slug)
+}
+
+// series is the metric series of the workload ("app:12", "addon:3").
+func (wl workload) series() string { return wl.kind + ":" + strconv.FormatInt(wl.id, 10) }
+
 // ------------------------------------------------------------ usage history --
 
 var metricRanges = map[string]time.Duration{
@@ -63,31 +103,44 @@ func (s *Server) serverMetrics(w http.ResponseWriter, r *http.Request, _ *princi
 	writeJSON(w, http.StatusOK, map[string]any{"range": name, "from": from, "to": to, "nodes": out})
 }
 
-func (s *Server) appUsage(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, _ store.Project) {
+func (s *Server) appUsage(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, proj store.Project) {
+	s.workloadUsage(w, r, appWorkload(app, proj))
+}
+
+func (s *Server) addonUsage(w http.ResponseWriter, r *http.Request, _ *principal, a store.Addon, proj store.Project) {
+	s.workloadUsage(w, r, addonWorkload(a, proj))
+}
+
+func (s *Server) workloadUsage(w http.ResponseWriter, r *http.Request, wl workload) {
 	name, from, to := parseRange(r)
-	pts, err := s.store.MetricHistory(r.Context(), "app:"+strconv.FormatInt(app.ID, 10), from, to, 240)
+	pts, err := s.store.MetricHistory(r.Context(), wl.series(), from, to, 240)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	replicas := int64(app.Config.Replicas)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"range": name, "from": from, "to": to, "points": pts,
-		// requested resources of all replicas: the line the chart compares usage with
-		"request_cpu_m": app.Config.Resources.CPUMillicores * replicas,
-		"request_mem_b": app.Config.Resources.MemoryMB * replicas << 20,
-		"replicas":      replicas,
+		"request_cpu_m": wl.reqCPUm, "request_mem_b": wl.reqMemB, "replicas": wl.replicas,
 	})
 }
 
 // ------------------------------------------------------------------- events --
 
 func (s *Server) appEvents(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, proj store.Project) {
+	s.workloadEvents(w, r, appWorkload(app, proj))
+}
+
+func (s *Server) addonEvents(w http.ResponseWriter, r *http.Request, _ *principal, a store.Addon, proj store.Project) {
+	s.workloadEvents(w, r, addonWorkload(a, proj))
+}
+
+func (s *Server) workloadEvents(w http.ResponseWriter, r *http.Request, wl workload) {
 	if s.kube == nil {
 		writeError(w, http.StatusServiceUnavailable, "kubernetes is not configured")
 		return
 	}
-	evs, err := observe.AppEvents(r.Context(), s.kube, proj.Namespace, app.Slug, 100)
+	// objects named after the slug: Deployment or StatefulSet, ReplicaSets, pods
+	evs, err := observe.AppEvents(r.Context(), s.kube, wl.namespace, wl.slug, 100)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "kubernetes: "+err.Error())
 		return
@@ -111,11 +164,19 @@ func (s *Server) serverEvents(w http.ResponseWriter, r *http.Request, _ *princip
 // --------------------------------------------------------------------- logs --
 
 func (s *Server) appPods(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, proj store.Project) {
+	s.workloadPods(w, r, appWorkload(app, proj))
+}
+
+func (s *Server) addonPods(w http.ResponseWriter, r *http.Request, _ *principal, a store.Addon, proj store.Project) {
+	s.workloadPods(w, r, addonWorkload(a, proj))
+}
+
+func (s *Server) workloadPods(w http.ResponseWriter, r *http.Request, wl workload) {
 	if s.kube == nil {
 		writeError(w, http.StatusServiceUnavailable, "kubernetes is not configured")
 		return
 	}
-	pods, err := observe.AppPods(r.Context(), s.kube, proj.Namespace, app.Slug)
+	pods, err := wl.pods(r.Context(), s.kube)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "kubernetes: "+err.Error())
 		return
@@ -126,18 +187,26 @@ func (s *Server) appPods(w http.ResponseWriter, r *http.Request, _ *principal, a
 // appLogs returns recent lines (tail, max 10000) of all pods or one pod, oldest first. previous=1 reads the
 // previous container instance (the crash before a restart). format=text downloads a plain text file.
 func (s *Server) appLogs(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, proj store.Project) {
+	s.workloadLogs(w, r, appWorkload(app, proj))
+}
+
+func (s *Server) addonLogs(w http.ResponseWriter, r *http.Request, _ *principal, a store.Addon, proj store.Project) {
+	s.workloadLogs(w, r, addonWorkload(a, proj))
+}
+
+func (s *Server) workloadLogs(w http.ResponseWriter, r *http.Request, wl workload) {
 	if s.kube == nil {
 		writeError(w, http.StatusServiceUnavailable, "kubernetes is not configured")
 		return
 	}
 	q := r.URL.Query()
 	tail, _ := strconv.Atoi(q.Get("tail"))
-	pods, err := s.logPods(r.Context(), app, proj, q.Get("pod"))
+	pods, err := s.logPods(r.Context(), wl, q.Get("pod"))
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "kubernetes: "+err.Error())
 		return
 	}
-	lines, err := observe.TailLogs(r.Context(), s.kube, proj.Namespace, pods, tail, q.Get("previous") == "1")
+	lines, err := observe.TailLogs(r.Context(), s.kube, wl.namespace, pods, tail, q.Get("previous") == "1")
 	if err != nil {
 		var se *kube.StatusError
 		if errors.As(err, &se) && se.Code == http.StatusBadRequest {
@@ -149,7 +218,7 @@ func (s *Server) appLogs(w http.ResponseWriter, r *http.Request, _ *principal, a
 	}
 	if q.Get("format") == "text" {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s-%s.log"`, app.Slug, time.Now().UTC().Format("20060102-150405")))
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s-%s.log"`, wl.slug, time.Now().UTC().Format("20060102-150405")))
 		for _, l := range lines {
 			fmt.Fprintf(w, "%s %s %s\n", l.Time.Format(time.RFC3339Nano), l.Pod, l.Line)
 		}
@@ -158,8 +227,8 @@ func (s *Server) appLogs(w http.ResponseWriter, r *http.Request, _ *principal, a
 	writeJSON(w, http.StatusOK, lines)
 }
 
-func (s *Server) logPods(ctx context.Context, app store.App, proj store.Project, only string) ([]string, error) {
-	pods, err := observe.AppPods(ctx, s.kube, proj.Namespace, app.Slug)
+func (s *Server) logPods(ctx context.Context, wl workload, only string) ([]string, error) {
+	pods, err := wl.pods(ctx, s.kube)
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +247,14 @@ func (s *Server) logPods(ctx context.Context, app store.App, proj store.Project,
 //	{"type":"pods","pods":[{name, phase, restarts, …}]}   (every 5 s; new pods are followed automatically)
 //	{"type":"info","message":"…"}
 func (s *Server) appLogsWS(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, proj store.Project) {
+	s.workloadLogsWS(w, r, appWorkload(app, proj))
+}
+
+func (s *Server) addonLogsWS(w http.ResponseWriter, r *http.Request, _ *principal, a store.Addon, proj store.Project) {
+	s.workloadLogsWS(w, r, addonWorkload(a, proj))
+}
+
+func (s *Server) workloadLogsWS(w http.ResponseWriter, r *http.Request, wl workload) {
 	if s.kube == nil {
 		writeError(w, http.StatusServiceUnavailable, "kubernetes is not configured")
 		return
@@ -235,7 +312,7 @@ func (s *Server) appLogsWS(w http.ResponseWriter, r *http.Request, _ *principal,
 			tailLines = 0 // resume after the last line we sent
 			since = since.Add(time.Second)
 		}
-		rc, err := s.kube.Stream(ctx, observe.LogPath(proj.Namespace, pod, true, false, tailLines, since))
+		rc, err := s.kube.Stream(ctx, observe.LogPath(wl.namespace, pod, true, false, tailLines, since))
 		if err != nil {
 			return // container not started yet; the next pod listing tries again
 		}
@@ -254,7 +331,7 @@ func (s *Server) appLogsWS(w http.ResponseWriter, r *http.Request, _ *principal,
 	}
 
 	refresh := func(first bool) {
-		pods, err := observe.AppPods(ctx, s.kube, proj.Namespace, app.Slug)
+		pods, err := wl.pods(ctx, s.kube)
 		if err != nil {
 			send(map[string]any{"type": "info", "message": "cannot list pods: " + err.Error()})
 			return

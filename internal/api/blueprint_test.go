@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"nectar_apps/internal/blueprint"
+	"nectar_apps/internal/kube"
 )
 
 func stepsOf(v map[string]any) map[string]string {
@@ -128,5 +130,50 @@ func TestTemplatesApplyExportCompose(t *testing.T) {
 	// a viewer cannot apply anything
 	if code, _, _ := e.do(e.client(), "POST", "/api/projects/"+pid+"/apply", map[string]any{"blueprint": "apps: []"}); code != 401 {
 		t.Fatalf("anonymous apply: %d", code)
+	}
+}
+
+// Every template of the gallery installs and deploys cleanly (validation, references, exposed ports).
+func TestEveryTemplateInstalls(t *testing.T) {
+	e := newEnv(t)
+	o := e.owner()
+	_, proj, _ := e.do(o, "POST", "/api/projects", map[string]any{"slug": "lab", "name": "Lab"})
+	pid := itoa(proj["id"].(float64))
+	ts, err := blueprint.Templates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	appIDs := map[string]string{}
+	for _, tpl := range ts {
+		// installed without deploying: the fake cluster cannot fit all of them at once
+		code, v, _ := e.do(o, "POST", "/api/projects/"+pid+"/templates/"+tpl.ID, map[string]any{"deploy": false})
+		if code != 200 || v["failed"].(float64) != 0 {
+			t.Fatalf("%s: %d %v", tpl.ID, code, stepsOf(v))
+		}
+		if v["app_id"].(float64) == 0 && v["addon_id"].(float64) == 0 {
+			t.Fatalf("%s: nothing to open: %v", tpl.ID, v)
+		}
+		appIDs[tpl.ID] = itoa(v["app_id"].(float64))
+	}
+	// the ones with references (to themselves, another app, a database) and exposed ports deploy cleanly
+	for _, id := range []string{"kafka", "mosquitto", "emqx", "keycloak"} {
+		if code, v, _ := e.do(o, "POST", "/api/apps/"+appIDs[id]+"/deploy", nil); code >= 300 {
+			t.Fatalf("deploy %s: %d %v", id, code, v)
+		}
+		e.dep.Wait()
+		if code, v, _ := e.do(o, "GET", "/api/apps/"+appIDs[id], nil); code != 200 || v["status"] == "failed" {
+			t.Fatalf("%s after deploy: %v", id, v)
+		}
+	}
+	// self-reference: the broker advertises its own in-cluster address
+	sec := e.kube.Get("Secret", "prj-lab", "kafka-env")
+	if v, _ := base64.StdEncoding.DecodeString(kube.Str(sec, "data", "KAFKA_ADVERTISED_LISTENERS")); string(v) != "PLAINTEXT://kafka.prj-lab.svc.cluster.local:9092" {
+		t.Fatalf("kafka advertised listener: %q", v)
+	}
+	// MQTT is reachable from devices outside the cluster
+	for _, svc := range []string{"mosquitto-ports", "emqx-ports"} {
+		if kube.Str(e.kube.Get("Service", "prj-lab", svc), "spec", "type") != "NodePort" {
+			t.Fatalf("%s: not exposed", svc)
+		}
 	}
 }

@@ -8,12 +8,15 @@ Map<String, dynamic> _map(Object? v) => v is Map ? Map<String, dynamic>.from(v) 
 List<dynamic> _list(Object? v) => v is List ? v : const [];
 
 class VersionInfo {
-  const VersionInfo({required this.version, required this.apiVersion, this.commit = '', this.minClientVersion = ''});
+  const VersionInfo({required this.version, required this.apiVersion, this.commit = '', this.minClientVersion = '', this.clockSkew});
 
   final String version;
   final int apiVersion;
   final String commit;
   final String minClientVersion;
+
+  /// Server clock minus this device's clock when the version was read (null: an older panel).
+  final Duration? clockSkew;
 
   factory VersionInfo.fromJson(Object? j) {
     final m = _map(j);
@@ -22,6 +25,7 @@ class VersionInfo {
       apiVersion: _int(m['api_version']),
       commit: _str(m['commit']),
       minClientVersion: _str(m['min_client_version']),
+      clockSkew: DateTime.tryParse(_str(m['server_time']))?.difference(DateTime.now()),
     );
   }
 }
@@ -1107,6 +1111,7 @@ class AlertIncident {
     this.startedAt,
     this.resolvedAt,
     this.notified = 0,
+    this.read = false,
   });
 
   final int id;
@@ -1120,6 +1125,7 @@ class AlertIncident {
   final DateTime? startedAt;
   final DateTime? resolvedAt;
   final int notified;
+  final bool read; // marked as read by me: hidden from my dashboard and nav badge
 
   bool get firing => state == 'firing';
   bool get critical => severity == 'critical';
@@ -1138,6 +1144,7 @@ class AlertIncident {
       startedAt: _time(m['started_at']),
       resolvedAt: _time(m['resolved_at']),
       notified: _int(m['notified']),
+      read: _bool(m['read']),
     );
   }
 }
@@ -1656,6 +1663,8 @@ class Addon {
     this.ready,
     this.problem = '',
     this.restarts = 0,
+    this.shared = false,
+    this.sharedPrefix = '',
   });
 
   final int id;
@@ -1677,6 +1686,10 @@ class Addon {
   /// (app id, prefix)
   final List<(int, String)> links;
   final List<String> envNames;
+
+  /// Shared with the whole project: every app gets the variables (with [sharedPrefix]) without a link.
+  final bool shared;
+  final String sharedPrefix;
 
   /// null when the live state is unknown.
   final bool? ready;
@@ -1716,21 +1729,25 @@ class Addon {
       ready: live == null ? null : _bool(live['ready']),
       problem: live == null ? '' : _str(live['problem']),
       restarts: live == null ? 0 : _int(live['restarts']),
+      shared: _bool(m['shared']),
+      sharedPrefix: _str(m['shared_prefix']),
     );
   }
 }
 
-/// An add-on linked to an app, with the variables it provides there.
+/// An add-on an app gets variables from (a link, or a database shared with the project), with the variables.
 class AppAddonLink {
-  const AppAddonLink({required this.addon, required this.prefix, required this.env});
+  const AppAddonLink({required this.addon, required this.prefix, required this.env, this.shared = false});
 
   final Addon addon;
   final String prefix;
   final List<String> env;
+  final bool shared; // from the project, not a link of the app
 
   factory AppAddonLink.fromJson(Object? j) {
     final m = _map(j);
-    return AppAddonLink(addon: Addon.fromJson(m['addon']), prefix: _str(m['prefix']), env: _list(m['env']).map(_str).toList());
+    return AppAddonLink(
+        addon: Addon.fromJson(m['addon']), prefix: _str(m['prefix']), env: _list(m['env']).map(_str).toList(), shared: _bool(m['shared']));
   }
 }
 

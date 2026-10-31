@@ -38,6 +38,19 @@ class _VersionBannerState extends ConsumerState<VersionBanner> {
             'Please update it from the App Store or Google Play.',
       );
     }
+    // a server clock that is off makes every time in the panel wrong ("17h ago"), breaks 2FA codes and TLS
+    final skew = latest.clockSkew;
+    if (skew != null && skew.abs() > const Duration(minutes: 2) && _dismissed != 'clock') {
+      final a = skew.abs();
+      final amount = a.inHours > 0 ? '${a.inHours} h ${a.inMinutes % 60} min' : '${a.inMinutes} min';
+      return _bar(
+        context,
+        color: c.warning,
+        icon: Icons.schedule_rounded,
+        text: skew.isNegative ? l.shellClockBehind(amount) : l.shellClockAhead(amount),
+        actions: [TextButton(onPressed: () => setState(() => _dismissed = 'clock'), child: Text(l.shellLater))],
+      );
+    }
     final changed = latest.version != loaded.version || (latest.commit.isNotEmpty && loaded.commit.isNotEmpty && latest.commit != loaded.commit);
     if (kIsWeb && changed && _dismissed != latest.version) {
       return _bar(

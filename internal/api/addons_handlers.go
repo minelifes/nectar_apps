@@ -247,6 +247,19 @@ func (s *Server) updateAddon(w http.ResponseWriter, r *http.Request, p *principa
 	writeJSON(w, http.StatusOK, s.addonView(r, a, proj, false))
 }
 
+// restartAddon: POST /api/addons/{aid}/restart.
+func (s *Server) restartAddon(w http.ResponseWriter, r *http.Request, p *principal, a store.Addon, proj store.Project) {
+	if !s.needKube(w) {
+		return
+	}
+	if err := s.deployer.RestartAddon(r.Context(), a, proj); err != nil {
+		s.opErr(w, err)
+		return
+	}
+	s.audit(r, p, "addon.restart", proj.Slug+"/"+a.Slug, nil)
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) setAddonStopped(stopped bool) addonHandler {
 	return func(w http.ResponseWriter, r *http.Request, p *principal, a store.Addon, proj store.Project) {
 		if !s.needKube(w) {
@@ -358,9 +371,64 @@ func (s *Server) unlinkAddon(w http.ResponseWriter, r *http.Request, p *principa
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// appAddons lists the add-ons linked to an app with the variable names they provide.
+// shareAddon: PUT /api/addons/{aid}/shared {shared, prefix} — gives every app of the project the database's
+// connection variables (no link per app; apps created later get them too). Takes effect on each app's next
+// deploy, like a link.
+func (s *Server) shareAddon(w http.ResponseWriter, r *http.Request, p *principal, a store.Addon, proj store.Project) {
+	var in struct {
+		Shared bool   `json:"shared"`
+		Prefix string `json:"prefix"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	if !p.eff.Can("env.edit", &a.ProjectID) {
+		writeError(w, http.StatusForbidden, "missing permission: env.edit")
+		return
+	}
+	in.Prefix = strings.ToUpper(strings.TrimSpace(in.Prefix))
+	if !envPrefixRe.MatchString(in.Prefix) {
+		writeError(w, http.StatusBadRequest, "prefix must be uppercase letters, digits and _, ending with _ (e.g. CACHE_)")
+		return
+	}
+	if in.Shared {
+		// two shared databases must not set the same variable in every app (e.g. two DATABASE_URL)
+		mine := deploy.AddonEnv(a, deploy.AddonCredentials{}, in.Prefix)
+		others, err := s.store.ListAddons(r.Context(), a.ProjectID)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		for _, o := range others {
+			if o.ID == a.ID || !o.Shared {
+				continue
+			}
+			for k := range deploy.AddonEnv(o, deploy.AddonCredentials{}, o.SharedPrefix) {
+				if _, clash := mine[k]; clash {
+					writeError(w, http.StatusConflict, o.Name+" is already shared with the project and sets "+k+": choose a prefix (e.g. "+strings.ToUpper(sanitizeEnv(a.Slug))+"_)")
+					return
+				}
+			}
+		}
+	}
+	a, err := s.store.SetAddonShared(r.Context(), a.ID, in.Shared, in.Prefix)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.audit(r, p, "addon.share", proj.Slug+"/"+a.Slug, map[string]any{"shared": in.Shared, "prefix": in.Prefix})
+	writeJSON(w, http.StatusOK, s.addonView(r, a, proj, false))
+}
+
+// sanitizeEnv turns a slug into an env name part (my-db → MY_DB).
+func sanitizeEnv(slug string) string {
+	return strings.ReplaceAll(slug, "-", "_")
+}
+
+// appAddons lists the add-ons an app gets variables from (its links and the databases shared with the
+// project) with the variable names they provide.
 func (s *Server) appAddons(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, proj store.Project) {
-	links, err := s.store.AddonLinks(r.Context(), 0, app.ID)
+	links, err := s.store.EffectiveAddonLinks(r.Context(), app)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -368,6 +436,7 @@ func (s *Server) appAddons(w http.ResponseWriter, r *http.Request, _ *principal,
 	type item struct {
 		Addon  addonView `json:"addon"`
 		Prefix string    `json:"prefix"`
+		Shared bool      `json:"shared"` // from the project, not a link of this app (unlink is not possible)
 		Env    []string  `json:"env"`
 	}
 	out := []item{}
@@ -381,7 +450,7 @@ func (s *Server) appAddons(w http.ResponseWriter, r *http.Request, _ *principal,
 			names = append(names, k)
 		}
 		slices.Sort(names)
-		out = append(out, item{Addon: s.addonView(r, a, proj, false), Prefix: l.Prefix, Env: names})
+		out = append(out, item{Addon: s.addonView(r, a, proj, false), Prefix: l.Prefix, Shared: l.Shared, Env: names})
 	}
 	writeJSON(w, http.StatusOK, out)
 }

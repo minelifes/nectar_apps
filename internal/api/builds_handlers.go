@@ -258,13 +258,16 @@ func (s *Server) getBuild(w http.ResponseWriter, r *http.Request, _ *principal, 
 	if !ok {
 		return
 	}
-	logs := b.Log
+	logs, status := b.Log, ""
 	if s.builder != nil {
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		logs = s.builder.Logs(ctx, b)
+		if logs == "" {
+			status = s.builder.PodStatus(ctx, b) // why there is no output yet
+		}
 		cancel()
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"build": b, "log": logs})
+	writeJSON(w, http.StatusOK, map[string]any{"build": b, "log": logs, "status": status})
 }
 
 func (s *Server) startBuild(w http.ResponseWriter, r *http.Request, p *principal, app store.App, proj store.Project) {

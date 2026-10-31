@@ -308,6 +308,8 @@ func (s *Server) Handler() http.Handler {
 
 	// M4: alerts
 	mux.Handle("GET /api/alerts", s.can("server.view", s.listAlerts))
+	mux.Handle("POST /api/alerts/read", s.can("server.view", s.readAlerts))
+	mux.Handle("DELETE /api/alerts/read/{id}", s.can("server.view", s.unreadAlert))
 	mux.Handle("GET /api/alerts/rules", s.can("server.view", s.getAlertRules))
 	mux.Handle("PUT /api/alerts/rules", s.can("settings.manage", s.putAlertRules))
 	mux.Handle("GET /api/alerts/channels", s.can("settings.manage", s.listChannels))
@@ -396,9 +398,18 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("DELETE /api/addons/{aid}", s.onAddon("app.delete", s.deleteAddon))
 	mux.Handle("POST /api/addons/{aid}/stop", s.onAddon("app.restart", s.setAddonStopped(true)))
 	mux.Handle("POST /api/addons/{aid}/start", s.onAddon("app.restart", s.setAddonStopped(false)))
+	mux.Handle("POST /api/addons/{aid}/restart", s.onAddon("app.restart", s.restartAddon))
+	mux.Handle("PUT /api/addons/{aid}/shared", s.onAddon("app.view", s.shareAddon)) // + env.edit, checked inside
 	mux.Handle("GET /api/addons/{aid}/credentials", s.onAddon("env.secrets.view", s.addonCredentials))
 	mux.Handle("POST /api/addons/{aid}/links", s.onAddon("app.view", s.linkAddon))
 	mux.Handle("DELETE /api/addons/{aid}/links/{app}", s.onAddon("app.view", s.unlinkAddon))
+	// databases get the same observe endpoints as apps (same permissions)
+	mux.Handle("GET /api/addons/{aid}/usage", s.onAddon("app.metrics", s.addonUsage))
+	mux.Handle("GET /api/addons/{aid}/events", s.onAddon("app.view", s.addonEvents))
+	mux.Handle("GET /api/addons/{aid}/pods", s.onAddon("app.logs", s.addonPods))
+	mux.Handle("GET /api/addons/{aid}/logs", s.onAddon("app.logs", s.addonLogs))
+	mux.Handle("GET /api/addons/{aid}/logs/ws", s.onAddon("app.logs", s.addonLogsWS))
+	mux.Handle("GET /api/addons/{aid}/exec/ws", s.onAddon("app.exec", s.addonExecWS))
 	mux.Handle("GET /api/apps/{id}/files", s.onApp("env.view", s.getFiles))
 	mux.Handle("PUT /api/apps/{id}/files", s.onApp("env.edit", s.putFiles))
 

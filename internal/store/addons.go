@@ -22,6 +22,8 @@ type Addon struct {
 	Credentials   string    `json:"-"`
 	Status        string    `json:"status"`
 	StatusMessage string    `json:"status_message,omitempty"`
+	Shared        bool      `json:"shared"`        // every app of the project gets the connection variables
+	SharedPrefix  string    `json:"shared_prefix"` // prefix of the variables when shared
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
@@ -31,16 +33,17 @@ type AddonLink struct {
 	AddonID   int64     `json:"addon_id"`
 	AppID     int64     `json:"app_id"`
 	Prefix    string    `json:"prefix"`
+	Shared    bool      `json:"shared,omitempty"` // comes from the database being shared with the project, not a link
 	CreatedAt time.Time `json:"created_at"`
 }
 
-const addonCols = `id, project_id, slug, name, kind, version, size_mb, cpu_millicores, memory_mb, stopped, credentials, status, status_message, created_at, updated_at`
+const addonCols = `id, project_id, slug, name, kind, version, size_mb, cpu_millicores, memory_mb, stopped, credentials, status, status_message, shared, shared_prefix, created_at, updated_at`
 
 func scanAddon(r scanner) (Addon, error) {
 	var a Addon
 	var created, updated int64
 	err := r.Scan(&a.ID, &a.ProjectID, &a.Slug, &a.Name, &a.Kind, &a.Version, &a.SizeMB, &a.CPUMillicores, &a.MemoryMB, &a.Stopped,
-		&a.Credentials, &a.Status, &a.StatusMessage, &created, &updated)
+		&a.Credentials, &a.Status, &a.StatusMessage, &a.Shared, &a.SharedPrefix, &created, &updated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return a, ErrNotFound
 	}
@@ -112,7 +115,8 @@ func (s *Store) SetAddonStatus(ctx context.Context, id int64, status, message st
 // DeleteAddon deletes an add-on and its links. Linked apps are marked as changed (their env shrinks).
 func (s *Store) DeleteAddon(ctx context.Context, id int64) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, `UPDATE apps SET env_changed_at = ? WHERE id IN (SELECT app_id FROM addon_links WHERE addon_id = ?)`, s.unix(), id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE apps SET env_changed_at = ? WHERE id IN (SELECT app_id FROM addon_links WHERE addon_id = ?)
+			OR project_id IN (SELECT project_id FROM addons WHERE id = ? AND shared = 1)`, s.unix(), id, id); err != nil {
 			return err
 		}
 		res, err := tx.ExecContext(ctx, `DELETE FROM addons WHERE id = ?`, id)
@@ -183,4 +187,48 @@ func (s *Store) AddonLinks(ctx context.Context, addonID, appID int64) ([]AddonLi
 		out = append(out, l)
 	}
 	return out, rows.Err()
+}
+
+// SetAddonShared shares a database with every app of its project (or stops sharing) and marks those apps as
+// changed (their environment grows or shrinks on the next deploy).
+func (s *Store) SetAddonShared(ctx context.Context, id int64, shared bool, prefix string) (Addon, error) {
+	err := s.tx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `UPDATE addons SET shared = ?, shared_prefix = ?, updated_at = ? WHERE id = ?`, b2i(shared), prefix, s.unix(), id)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE apps SET env_changed_at = ? WHERE project_id = (SELECT project_id FROM addons WHERE id = ?)`, s.unix(), id)
+		return err
+	})
+	if err != nil {
+		return Addon{}, err
+	}
+	return s.GetAddon(ctx, id)
+}
+
+// EffectiveAddonLinks returns where an app gets database variables from: its own links plus the databases
+// shared with its project (Shared set; an own link to the same database wins with its prefix).
+func (s *Store) EffectiveAddonLinks(ctx context.Context, app App) ([]AddonLink, error) {
+	links, err := s.AddonLinks(ctx, 0, app.ID)
+	if err != nil {
+		return nil, err
+	}
+	linked := map[int64]bool{}
+	for _, l := range links {
+		linked[l.AddonID] = true
+	}
+	addons, err := s.ListAddons(ctx, app.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	var shared []AddonLink
+	for _, a := range addons {
+		if a.Shared && !linked[a.ID] {
+			shared = append(shared, AddonLink{AddonID: a.ID, AppID: app.ID, Prefix: a.SharedPrefix, Shared: true, CreatedAt: a.UpdatedAt})
+		}
+	}
+	return append(shared, links...), nil // own links last: their variables win on a clash
 }

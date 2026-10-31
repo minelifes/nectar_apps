@@ -23,59 +23,12 @@ class AppMetrics extends ConsumerStatefulWidget {
 }
 
 class _AppMetricsState extends ConsumerState<AppMetrics> {
-  String _range = '1h';
-
   @override
   Widget build(BuildContext context) {
-    final s = S.of(context);
-    final id = widget.app.id;
-    final usage = ref.watch(appUsageProvider((id, _range)));
-    final c = NectarColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        NCard(
-          title: s.projectResources,
-          trailing: RangePicker(value: _range, options: usageRanges, onChanged: (r) => setState(() => _range = r)),
-          child: AsyncBlock(
-            value: usage,
-            onRetry: () => ref.invalidate(appUsageProvider((id, _range))),
-            data: (u) {
-              final pts = u.points;
-              List<(DateTime, double)> flat(double v) => pts.isEmpty ? const [] : [(pts.first.t, v), (pts.last.t, v)];
-              final cpu = TimeSeriesChart(
-                formatY: (v) => formatCpu(v.round()),
-                series: [
-                  ChartSeries(label: s.serverCpu, color: NectarTokens.amber, fill: true, points: [for (final p in pts) (p.t, p.cpuM.toDouble())]),
-                  if (u.requestCpuM > 0)
-                    ChartSeries(label: s.observeRequested, color: c.muted, dashed: true, points: flat(u.requestCpuM.toDouble())),
-                ],
-              );
-              final mem = TimeSeriesChart(
-                formatY: (v) => formatBytes(v.round()),
-                series: [
-                  ChartSeries(label: s.serverMemory, color: c.deploying, fill: true, points: [for (final p in pts) (p.t, p.memB.toDouble())]),
-                  if (u.requestMemB > 0)
-                    ChartSeries(label: s.observeRequested, color: c.muted, dashed: true, points: flat(u.requestMemB.toDouble())),
-                ],
-              );
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Grid(children: [('CPU', cpu), ('Memory', mem)]),
-                  if (u.replicas > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Text(
-                        s.observeTotalsAcrossReplicasTheDashed(u.replicas),
-                        style: TextStyle(color: c.muted, fontSize: 12.5),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ),
+        UsageCard(path: '/apps/${widget.app.id}'),
         if (widget.app.isWeb) ...[
           const SizedBox(height: NectarTokens.gap),
           _Traffic(app: widget.app),
@@ -290,6 +243,70 @@ class _AccessLog extends ConsumerWidget {
                         child: Text(e.ip, textAlign: TextAlign.right, style: TextStyle(color: c.muted, fontSize: 12)),
                       ),
                     ],
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// CPU and memory of an app or a database over time, with the requested resources as dashed lines.
+class UsageCard extends ConsumerStatefulWidget {
+  const UsageCard({super.key, required this.path});
+
+  /// API path of the workload: `/apps/5` or `/addons/3`.
+  final String path;
+
+  @override
+  ConsumerState<UsageCard> createState() => _UsageCardState();
+}
+
+class _UsageCardState extends ConsumerState<UsageCard> {
+  String _range = '1h';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final c = NectarColors.of(context);
+    final usage = ref.watch(usageProvider((widget.path, _range)));
+    return NCard(
+      title: s.projectResources,
+      trailing: RangePicker(value: _range, options: usageRanges, onChanged: (r) => setState(() => _range = r)),
+      child: AsyncBlock(
+        value: usage,
+        onRetry: () => ref.invalidate(usageProvider((widget.path, _range))),
+        data: (u) {
+          final pts = u.points;
+          List<(DateTime, double)> flat(double v) => pts.isEmpty ? const [] : [(pts.first.t, v), (pts.last.t, v)];
+          final cpu = TimeSeriesChart(
+            formatY: (v) => formatCpu(v.round()),
+            series: [
+              ChartSeries(label: s.serverCpu, color: NectarTokens.amber, fill: true, points: [for (final p in pts) (p.t, p.cpuM.toDouble())]),
+              if (u.requestCpuM > 0)
+                ChartSeries(label: s.observeRequested, color: c.muted, dashed: true, points: flat(u.requestCpuM.toDouble())),
+            ],
+          );
+          final mem = TimeSeriesChart(
+            formatY: (v) => formatBytes(v.round()),
+            series: [
+              ChartSeries(label: s.serverMemory, color: c.deploying, fill: true, points: [for (final p in pts) (p.t, p.memB.toDouble())]),
+              if (u.requestMemB > 0)
+                ChartSeries(label: s.observeRequested, color: c.muted, dashed: true, points: flat(u.requestMemB.toDouble())),
+            ],
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Grid(children: [('CPU', cpu), ('Memory', mem)]),
+              if (u.replicas > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    s.observeTotalsAcrossReplicasTheDashed(u.replicas),
+                    style: TextStyle(color: c.muted, fontSize: 12.5),
                   ),
                 ),
             ],

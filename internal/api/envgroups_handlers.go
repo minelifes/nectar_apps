@@ -342,6 +342,9 @@ func (s *Server) cloneProject(w http.ResponseWriter, r *http.Request, p *princip
 			var created store.Addon
 			_ = json.Unmarshal(body, &created)
 			addonMap[a.ID] = created.ID
+			if a.Shared { // the copy is shared with the new project the same way
+				_, _ = s.store.SetAddonShared(ctx, created.ID, true, a.SharedPrefix)
+			}
 		}
 	}
 	apps, _ := s.store.ListApps(ctx, proj.ID)

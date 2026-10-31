@@ -369,9 +369,13 @@ func (d *Deployer) DeleteAddon(ctx context.Context, a store.Addon, p store.Proje
 	return nil
 }
 
-// LinkedEnv returns the env vars an app gets from its linked add-ons.
+// LinkedEnv returns the env vars an app gets from its linked add-ons and the ones shared with its project.
 func (d *Deployer) LinkedEnv(ctx context.Context, appID int64) (map[string]string, error) {
-	links, err := d.store.AddonLinks(ctx, 0, appID)
+	app, err := d.store.GetApp(ctx, appID)
+	if err != nil {
+		return nil, err
+	}
+	links, err := d.store.EffectiveAddonLinks(ctx, app)
 	if err != nil {
 		return nil, err
 	}

@@ -43,194 +43,202 @@ class MessageLookup extends MessageLookupByLibrary {
   static String m10(host, port) =>
       "Reachable only from apps in the same project, at ${host}:${port}. Link an app below to give it these settings as variables.";
 
-  static String m11(alertsLength) => "and ${alertsLength} more";
+  static String m11(vars) => "All apps get: ${vars}";
 
-  static String m12(chName) => "Delete ${chName}?";
+  static String m12(alertsLength) => "and ${alertsLength} more";
 
-  static String m13(title) => "${title}: enter a number";
+  static String m13(chName) => "Delete ${chName}?";
 
-  static String m14(chName) => "Test message sent to ${chName}";
+  static String m14(title) => "${title}: enter a number";
 
-  static String m15(appName) =>
+  static String m15(chName) => "Test message sent to ${chName}";
+
+  static String m16(appName) =>
       "Build started: it deploys ${appName} when it is done";
 
-  static String m16(list) => "Changed ${list} are saved but not live yet.";
+  static String m17(list) => "Changed ${list} are saved but not live yet.";
 
-  static String m17(host) => "Copied ${host}";
+  static String m18(host) => "Copied ${host}";
 
-  static String m18(e) => "Could not discard: ${e}";
+  static String m19(e) => "Could not discard: ${e}";
 
-  static String m19(appName) => "Delete ${appName}?";
+  static String m20(appName) => "Delete ${appName}?";
 
-  static String m20(what) => "Delete ${what}?";
+  static String m21(what) => "Delete ${what}?";
 
-  static String m21(slug) => "Delete the preview ${slug}?";
+  static String m22(slug) => "Delete the preview ${slug}?";
 
-  static String m22(vName) => "Delete the data of ${vName}?";
+  static String m23(vName) => "Delete the data of ${vName}?";
 
-  static String m23(volume) => "Files · ${volume}";
+  static String m24(volume) => "Files · ${volume}";
 
-  static String m24(eName) =>
+  static String m25(eName) =>
       "${eName} is not a text file — download it instead";
 
-  static String m25(appName) =>
+  static String m26(appName) =>
       "${appName} is saved as \"not deployed\"; you can close the wizard and continue later from the app page.";
 
-  static String m26(port, proto, nodePort) =>
+  static String m27(port, proto, nodePort) =>
       "Port ${port}/${proto} is open on the server as ${nodePort}";
 
-  static String m27(days) => "${days} days";
+  static String m28(days) => "${days} days";
 
-  static String m28(parent, number) =>
+  static String m29(parent, number) =>
       "Preview of ${parent} · pull request #${number}";
 
-  static String m29(parent) =>
+  static String m30(parent) =>
       "Rebuilt on new commits and deleted when the pull request closes. Change settings on ${parent}.";
 
-  static String m30(t) => "Promote to ${t}…";
+  static String m31(t) => "Promote to ${t}…";
 
-  static String m31(ready, replicas) => "${ready} / ${replicas} ready";
+  static String m32(ready, replicas) => "${ready} / ${replicas} ready";
 
-  static String m32(host) => "Remove ${host}?";
+  static String m33(host) => "Remove ${host}?";
 
-  static String m33(path) => "Remove ${path}?";
+  static String m34(path) => "Remove ${path}?";
 
-  static String m34(fName) => "Replace ${fName}?";
+  static String m35(fName) => "Replace ${fName}?";
 
-  static String m35(eName) => "Saved ${eName}";
+  static String m36(eName) => "Saved ${eName}";
 
-  static String m36(index, stepsLength) => "Step ${index} of ${stepsLength}";
+  static String m37(index, stepsLength) => "Step ${index} of ${stepsLength}";
 
-  static String m37(label) =>
+  static String m38(label) =>
       "This file suits ${label} better than the version you chose.";
 
-  static String m38(slug) => "Type ${slug} to confirm:";
+  static String m39(slug) => "Type ${slug} to confirm:";
 
-  static String m39(size) => "${size} uploaded and checked";
+  static String m40(size) => "${size} uploaded and checked";
 
-  static String m40(round) => "Uploading… ${round}%";
+  static String m41(round) => "Uploading… ${round}%";
 
-  static String m41(label) => "Use ${label}";
+  static String m42(label) => "Use ${label}";
 
-  static String m42(vName) => "Volume ${vName} deleted";
+  static String m43(vName) => "Volume ${vName} deleted";
 
-  static String m43(appName) =>
+  static String m44(appName) =>
       "\"${appName}\" was created but not deployed yet. Keep it to finish later, or discard it.";
 
-  static String m44(pName) => "Continue with ${pName}";
+  static String m45(pName) => "Continue with ${pName}";
 
-  static String m45(subject) => "Backup of ${subject} started";
+  static String m46(subject) => "Backup of ${subject} started";
 
-  static String m46(what) => "${what} Changes since then are lost.";
+  static String m47(what) => "${what} Changes since then are lost.";
 
-  static String m47(tName) => "Checking ${tName}…";
+  static String m48(tName) => "Checking ${tName}…";
 
-  static String m48(nextRun) => "Next: ${nextRun}";
+  static String m49(nextRun) => "Next: ${nextRun}";
 
-  static String m49(subject, targetName) =>
+  static String m50(subject, targetName) =>
       "No more backups of ${subject} to ${targetName}. Existing snapshots stay in the repository.";
 
-  static String m50(tName) => "Remove ${tName}?";
+  static String m51(tName) => "Remove ${tName}?";
 
-  static String m51(shortId) => "Restore ${shortId}?";
+  static String m52(shortId) => "Restore ${shortId}?";
 
-  static String m52(subject) => "Snapshots · ${subject}";
+  static String m53(subject) => "Snapshots · ${subject}";
 
-  static String m53(count) =>
+  static String m54(count) =>
       "${Intl.plural(count, zero: 'No apps', one: '1 app', other: '${count} apps')}";
 
-  static String m54(baseDomain, baseHost) =>
+  static String m55(baseDomain, baseHost) =>
       "The *.${baseDomain} record serves every app\'s default domain. A CNAME to ${baseHost} works for subdomains of your own domains once it exists.";
 
-  static String m55(ip) => "Block ${ip}";
+  static String m56(ip) => "Block ${ip}";
 
-  static String m56(domain) => "Delete ${domain}?";
+  static String m57(domain) => "Delete ${domain}?";
 
-  static String m57(baseWildcard) => "Get ${baseWildcard}";
+  static String m58(baseWildcard) => "Get ${baseWildcard}";
 
-  static String m58(ms) => "${ms} ms";
+  static String m59(ms) => "${ms} ms";
 
-  static String m59(pod) => "Before the last restart · ${pod}";
+  static String m60(pod) => "Before the last restart · ${pod}";
 
-  static String m60(linesLength) => "Copied ${linesLength} lines";
+  static String m61(linesLength) => "Copied ${linesLength} lines";
 
-  static String m61(visibleLength) => "Copied ${visibleLength} lines";
+  static String m62(visibleLength) => "Copied ${visibleLength} lines";
 
-  static String m62(replicas) =>
+  static String m63(replicas) =>
       "Totals across ${replicas} replicas; the dashed line is what all of them requested together.";
 
-  static String m63(sampleImage) => "Image: ${sampleImage} · 50m CPU · 64 MB";
+  static String m64(sampleImage) => "Image: ${sampleImage} · 50m CPU · 64 MB";
 
-  static String m64(what) => "Choose ${what}";
+  static String m65(what) => "Choose ${what}";
 
-  static String m65(slug) =>
+  static String m66(slug) =>
       "Copied — apply it with: nectar apply -f nectar.yaml --project ${slug}";
 
-  static String m66(appName) => "Copy ${appName}";
+  static String m67(appName) => "Copy ${appName}";
 
-  static String m67(gName) => "Delete the group ${gName}?";
+  static String m68(gName) => "Delete the group ${gName}?";
 
-  static String m68(slug) => "Environment of ${slug}";
+  static String m69(slug) => "Environment of ${slug}";
 
-  static String m69(what) => "Import ${what}";
+  static String m70(what) => "Import ${what}";
 
-  static String m70(key) =>
+  static String m71(key) =>
       "Invalid variable name \"${key}\": use letters, digits and _";
 
-  static String m71(appName, target) => "Promote ${appName} to ${target}?";
+  static String m72(appName, target) => "Promote ${appName} to ${target}?";
 
-  static String m72(slug, slug2, slug3) =>
+  static String m73(slug, slug2, slug3) =>
       "The live build of ${slug} (its image or uploaded file) is deployed to ${slug2}/${slug3}. Its settings and variables there stay as they are.";
 
-  static String m73(nodeName) => "Drain ${nodeName}?";
+  static String m74(nodeName) => "Drain ${nodeName}?";
 
-  static String m74(nodeName) => "Drain ${nodeName} anyway?";
+  static String m75(nodeName) => "Drain ${nodeName} anyway?";
 
-  static String m75(historyName, range) =>
+  static String m76(historyName, range) =>
       "History · ${historyName} · last ${range}";
 
-  static String m76(keepArtifacts, auditDays, alertDays) =>
+  static String m77(keepArtifacts, auditDays, alertDays) =>
       "Kept: the last ${keepArtifacts} uploads per app (and every upload a live release uses), ${auditDays} days of audit log, ${alertDays} days of resolved alerts. Cleanup runs every hour.";
 
-  static String m77(nodeName) => "Make ${nodeName} an edge node?";
+  static String m78(nodeName) => "Make ${nodeName} an edge node?";
 
-  static String m78(nodeName) => "Remove ${nodeName} from the cluster?";
+  static String m79(nodeName) => "Remove ${nodeName} from the cluster?";
 
-  static String m79(nodeName) => "Stop serving traffic on ${nodeName}?";
+  static String m80(nodeName) => "Stop serving traffic on ${nodeName}?";
 
-  static String m80(requestedBytes) =>
+  static String m81(requestedBytes) =>
       "${requestedBytes} · usage shows while the app or database runs";
 
-  static String m81(ip, lastSeenAt, createdAt) =>
+  static String m82(ip, lastSeenAt, createdAt) =>
       "${ip} · active ${lastSeenAt} · since ${createdAt}";
 
-  static String m82(ip) =>
+  static String m83(ip) =>
       "Allow only these IP addresses or networks (one per line, e.g. 203.0.113.7 or 203.0.113.0/24). Empty = everyone. Your address: ${ip}. An SSH tunnel to the server always works, so a wrong list can be fixed.";
 
-  static String m83(username, updatedAt) =>
+  static String m84(username, updatedAt) =>
       "${username} · changed ${updatedAt}";
 
-  static String m84(left) =>
+  static String m85(left) =>
       "Only ${left} recovery codes left: create new ones.";
 
-  static String m85(name) => "Remove the passkey ${name}?";
+  static String m86(name) => "Remove the passkey ${name}?";
 
-  static String m86(when) => "used ${when}";
+  static String m87(when) => "used ${when}";
 
-  static String m87(pName) => "Remove ${pName}?";
+  static String m88(pName) => "Remove ${pName}?";
 
-  static String m88(host) => "Remove the login for ${host}?";
+  static String m89(host) => "Remove the login for ${host}?";
 
-  static String m89(v) =>
+  static String m90(amount) =>
+      "The server\'s clock is ${amount} ahead of this device: times in the panel look wrong, and two-factor codes and certificates can fail. On the server run: sudo timedatectl set-ntp true";
+
+  static String m91(amount) =>
+      "The server\'s clock is ${amount} behind this device: times in the panel look wrong, and two-factor codes and certificates can fail. On the server run: sudo timedatectl set-ntp true";
+
+  static String m92(v) =>
       "k3s upgrade to ${v} started: node versions update here as it progresses";
 
-  static String m90(summary) => "Roll back ${summary}?";
+  static String m93(summary) => "Roll back ${summary}?";
 
-  static String m91(component) => "Update ${component}";
+  static String m94(component) => "Update ${component}";
 
-  static String m92(v) => "Update k3s to ${v}?";
+  static String m95(v) => "Update k3s to ${v}?";
 
-  static String m93(summary) => "Updating · ${summary}";
+  static String m96(summary) => "Updating · ${summary}";
 
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
@@ -386,6 +394,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "addonLink": MessageLookupByLibrary.simpleMessage("Link"),
     "addonLinkAnApp": MessageLookupByLibrary.simpleMessage("Link an app"),
+    "addonLinkOverridesShared": MessageLookupByLibrary.simpleMessage(
+      "An app linked here uses its own link (and prefix) instead.",
+    ),
     "addonLinkToAnApp": m8,
     "addonLinkedApps": MessageLookupByLibrary.simpleMessage("Linked apps"),
     "addonLinkedRedeployToApply": m9,
@@ -406,10 +417,28 @@ class MessageLookup extends MessageLookupByLibrary {
     "addonSavedTheDatabaseRestartsWith": MessageLookupByLibrary.simpleMessage(
       "Saved; the database restarts with the new resources",
     ),
+    "addonShareHelp": MessageLookupByLibrary.simpleMessage(
+      "Every app in the project gets the connection variables, including apps you add later. No link needed. Redeploy the apps to apply.",
+    ),
+    "addonSharePrefix": MessageLookupByLibrary.simpleMessage(
+      "Prefix for the shared variables",
+    ),
+    "addonShareWithProject": MessageLookupByLibrary.simpleMessage(
+      "Share with the whole project",
+    ),
+    "addonSharedAs": m11,
+    "addonSharedSaved": MessageLookupByLibrary.simpleMessage(
+      "Saved. Redeploy the apps to apply.",
+    ),
     "addonShowCredentials": MessageLookupByLibrary.simpleMessage(
       "Show credentials",
     ),
     "addonStorageMib": MessageLookupByLibrary.simpleMessage("Storage (MiB)"),
+    "addonTabEvents": MessageLookupByLibrary.simpleMessage("Events"),
+    "addonTabLogs": MessageLookupByLibrary.simpleMessage("Logs"),
+    "addonTabMetrics": MessageLookupByLibrary.simpleMessage("Metrics"),
+    "addonTabOverview": MessageLookupByLibrary.simpleMessage("Overview"),
+    "addonTabTerminal": MessageLookupByLibrary.simpleMessage("Terminal"),
     "addonTheDatabaseAndAllIts": MessageLookupByLibrary.simpleMessage(
       "The database and all its data are deleted for good. Linked apps lose their connection settings with their next deploy.",
     ),
@@ -425,18 +454,21 @@ class MessageLookup extends MessageLookupByLibrary {
       "Alerts will no longer be sent there.",
     ),
     "alertAllAlerts": MessageLookupByLibrary.simpleMessage("All alerts"),
-    "alertAndMore": m11,
+    "alertAndMore": m12,
     "alertChangingRulesNeedsTheSettings": MessageLookupByLibrary.simpleMessage(
       "Changing rules needs the settings.manage permission.",
     ),
     "alertChannels": MessageLookupByLibrary.simpleMessage("Channels"),
-    "alertDelete": m12,
+    "alertDelete": m13,
     "alertEncryption": MessageLookupByLibrary.simpleMessage("Encryption"),
-    "alertEnterANumber": m13,
+    "alertEnterANumber": m14,
     "alertForAtLeast": MessageLookupByLibrary.simpleMessage("For at least"),
     "alertGetNotifiedWhenAppsGo": MessageLookupByLibrary.simpleMessage(
       "Get notified when apps go down, servers run out of resources or certificates are about to expire.",
     ),
+    "alertMarkAllRead": MessageLookupByLibrary.simpleMessage("Mark all read"),
+    "alertMarkRead": MessageLookupByLibrary.simpleMessage("Mark as read"),
+    "alertMarkUnread": MessageLookupByLibrary.simpleMessage("Mark as unread"),
     "alertNoChannelsYet": MessageLookupByLibrary.simpleMessage(
       "No channels yet",
     ),
@@ -456,6 +488,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "alertPanelAddressForLinks": MessageLookupByLibrary.simpleMessage(
       "Panel address for links",
     ),
+    "alertReadLabel": MessageLookupByLibrary.simpleMessage("read"),
     "alertRemindMeWhileAnAlert": MessageLookupByLibrary.simpleMessage(
       "Remind me while an alert keeps firing",
     ),
@@ -469,7 +502,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "alertStarttlsPort587": MessageLookupByLibrary.simpleMessage(
       "STARTTLS (port 587)",
     ),
-    "alertTestMessageSentTo": m14,
+    "alertTestMessageSentTo": m15,
     "alertTlsPort465": MessageLookupByLibrary.simpleMessage("TLS (port 465)"),
     "app0NoLimitTimeout60": MessageLookupByLibrary.simpleMessage(
       "0 = no limit (timeout: 60 s). Above the rate limit a client gets 429 (Too Many Requests); one that keeps going is blocked for a while (Gateway → Blocked IPs). One page load can make dozens of requests. Older gateways block for 24 h at once and need at least 10.",
@@ -522,14 +555,14 @@ class MessageLookup extends MessageLookupByLibrary {
       "Build from a Git repository instead",
     ),
     "appBuildFromGit": MessageLookupByLibrary.simpleMessage("Build from Git"),
-    "appBuildStartedItDeploysWhen": m15,
+    "appBuildStartedItDeploysWhen": m16,
     "appBuilds": MessageLookupByLibrary.simpleMessage("Builds"),
     "appCancelBuild": MessageLookupByLibrary.simpleMessage("Cancel build"),
     "appCancelUpload": MessageLookupByLibrary.simpleMessage("Cancel upload"),
     "appChangeTheseOnTheSettings": MessageLookupByLibrary.simpleMessage(
       "Change these on the Settings tab, variables and files on Environment.",
     ),
-    "appChangedAreSavedButNot": m16,
+    "appChangedAreSavedButNot": m17,
     "appChangesApplyToTheRunning": MessageLookupByLibrary.simpleMessage(
       "Changes apply to the running app at once. New files get the owner of their folder.",
     ),
@@ -547,9 +580,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "appConfiguration": MessageLookupByLibrary.simpleMessage("Configuration"),
     "appContainerPort": MessageLookupByLibrary.simpleMessage("Container port"),
     "appContent": MessageLookupByLibrary.simpleMessage("Content"),
-    "appCopied": m17,
+    "appCopied": m18,
     "appCopyApp": MessageLookupByLibrary.simpleMessage("Copy app…"),
-    "appCouldNotDiscard": m18,
+    "appCouldNotDiscard": m19,
     "appCpuMillicores": MessageLookupByLibrary.simpleMessage(
       "CPU (millicores)",
     ),
@@ -562,15 +595,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "appDefaultDomainWithALet": MessageLookupByLibrary.simpleMessage(
       "default domain, with a Let\'s Encrypt certificate",
     ),
-    "appDelete": m19,
-    "appDelete2": m20,
+    "appDelete": m20,
+    "appDelete2": m21,
     "appDeleteApp": MessageLookupByLibrary.simpleMessage("Delete app…"),
     "appDeleteData": MessageLookupByLibrary.simpleMessage("Delete data"),
-    "appDeletePreview": m21,
+    "appDeletePreview": m22,
     "appDeletePreviewHelp": MessageLookupByLibrary.simpleMessage(
       "A new commit to the pull request creates it again.",
     ),
-    "appDeleteTheDataOf": m22,
+    "appDeleteTheDataOf": m23,
     "appDeploy": MessageLookupByLibrary.simpleMessage("Deploy"),
     "appDeployANewVersion": MessageLookupByLibrary.simpleMessage(
       "Deploy a new version",
@@ -600,7 +633,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "appExistingImage": MessageLookupByLibrary.simpleMessage("Existing image"),
     "appFiles": MessageLookupByLibrary.simpleMessage("Files"),
-    "appFiles2": m23,
+    "appFiles2": m24,
     "appFilesUpTo64Mb": MessageLookupByLibrary.simpleMessage(
       "Files up to 64 MB can be uploaded here",
     ),
@@ -638,8 +671,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "appIncludeSubdomains": MessageLookupByLibrary.simpleMessage(
       "Include subdomains",
     ),
-    "appIsNotATextFile": m24,
-    "appIsSavedAsNotDeployed": m25,
+    "appIsNotATextFile": m25,
+    "appIsSavedAsNotDeployed": m26,
     "appKey": MessageLookupByLibrary.simpleMessage("KEY"),
     "appKubernetesEvents": MessageLookupByLibrary.simpleMessage(
       "Kubernetes events",
@@ -736,7 +769,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appPointItsDnsARecord": MessageLookupByLibrary.simpleMessage(
       "Point its DNS (A record) to this server first.",
     ),
-    "appPortIsOpenOnThe": m26,
+    "appPortIsOpenOnThe": m27,
     "appPortOpen": MessageLookupByLibrary.simpleMessage("Port open"),
     "appPortYourAppListensOn": MessageLookupByLibrary.simpleMessage(
       "Port your app listens on",
@@ -747,7 +780,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appPreviewDatabasesHelp": MessageLookupByLibrary.simpleMessage(
       "Off: previews start without database links (they must not change real data).",
     ),
-    "appPreviewDays": m27,
+    "appPreviewDays": m28,
     "appPreviewEnvironments": MessageLookupByLibrary.simpleMessage(
       "Preview environments",
     ),
@@ -757,8 +790,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "appPreviewForksHelp": MessageLookupByLibrary.simpleMessage(
       "Their code runs with this app\'s variables and secrets.",
     ),
-    "appPreviewOf": m28,
-    "appPreviewOfHelp": m29,
+    "appPreviewOf": m29,
+    "appPreviewOfHelp": m30,
     "appPreviewTtl": MessageLookupByLibrary.simpleMessage(
       "Delete inactive previews after",
     ),
@@ -773,9 +806,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "appProjectDatabases": MessageLookupByLibrary.simpleMessage(
       "Project databases",
     ),
-    "appPromoteTo": m30,
+    "appPromoteTo": m31,
     "appPushWebhook": MessageLookupByLibrary.simpleMessage("Push webhook"),
-    "appReady": m31,
+    "appReady": m32,
     "appRedeploy": MessageLookupByLibrary.simpleMessage("Redeploy"),
     "appRedeployCurrentVersion": MessageLookupByLibrary.simpleMessage(
       "Redeploy current version",
@@ -786,8 +819,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "appRedirectsAccessHeaders": MessageLookupByLibrary.simpleMessage(
       "Redirects, access, headers",
     ),
-    "appRemove": m32,
-    "appRemove2": m33,
+    "appRemove": m33,
+    "appRemove2": m34,
     "appRemoveFromTheAppThe": MessageLookupByLibrary.simpleMessage(
       "Remove from the app (the data is kept until you delete it)",
     ),
@@ -799,7 +832,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Removed from the app, data still kept",
     ),
     "appRenameMove": MessageLookupByLibrary.simpleMessage("Rename / move"),
-    "appReplace": m34,
+    "appReplace": m35,
     "appReplace2": MessageLookupByLibrary.simpleMessage("Replace"),
     "appRepository": MessageLookupByLibrary.simpleMessage("Repository"),
     "appRequestHeadersToTheApp": MessageLookupByLibrary.simpleMessage(
@@ -823,12 +856,15 @@ class MessageLookup extends MessageLookupByLibrary {
     "appRoot": MessageLookupByLibrary.simpleMessage("(root)"),
     "appRotate": MessageLookupByLibrary.simpleMessage("Rotate"),
     "appSaveFile": MessageLookupByLibrary.simpleMessage("Save file"),
-    "appSaved": m35,
+    "appSaved": m36,
     "appScheduleCron": MessageLookupByLibrary.simpleMessage("Schedule (cron)"),
     "appSecret": MessageLookupByLibrary.simpleMessage("Secret"),
     "appServerPort": MessageLookupByLibrary.simpleMessage("Server port"),
     "appSharedByAllReplicas": MessageLookupByLibrary.simpleMessage(
       "Shared by all replicas",
+    ),
+    "appSharedWithProject": MessageLookupByLibrary.simpleMessage(
+      "shared with the project",
     ),
     "appShopApi": MessageLookupByLibrary.simpleMessage("Shop API"),
     "appSizeMib": MessageLookupByLibrary.simpleMessage("Size (MiB)"),
@@ -836,7 +872,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appSpringProfilesActiveProd": MessageLookupByLibrary.simpleMessage(
       "--spring.profiles.active=prod",
     ),
-    "appStepOf": m36,
+    "appStepOf": m37,
     "appStorage": MessageLookupByLibrary.simpleMessage("Storage"),
     "appTcp": MessageLookupByLibrary.simpleMessage("TCP"),
     "appTcpUdpPortsReachableFrom": MessageLookupByLibrary.simpleMessage(
@@ -866,7 +902,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appThisCannotBeUndoneBackups": MessageLookupByLibrary.simpleMessage(
       "This cannot be undone (backups of the volume keep older copies).",
     ),
-    "appThisFileSuitsBetterThan": m37,
+    "appThisFileSuitsBetterThan": m38,
     "appThisRemovesTheAppIts": MessageLookupByLibrary.simpleMessage(
       "This removes the app, its domains, releases and uploaded files from the server. It cannot be undone.",
     ),
@@ -874,18 +910,18 @@ class MessageLookup extends MessageLookupByLibrary {
     "appTrafficOnlyReachesAReplica": MessageLookupByLibrary.simpleMessage(
       "Traffic only reaches a replica once its health check passes, so a broken release never replaces a working one.",
     ),
-    "appTypeToConfirm": m38,
+    "appTypeToConfirm": m39,
     "appUdp": MessageLookupByLibrary.simpleMessage("UDP"),
     "appUpload": MessageLookupByLibrary.simpleMessage("Upload"),
-    "appUploadedAndChecked": m39,
-    "appUploading": m40,
-    "appUse": m41,
+    "appUploadedAndChecked": m40,
+    "appUploading": m41,
+    "appUse": m42,
     "appUsed": MessageLookupByLibrary.simpleMessage("Used"),
     "appUsedInKubernetesNamesAnd": MessageLookupByLibrary.simpleMessage(
       "Used in Kubernetes names and the default domain",
     ),
-    "appVolumeDeleted": m42,
-    "appWasCreatedButNotDeployed": m43,
+    "appVolumeDeleted": m43,
+    "appWasCreatedButNotDeployed": m44,
     "appXEnvStaging": MessageLookupByLibrary.simpleMessage("X-Env: staging"),
     "appXFrameOptionsDeny": MessageLookupByLibrary.simpleMessage(
       "X-Frame-Options: DENY",
@@ -913,7 +949,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "authConnectToYourServer": MessageLookupByLibrary.simpleMessage(
       "Connect to your server",
     ),
-    "authContinueWith": m44,
+    "authContinueWith": m45,
     "authCreateOwnerAccount": MessageLookupByLibrary.simpleMessage(
       "Create Owner account",
     ),
@@ -978,7 +1014,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "backupAddTarget": MessageLookupByLibrary.simpleMessage("Add target"),
     "backupBackUpNow": MessageLookupByLibrary.simpleMessage("Back up now"),
     "backupBackblazeB2": MessageLookupByLibrary.simpleMessage("Backblaze B2"),
-    "backupBackupOfStarted": m45,
+    "backupBackupOfStarted": m46,
     "backupBackupsAreEncryptedWithThe": MessageLookupByLibrary.simpleMessage(
       "Backups are encrypted with the repository password before they leave the server.",
     ),
@@ -988,9 +1024,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "backupBeginOpensshPrivateKey": MessageLookupByLibrary.simpleMessage(
       "-----BEGIN OPENSSH PRIVATE KEY-----",
     ),
-    "backupChangesSinceThenAreLost": m46,
+    "backupChangesSinceThenAreLost": m47,
     "backupCheck": MessageLookupByLibrary.simpleMessage("Check"),
-    "backupChecking": m47,
+    "backupChecking": m48,
     "backupCopied": MessageLookupByLibrary.simpleMessage("Copied"),
     "backupCopy": MessageLookupByLibrary.simpleMessage("Copy"),
     "backupCronExpressionUtc": MessageLookupByLibrary.simpleMessage(
@@ -1011,11 +1047,11 @@ class MessageLookup extends MessageLookupByLibrary {
       "minute hour day month weekday",
     ),
     "backupName": MessageLookupByLibrary.simpleMessage("Name"),
-    "backupNext": m48,
+    "backupNext": m49,
     "backupNoBackupHasRunYet": MessageLookupByLibrary.simpleMessage(
       "No backup has run yet.",
     ),
-    "backupNoMoreBackupsOfTo": m49,
+    "backupNoMoreBackupsOfTo": m50,
     "backupNoSnapshotsYet": MessageLookupByLibrary.simpleMessage(
       "No snapshots yet.",
     ),
@@ -1033,9 +1069,9 @@ class MessageLookup extends MessageLookupByLibrary {
       "Reading the repository…",
     ),
     "backupRecoveryKit": MessageLookupByLibrary.simpleMessage("Recovery kit"),
-    "backupRemove": m50,
+    "backupRemove": m51,
     "backupRemove2": MessageLookupByLibrary.simpleMessage("Remove"),
-    "backupRestore": m51,
+    "backupRestore": m52,
     "backupRestore2": MessageLookupByLibrary.simpleMessage("Restore"),
     "backupRestoreStartedFollowItUnder": MessageLookupByLibrary.simpleMessage(
       "Restore started: follow it under History",
@@ -1047,7 +1083,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Scheduled backups on",
     ),
     "backupSftp": MessageLookupByLibrary.simpleMessage("SFTP"),
-    "backupSnapshots": m52,
+    "backupSnapshots": m53,
     "backupThePanelForgetsTheTarget": MessageLookupByLibrary.simpleMessage(
       "The panel forgets the target. The backups stay where they are.",
     ),
@@ -1066,7 +1102,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "backupYourRoleDoesNotInclude": MessageLookupByLibrary.simpleMessage(
       "Your role does not include backup.manage.",
     ),
-    "countApps": m53,
+    "countApps": m54,
     "dashboardAProjectIsASpace": MessageLookupByLibrary.simpleMessage(
       "A project is a space for related apps with its own quota. Create one, then add your first app.",
     ),
@@ -1111,7 +1147,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "domainSearchDomainsAppsProjects": MessageLookupByLibrary.simpleMessage(
       "Search domains, apps, projects",
     ),
-    "domainTheRecordServesEveryApp": m54,
+    "domainTheRecordServesEveryApp": m55,
     "domainTheServerSPublicIp": MessageLookupByLibrary.simpleMessage(
       "The server\'s public IP is unknown. Set it in the setup wizard (Settings → Domain, HTTPS email and sample app) so the records can be shown and checked.",
     ),
@@ -1121,10 +1157,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "gateway1Day": MessageLookupByLibrary.simpleMessage("1 day"),
     "gateway1Hour": MessageLookupByLibrary.simpleMessage("1 hour"),
     "gateway1Week": MessageLookupByLibrary.simpleMessage("1 week"),
-    "gatewayAWildcardCertificateExampleCom":
-        MessageLookupByLibrary.simpleMessage(
-          "A wildcard certificate (*.example.com) is proved over DNS: the gateway adds a TXT record through your DNS provider. Apps under it get HTTPS the moment they are created.",
-        ),
+    "gatewayAWildcardCertificateExampleCom": MessageLookupByLibrary.simpleMessage(
+      "A wildcard certificate (*.example.com) is proved over DNS: the gateway adds a TXT record through your DNS provider. Apps under it get HTTPS the moment they are created.",
+    ),
     "gatewayAboveADomainSRate": MessageLookupByLibrary.simpleMessage(
       "Above a domain\'s rate limit a client gets 429 and may retry a second later. A client that keeps going (more than ten times the limit refused within a minute) is blocked:",
     ),
@@ -1135,19 +1170,19 @@ class MessageLookup extends MessageLookupByLibrary {
     "gatewayAny": MessageLookupByLibrary.simpleMessage("Any"),
     "gatewayApiToken": MessageLookupByLibrary.simpleMessage("API token"),
     "gatewayBlock": MessageLookupByLibrary.simpleMessage("Block"),
-    "gatewayBlock2": m55,
+    "gatewayBlock2": m56,
     "gatewayBlockAnIp": MessageLookupByLibrary.simpleMessage("Block an IP"),
     "gatewayBlockIp": MessageLookupByLibrary.simpleMessage("Block IP"),
     "gatewayBlockedIps": MessageLookupByLibrary.simpleMessage("Blocked IPs"),
     "gatewayClientIp": MessageLookupByLibrary.simpleMessage("Client IP"),
-    "gatewayDelete": m56,
+    "gatewayDelete": m57,
     "gatewayDomain": MessageLookupByLibrary.simpleMessage("Domain"),
     "gatewayDomainsOfYourAppsAppear": MessageLookupByLibrary.simpleMessage(
       "Domains of your apps appear here.",
     ),
     "gatewayExampleCom": MessageLookupByLibrary.simpleMessage("*.example.com"),
     "gatewayFor": MessageLookupByLibrary.simpleMessage("For"),
-    "gatewayGet": m57,
+    "gatewayGet": m58,
     "gatewayHostsItServesFallBack": MessageLookupByLibrary.simpleMessage(
       "Hosts it serves fall back to their own Let\'s Encrypt certificates (ordered per host).",
     ),
@@ -1161,11 +1196,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "gatewayLetSEncryptCertificatesRenew": MessageLookupByLibrary.simpleMessage(
       "Let\'s Encrypt certificates renew automatically about 30 days before they expire; the \"Certificate expiring\" alert warns when one does not.",
     ),
-    "gatewayMs": m58,
-    "gatewayNectarGatewayServesEveryDomain":
-        MessageLookupByLibrary.simpleMessage(
-          "nectar-gateway serves every domain on ports 80/443: routes, certificates, rate limits and blocked IPs.",
-        ),
+    "gatewayMs": m59,
+    "gatewayNectarGatewayServesEveryDomain": MessageLookupByLibrary.simpleMessage(
+      "nectar-gateway serves every domain on ports 80/443: routes, certificates, rate limits and blocked IPs.",
+    ),
     "gatewayNoRequestsMatchTheGateway": MessageLookupByLibrary.simpleMessage(
       "No requests match. The gateway keeps the latest requests in memory (ACCESS_LOG_SIZE, 2000 by default).",
     ),
@@ -1234,10 +1268,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "newApp": MessageLookupByLibrary.simpleMessage("New app"),
     "noAccess": MessageLookupByLibrary.simpleMessage("No access"),
     "observeAllPods": MessageLookupByLibrary.simpleMessage("All pods"),
-    "observeBeforeTheLastRestart": m59,
+    "observeBeforeTheLastRestart": m60,
     "observeClear": MessageLookupByLibrary.simpleMessage("Clear"),
-    "observeCopiedLines": m60,
-    "observeCopiedLines2": m61,
+    "observeCopiedLines": m61,
+    "observeCopiedLines2": m62,
     "observeCopyShownLines": MessageLookupByLibrary.simpleMessage(
       "Copy shown lines",
     ),
@@ -1273,7 +1307,7 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "The previous container wrote nothing.",
         ),
-    "observeTotalsAcrossReplicasTheDashed": m62,
+    "observeTotalsAcrossReplicasTheDashed": m63,
     "observeTrafficLastHour": MessageLookupByLibrary.simpleMessage(
       "Traffic · last hour",
     ),
@@ -1288,7 +1322,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "onboardingEmailForLetSEncrypt": MessageLookupByLibrary.simpleMessage(
       "Email for Let\'s Encrypt",
     ),
-    "onboardingImage50mCpu64Mb": m63,
+    "onboardingImage50mCpu64Mb": m64,
     "onboardingLeaveItEmptyToRegister": MessageLookupByLibrary.simpleMessage(
       "Leave it empty to register without an email.",
     ),
@@ -1312,18 +1346,18 @@ class MessageLookup extends MessageLookupByLibrary {
     "pageNotFound": MessageLookupByLibrary.simpleMessage("Page not found"),
     "projectActivity": MessageLookupByLibrary.simpleMessage("Activity"),
     "projectAdopted": MessageLookupByLibrary.simpleMessage("Adopted"),
-    "projectAdoptedFromAnExistingNamespace":
-        MessageLookupByLibrary.simpleMessage(
-          "Adopted from an existing namespace: other workloads there are left alone.",
-        ),
+    "projectAdoptedFromAnExistingNamespace": MessageLookupByLibrary.simpleMessage(
+      "Adopted from an existing namespace: other workloads there are left alone.",
+    ),
     "projectAllProjects": MessageLookupByLibrary.simpleMessage("All projects"),
+    "projectAllTemplates": MessageLookupByLibrary.simpleMessage("All"),
     "projectApplyNectarYaml": MessageLookupByLibrary.simpleMessage(
       "Apply nectar.yaml",
     ),
     "projectApps": MessageLookupByLibrary.simpleMessage("Apps"),
     "projectBack": MessageLookupByLibrary.simpleMessage("Back"),
-    "projectChoose": m64,
-    "projectCopiedApplyItWithNectar": m65,
+    "projectChoose": m65,
+    "projectCopiedApplyItWithNectar": m66,
     "projectCopiesTheEnvGroupsThe": MessageLookupByLibrary.simpleMessage(
       "Copies the env groups, the databases (new and empty, with new passwords) and the apps with their settings, variables and config files. Nothing is deployed. Later, \"Promote\" deploys the live build of an app to the same app in the other environment.",
     ),
@@ -1331,12 +1365,12 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Copies the settings, variables (secrets too), config files and env groups. Volumes start empty; nothing is deployed.",
         ),
-    "projectCopy": m66,
+    "projectCopy": m67,
     "projectCpuRequested": MessageLookupByLibrary.simpleMessage(
       "CPU requested",
     ),
     "projectCreate": MessageLookupByLibrary.simpleMessage("Create"),
-    "projectDeleteTheGroup": m67,
+    "projectDeleteTheGroup": m68,
     "projectDeployAJarABinary": MessageLookupByLibrary.simpleMessage(
       "Deploy a JAR, a binary, a static site, Node, Python, PHP or any Docker image.",
     ),
@@ -1347,14 +1381,14 @@ class MessageLookup extends MessageLookupByLibrary {
       "Each project has its own Kubernetes namespace and optional quota.",
     ),
     "projectEnvGroups": MessageLookupByLibrary.simpleMessage("Env groups"),
-    "projectEnvironmentOf": m68,
+    "projectEnvironmentOf": m69,
     "projectEnvironmentOfTheCopy": MessageLookupByLibrary.simpleMessage(
       "Environment of the copy",
     ),
     "projectExportNectarYaml": MessageLookupByLibrary.simpleMessage(
       "Export nectar.yaml",
     ),
-    "projectImport": m69,
+    "projectImport": m70,
     "projectImportDockerComposeYml": MessageLookupByLibrary.simpleMessage(
       "Import docker-compose.yml",
     ),
@@ -1362,7 +1396,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Import / export",
     ),
     "projectIntoProject": MessageLookupByLibrary.simpleMessage("Into project"),
-    "projectInvalidVariableNameUseLetters": m70,
+    "projectInvalidVariableNameUseLetters": m71,
     "projectItsVariablesAreDeleted": MessageLookupByLibrary.simpleMessage(
       "Its variables are deleted.",
     ),
@@ -1385,19 +1419,21 @@ class MessageLookup extends MessageLookupByLibrary {
       "No projects yet",
     ),
     "projectOpenTheApp": MessageLookupByLibrary.simpleMessage("Open the app"),
+    "projectOpenTheDatabase": MessageLookupByLibrary.simpleMessage(
+      "Open the database",
+    ),
     "projectOrPasteItBelow": MessageLookupByLibrary.simpleMessage(
       "or paste it below",
     ),
-    "projectPasswordsAreGeneratedAndStored":
-        MessageLookupByLibrary.simpleMessage(
-          "Passwords are generated and stored as secret variables. The app is deployed right away.",
-        ),
+    "projectPasswordsAreGeneratedAndStored": MessageLookupByLibrary.simpleMessage(
+      "Passwords are generated and stored as secret variables. The app is deployed right away.",
+    ),
     "projectProject": MessageLookupByLibrary.simpleMessage("Project"),
     "projectProjectSlugOfTheCopy": MessageLookupByLibrary.simpleMessage(
       "Project slug of the copy",
     ),
     "projectPromote": MessageLookupByLibrary.simpleMessage("Promote"),
-    "projectPromoteTo": m71,
+    "projectPromoteTo": m72,
     "projectRequestsOfAllReplicasLive": MessageLookupByLibrary.simpleMessage(
       "Requests of all replicas. Live usage arrives with the metrics view.",
     ),
@@ -1405,6 +1441,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "projectSaved": MessageLookupByLibrary.simpleMessage("Saved"),
     "projectSearchProjects": MessageLookupByLibrary.simpleMessage(
       "Search projects",
+    ),
+    "projectSearchTemplates": MessageLookupByLibrary.simpleMessage(
+      "Search: MQTT, Kafka, Redis, search…",
     ),
     "projectSharedEnvGroups": MessageLookupByLibrary.simpleMessage(
       "Shared env groups",
@@ -1419,7 +1458,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "projectTheAppSlugItsDefault": MessageLookupByLibrary.simpleMessage(
       "The app slug; its default domain is <name>-<project>.<base domain>",
     ),
-    "projectTheLiveBuildOfIts": m72,
+    "projectTheLiveBuildOfIts": m73,
     "projectThisProjectHasNoEnv": MessageLookupByLibrary.simpleMessage(
       "This project has no env groups yet (project page → Env groups).",
     ),
@@ -1446,16 +1485,16 @@ class MessageLookup extends MessageLookupByLibrary {
       "Deletes the container images that no container on the server uses right now: old releases, stopped apps and images pulled ahead of time. They are downloaded again when needed, so the next deploy or start of those apps takes longer.",
     ),
     "serverDisk": MessageLookupByLibrary.simpleMessage("Disk"),
-    "serverDrain": m73,
+    "serverDrain": m74,
     "serverDrain2": MessageLookupByLibrary.simpleMessage("Drain"),
-    "serverDrainAnyway": m74,
+    "serverDrainAnyway": m75,
     "serverDrainAnyway2": MessageLookupByLibrary.simpleMessage("Drain anyway"),
     "serverDrainMovePodsAway": MessageLookupByLibrary.simpleMessage(
       "Drain (move pods away)",
     ),
     "serverExtraImages": MessageLookupByLibrary.simpleMessage("Extra images"),
     "serverGateway": MessageLookupByLibrary.simpleMessage("Gateway"),
-    "serverHistoryLast": m75,
+    "serverHistoryLast": m76,
     "serverImageCleanupStarted": MessageLookupByLibrary.simpleMessage(
       "Image cleanup started",
     ),
@@ -1473,11 +1512,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "serverKeepImagesOnEveryNode": MessageLookupByLibrary.simpleMessage(
       "Keep images on every node",
     ),
-    "serverKeptTheLastUploadsPer": m76,
+    "serverKeptTheLastUploadsPer": m77,
     "serverLiveUsageNeedsMetricsServer": MessageLookupByLibrary.simpleMessage(
       "Live usage needs metrics-server (k3s includes it).",
     ),
-    "serverMakeAnEdgeNode": m77,
+    "serverMakeAnEdgeNode": m78,
     "serverMakeEdgeNode": MessageLookupByLibrary.simpleMessage(
       "Make edge node",
     ),
@@ -1505,7 +1544,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "serverPrePullsBusyboxAndThe": MessageLookupByLibrary.simpleMessage(
       "Pre-pulls busybox and the runtime images your apps use, so new nodes and moved pods start without downloading them. Image cleanup keeps them.",
     ),
-    "serverRemoveFromTheCluster": m78,
+    "serverRemoveFromTheCluster": m79,
     "serverRemoveFromTheCluster2": MessageLookupByLibrary.simpleMessage(
       "Remove from the cluster",
     ),
@@ -1525,7 +1564,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "serverStopServingTrafficEdge": MessageLookupByLibrary.simpleMessage(
       "Stop serving traffic (edge)",
     ),
-    "serverStopServingTrafficOn": m79,
+    "serverStopServingTrafficOn": m80,
     "serverStoresEveryAppSOutput": MessageLookupByLibrary.simpleMessage(
       "Stores every app\'s output on the panel\'s disk, searchable on the Logs tab after restarts and deploys.",
     ),
@@ -1535,7 +1574,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "serverTheNodeObjectIsDeleted": MessageLookupByLibrary.simpleMessage(
       "The node object is deleted. On the machine, run /usr/local/bin/k3s-agent-uninstall.sh to remove k3s.",
     ),
-    "serverUsageShowsWhileTheApp": m80,
+    "serverUsageShowsWhileTheApp": m81,
     "serverUsedToFindCrictlFor": MessageLookupByLibrary.simpleMessage(
       "Used to find crictl for image cleanup",
     ),
@@ -1561,12 +1600,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "settingAbout": MessageLookupByLibrary.simpleMessage("About"),
     "settingAccount": MessageLookupByLibrary.simpleMessage("Account"),
-    "settingActiveSince": m81,
+    "settingActiveSince": m82,
     "settingAddLogin": MessageLookupByLibrary.simpleMessage("Add login"),
     "settingAddPasskey": MessageLookupByLibrary.simpleMessage("Add passkey"),
     "settingAddProvider": MessageLookupByLibrary.simpleMessage("Add provider"),
     "settingAiza": MessageLookupByLibrary.simpleMessage("AIza…"),
-    "settingAllowOnlyTheseIpAddresses": m82,
+    "settingAllowOnlyTheseIpAddresses": m83,
     "settingAllowedEmailDomains": MessageLookupByLibrary.simpleMessage(
       "Allowed email domains",
     ),
@@ -1587,7 +1626,7 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Callback (redirect) URL to register at the provider:",
         ),
-    "settingChanged": m83,
+    "settingChanged": m84,
     "settingClientId": MessageLookupByLibrary.simpleMessage("Client ID"),
     "settingClientSecret": MessageLookupByLibrary.simpleMessage(
       "Client secret",
@@ -1658,14 +1697,13 @@ class MessageLookup extends MessageLookupByLibrary {
     "settingNoEncryption": MessageLookupByLibrary.simpleMessage(
       "No encryption",
     ),
-    "settingNoPrivateRegistryLoginsPublic":
-        MessageLookupByLibrary.simpleMessage(
-          "No private registry logins. Public images (Docker Hub, GHCR public packages, …) need none.",
-        ),
+    "settingNoPrivateRegistryLoginsPublic": MessageLookupByLibrary.simpleMessage(
+      "No private registry logins. Public images (Docker Hub, GHCR public packages, …) need none.",
+    ),
     "settingNoneAnAdminAssignsRoles": MessageLookupByLibrary.simpleMessage(
       "None (an admin assigns roles)",
     ),
-    "settingOnlyRecoveryCodesLeftCreate": m84,
+    "settingOnlyRecoveryCodesLeftCreate": m85,
     "settingOnlyTheListedAddressesMay": MessageLookupByLibrary.simpleMessage(
       "Only the listed addresses may use the panel",
     ),
@@ -1683,7 +1721,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "settingPasskeyAdded": MessageLookupByLibrary.simpleMessage(
       "Passkey added: sign in with it on the login page",
     ),
-    "settingPasskeyDelete": m85,
+    "settingPasskeyDelete": m86,
     "settingPasskeyDeleteHelp": MessageLookupByLibrary.simpleMessage(
       "It can no longer sign in here. Also delete it from your device or password manager.",
     ),
@@ -1695,7 +1733,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "not used yet",
     ),
     "settingPasskeySynced": MessageLookupByLibrary.simpleMessage("synced"),
-    "settingPasskeyUsed": m86,
+    "settingPasskeyUsed": m87,
     "settingPasskeys": MessageLookupByLibrary.simpleMessage("Passkeys"),
     "settingPasskeysHelp": MessageLookupByLibrary.simpleMessage(
       "Sign in with Touch ID, Face ID, Windows Hello, your phone or a security key — no password and no code needed. A passkey works at this panel address only.",
@@ -1731,8 +1769,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "settingRegistryLogin": MessageLookupByLibrary.simpleMessage(
       "Registry login",
     ),
-    "settingRemove": m87,
-    "settingRemoveTheLoginFor": m88,
+    "settingRemove": m88,
+    "settingRemoveTheLoginFor": m89,
     "settingRoleOfNewUsersEverywhere": MessageLookupByLibrary.simpleMessage(
       "Role of new users (everywhere)",
     ),
@@ -1788,6 +1826,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "settingsLanguageHint": MessageLookupByLibrary.simpleMessage(
       "The interface language on this device. Server messages and logs stay in English.",
     ),
+    "shellClockAhead": m90,
+    "shellClockBehind": m91,
     "shellLater": MessageLookupByLibrary.simpleMessage("Later"),
     "shellReload": MessageLookupByLibrary.simpleMessage("Reload"),
     "statusDeploying": MessageLookupByLibrary.simpleMessage("Deploying"),
@@ -1818,7 +1858,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateGatewayFeedUrl": MessageLookupByLibrary.simpleMessage(
       "Gateway feed URL",
     ),
-    "updateK3sUpgradeToStartedNode": m89,
+    "updateK3sUpgradeToStartedNode": m92,
     "updateMajorAndBreakingReleasesAre": MessageLookupByLibrary.simpleMessage(
       "Major and breaking releases are never installed automatically. A release that failed its checks is not retried.",
     ),
@@ -1832,7 +1872,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Panel feed URL",
     ),
     "updatePolicy": MessageLookupByLibrary.simpleMessage("Policy"),
-    "updateRollBack": m90,
+    "updateRollBack": m93,
     "updateRollBack2": MessageLookupByLibrary.simpleMessage("Roll back"),
     "updateStable": MessageLookupByLibrary.simpleMessage("Stable"),
     "updateStableLatestV131": MessageLookupByLibrary.simpleMessage(
@@ -1849,9 +1889,9 @@ class MessageLookup extends MessageLookupByLibrary {
           "The system-upgrade-controller upgrades one node at a time: each node is cordoned, k3s restarts with the new version and the node is uncordoned. Pods on a node restart during its upgrade; on a single-node server apps are briefly unavailable.",
         ),
     "updateTimeZone": MessageLookupByLibrary.simpleMessage("Time zone"),
-    "updateUpdate": m91,
+    "updateUpdate": m94,
     "updateUpdate2": MessageLookupByLibrary.simpleMessage("Update…"),
-    "updateUpdateK3sTo": m92,
+    "updateUpdateK3sTo": m95,
     "updateUpdateSettingsSaved": MessageLookupByLibrary.simpleMessage(
       "Update settings saved",
     ),
@@ -1862,7 +1902,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Update started",
     ),
     "updateUpdates": MessageLookupByLibrary.simpleMessage("Updates"),
-    "updateUpdating": m93,
+    "updateUpdating": m96,
     "updateUpdatingK3sFromHereNeeds": MessageLookupByLibrary.simpleMessage(
       "Updating k3s from here needs the system-upgrade-controller: re-run install.sh with --k3s-upgrades.",
     ),

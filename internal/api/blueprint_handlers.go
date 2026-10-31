@@ -421,7 +421,18 @@ func (s *Server) installTemplate(w http.ResponseWriter, r *http.Request, p *prin
 			}
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"steps": steps, "failed": failed(steps), "app_id": appID, "notes": strings.ReplaceAll(t.Notes, "[[name]]", name)})
+	var addonID int64 // templates that only create a managed database (Redis, PostgreSQL, …)
+	if appID == 0 {
+		if list, err := s.store.ListAddons(r.Context(), proj.ID); err == nil {
+			for _, x := range list {
+				if x.Slug == name {
+					addonID = x.ID
+				}
+			}
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"steps": steps, "failed": failed(steps), "app_id": appID, "addon_id": addonID,
+		"notes": strings.ReplaceAll(t.Notes, "[[name]]", name)})
 }
 
 // exportProject: GET /api/projects/{pid}/export — the project as nectar.yaml. Secret values are left out

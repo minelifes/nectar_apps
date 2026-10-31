@@ -114,8 +114,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               ),
             ),
           ),
-        if (firing.hasValue) FiringAlertsCard(alerts: firing.value!),
-        projects.maybeWhen(data: (list) => _Stats(items: list), orElse: () => const SizedBox.shrink()),
+        // alerts I marked as read stay on the Alerts page only
+        if (firing.value case final list?) FiringAlertsCard(alerts: [for (final a in list) if (!a.read) a], readActions: true),
+        // .value keeps the last stats during refreshes and failed refreshes (no layout jump)
+        if (projects.value case final list?) _Stats(items: list),
         if (wide && (server != null || feed != null))
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,6 +157,8 @@ class _ServerSection extends StatelessWidget {
     final s = S.of(context);
     return nodes.when(
         skipLoadingOnRefresh: true,
+        skipLoadingOnReload: true,
+        skipError: nodes.hasValue, // a failed refresh keeps the last values on screen
         data: (list) => Column(
           children: [
             for (final n in list) Padding(padding: const EdgeInsets.only(bottom: NectarTokens.gap), child: NodeCard(node: n)),

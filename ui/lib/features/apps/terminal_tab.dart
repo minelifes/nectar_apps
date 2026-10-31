@@ -12,11 +12,12 @@ import '../../api/session.dart';
 import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 
-/// A shell inside a running container of the app (bash when the image has it, sh otherwise).
+/// A shell inside a running container of an app or a database (bash when the image has it, sh otherwise).
+/// [path] is the API path of the workload: `/apps/5` or `/addons/3`.
 class TerminalTab extends ConsumerStatefulWidget {
-  const TerminalTab({super.key, required this.app, this.height = 520});
+  const TerminalTab({super.key, required this.path, this.height = 520});
 
-  final App app;
+  final String path;
   final double height;
 
   @override
@@ -75,7 +76,7 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
 
   Future<void> _loadPods() async {
     try {
-      final pods = listOf(await ref.read(apiProvider).get('/apps/${widget.app.id}/pods'), PodBrief.fromJson);
+      final pods = listOf(await ref.read(apiProvider).get('${widget.path}/pods'), PodBrief.fromJson);
       if (mounted) setState(() => _pods = pods.where((p) => p.phase == 'Running').toList());
     } on Object {
       // the pod list is only a convenience; the server picks a pod anyway
@@ -92,8 +93,8 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
     });
     _decoder = const Utf8Decoder(allowMalformed: true).startChunkedConversion(_TermSink(_terminal));
     try {
-      await api.get('/apps/${widget.app.id}/pods'); // renews an expired access token before it goes into the URL
-      final ch = WebSocketChannel.connect(api.wsUri('/apps/${widget.app.id}/exec/ws', {'pod': ?_pod}));
+      await api.get('${widget.path}/pods'); // renews an expired access token before it goes into the URL
+      final ch = WebSocketChannel.connect(api.wsUri('${widget.path}/exec/ws', {'pod': ?_pod}));
       _ch = ch;
       await ch.ready;
       if (!mounted) {

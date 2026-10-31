@@ -263,6 +263,7 @@ class _BuildLogDialog extends ConsumerStatefulWidget {
 class _BuildLogDialogState extends ConsumerState<_BuildLogDialog> {
   BuildInfo? _build;
   String _log = '';
+  String _status = ''; // why a running build has no output yet (pod not scheduled, pulling Kaniko, …)
   Object? _error;
   Timer? _timer;
   final _scroll = ScrollController();
@@ -288,6 +289,7 @@ class _BuildLogDialogState extends ConsumerState<_BuildLogDialog> {
       setState(() {
         _build = BuildInfo.fromJson(res['build']);
         _log = '${res['log'] ?? ''}';
+        _status = '${res['status'] ?? ''}';
         _error = null;
       });
       if (atEnd) {
@@ -333,7 +335,7 @@ class _BuildLogDialogState extends ConsumerState<_BuildLogDialog> {
                 child: SingleChildScrollView(
                   controller: _scroll,
                   child: SelectableText(
-                    _log.isEmpty ? (b?.running ?? true ? 'Waiting for output…' : 'No output.') : _log,
+                    _log.isEmpty ? (b?.running ?? true ? (_status.isNotEmpty ? _status : 'Waiting for output…') : 'No output.') : _log,
                     style: monoStyle(context, size: 11.5, color: const Color(0xFFD9DBE0)),
                   ),
                 ),

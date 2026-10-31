@@ -247,6 +247,8 @@ class AsyncBlock<T> extends StatelessWidget {
         // keep showing the previous data while refreshing
         skipLoadingOnRefresh: true,
         skipLoadingOnReload: true,
+        // a failed background refresh keeps the last data instead of swapping in an error block
+        skipError: value.hasValue,
         data: data,
         loading: () => LoadingBlock(height: loadingHeight),
         error: (e, _) => ErrorBlock(error: e, onRetry: onRetry),

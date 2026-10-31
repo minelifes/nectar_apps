@@ -13,8 +13,13 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/status.dart';
+import '../apps/terminal_tab.dart';
+import '../observe/app_metrics.dart';
+import '../observe/event_list.dart';
+import '../observe/log_viewer.dart';
 
-/// One database add-on: connection, linked apps, resources, stop/start/delete.
+/// One database add-on, managed like an app: overview (connection, apps, resources), metrics, logs,
+/// terminal and events; stop / start / restart / delete.
 class AddonPage extends ConsumerWidget {
   const AddonPage({super.key, required this.id});
 
@@ -34,11 +39,20 @@ class AddonPage extends ConsumerWidget {
   }
 }
 
-class _Body extends ConsumerWidget {
+class _Body extends ConsumerStatefulWidget {
   const _Body({required this.addon, required this.onRefresh});
 
   final Addon addon;
   final Future<void> Function() onRefresh;
+
+  @override
+  ConsumerState<_Body> createState() => _BodyState();
+}
+
+class _BodyState extends ConsumerState<_Body> {
+  int _tab = 0;
+
+  Addon get addon => widget.addon;
 
   Future<void> _op(BuildContext context, WidgetRef ref, String op) async {
     try {
@@ -70,11 +84,33 @@ class _Body extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final s = S.of(context);
     final session = ref.watch(sessionProvider);
     bool can(String p) => session.can(p, projectId: addon.projectId);
     final c = NectarColors.of(context);
+    final path = '/addons/${addon.id}';
+    final tabs = <(String, Widget Function())>[
+      (
+        s.addonTabOverview,
+        () => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ConnectionCard(addon: addon, canReveal: can('env.secrets.view')),
+                const SizedBox(height: NectarTokens.gap),
+                _LinksCard(addon: addon, canEdit: can('env.edit')),
+                const SizedBox(height: NectarTokens.gap),
+                _ResourcesCard(key: ValueKey('${addon.sizeMb}-${addon.memoryMb}-${addon.cpuMillicores}'), addon: addon, canEdit: can('app.edit')),
+              ],
+            ),
+      ),
+      if (can('app.metrics')) (s.addonTabMetrics, () => UsageCard(path: path)),
+      if (can('app.logs')) (s.addonTabLogs, () => NCard(child: LogViewer(key: ValueKey('addon-logs-${addon.id}'), path: path))),
+      if (can('app.exec') && !addon.stopped)
+        (s.addonTabTerminal, () => NCard(child: TerminalTab(key: ValueKey('addon-term-${addon.id}'), path: path))),
+      (s.addonTabEvents, () => EventsCard(path: path)),
+    ];
+    final tab = _tab.clamp(0, tabs.length - 1);
     return PageScaffold(
       title: addon.name,
       subtitle: '${addon.kindName} ${addon.version} · ${addon.slug}',
@@ -83,8 +119,10 @@ class _Body extends ConsumerWidget {
         icon: const Icon(Icons.arrow_back_rounded),
         onPressed: () => context.go('/projects/${addon.projectId}'),
       ),
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       actions: [
+        if (can('app.restart') && !addon.stopped)
+          OutlinedButton(onPressed: () => _op(context, ref, 'restart'), child: Text(s.appRestart)),
         if (can('app.restart'))
           OutlinedButton(onPressed: () => _op(context, ref, addon.stopped ? 'start' : 'stop'), child: Text(addon.stopped ? 'Start' : 'Stop')),
         if (can('app.delete'))
@@ -101,11 +139,9 @@ class _Body extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: NectarTokens.gap),
-        _ConnectionCard(addon: addon, canReveal: can('env.secrets.view')),
+        NTabs(index: tab, labels: [for (final t in tabs) t.$1], onChanged: (i) => setState(() => _tab = i)),
         const SizedBox(height: NectarTokens.gap),
-        _LinksCard(addon: addon, canEdit: can('env.edit')),
-        const SizedBox(height: NectarTokens.gap),
-        _ResourcesCard(key: ValueKey('${addon.sizeMb}-${addon.memoryMb}-${addon.cpuMillicores}'), addon: addon, canEdit: can('app.edit')),
+        tabs[tab].$2(),
       ],
     );
   }
@@ -251,6 +287,54 @@ class _LinksCard extends ConsumerWidget {
     }
   }
 
+  /// Shares the database with every app of the project (asks for the variable prefix), or stops sharing.
+  Future<void> _share(BuildContext context, WidgetRef ref, bool on) async {
+    final s = S.of(context);
+    var prefix = addon.sharedPrefix;
+    if (on) {
+      final ctl = TextEditingController(text: addon.sharedPrefix);
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(s.addonShareWithProject),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(s.addonShareHelp, style: TextStyle(color: NectarColors.of(ctx).muted, fontSize: 13)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: ctl,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(labelText: s.addonSharePrefix, hintText: s.addonCache, helperText: s.addonForASecondDatabaseCache),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.actionCancel)),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.actionSave)),
+          ],
+        ),
+      );
+      final p = ctl.text.trim().toUpperCase();
+      ctl.dispose();
+      if (ok != true || !context.mounted) return;
+      prefix = p.isEmpty || p.endsWith('_') ? p : '${p}_';
+    }
+    try {
+      await ref.read(apiProvider).put('/addons/${addon.id}/shared', data: {'shared': on, 'prefix': prefix});
+      ref.invalidate(addonProvider(addon.id));
+      ref.invalidate(projectAddonsProvider(addon.projectId));
+      if (context.mounted) showSnack(context, s.addonSharedSaved);
+    } on Object catch (e) {
+      if (context.mounted) showSnack(context, describeError(e), error: true);
+    }
+  }
+
   Future<void> _unlink(BuildContext context, WidgetRef ref, int appId) async {
     try {
       await ref.read(apiProvider).delete('/addons/${addon.id}/links/$appId');
@@ -275,7 +359,25 @@ class _LinksCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (addon.links.isEmpty) Text(s.addonNoAppUsesThisDatabase, style: TextStyle(color: c.muted, fontSize: 13)),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(s.addonShareWithProject),
+            subtitle: Text(
+              addon.shared ? s.addonSharedAs(addon.envNames.map((n) => '${addon.sharedPrefix}$n').join(', ')) : s.addonShareHelp,
+              style: addon.shared ? monoStyle(context, size: 11.5, color: c.muted) : TextStyle(color: c.muted, fontSize: 12.5),
+            ),
+            secondary: addon.shared && canEdit
+                ? IconButton(tooltip: s.addonSharePrefix, icon: const Icon(Icons.edit_outlined, size: 18), onPressed: () => _share(context, ref, true))
+                : null,
+            value: addon.shared,
+            onChanged: canEdit ? (v) => _share(context, ref, v) : null,
+          ),
+          if (addon.shared && addon.links.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(s.addonLinkOverridesShared, style: TextStyle(color: c.muted, fontSize: 12)),
+            ),
+          if (addon.links.isEmpty && !addon.shared) Text(s.addonNoAppUsesThisDatabase, style: TextStyle(color: c.muted, fontSize: 13)),
           for (final (appId, prefix) in addon.links)
             ListTile(
               contentPadding: EdgeInsets.zero,

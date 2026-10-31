@@ -55,6 +55,19 @@ func TestWebTerminal(t *testing.T) {
 		t.Fatalf("exit: %+v", m)
 	}
 
+	// a crash-looping pod (phase Running, container waiting) cannot take a shell: the reason arrives in band
+	c2, _, err := wsock.Dial(ctx, ws+"&pod=api-2", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, b, _ := c2.ReadMessage()
+	var m termMsg
+	json.Unmarshal(b, &m)
+	if m.T != "x" || !strings.Contains(m.Msg, "not running") {
+		t.Fatalf("crash-looping pod: %+v", m)
+	}
+	c2.Close()
+
 	// the query token is accepted on WebSocket upgrades only
 	if code, _, _ := e.do(plain, "GET", "/api/apps/1/exec/ws?access_token="+tok, nil); code != 401 {
 		t.Fatalf("plain GET with query token: %d", code)

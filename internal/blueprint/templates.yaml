@@ -207,3 +207,473 @@ templates:
           volumes:
             - { name: data, mount_path: /var/lib/gitea, size_mb: 4096 }
             - { name: config, mount_path: /etc/gitea, size_mb: 64 }
+
+  # ------------------------------------------------------------------------------------------ messaging --
+
+  - id: mosquitto
+    name: Mosquitto (MQTT)
+    category: Messaging
+    icon: mqtt
+    description: Lightweight MQTT broker for IoT devices and apps, with a username and password. Port 1883 is opened on the server for devices outside the cluster.
+    docs: https://mosquitto.org/documentation/
+    inputs:
+      - { key: user, label: MQTT user, default: mqtt }
+    notes: "Apps of this project connect with MQTT_URL=mqtt://${[[name]].MQTT_USER}:${[[name]].MQTT_PASSWORD}@${[[name]].host}:1883 (WebSockets: ws://…:9001). Devices use the server's address and the node port shown on the app's Overview (traffic is not encrypted: use it on a trusted network or a VPN). The password is the MQTT_PASSWORD secret on the Environment tab; change it there and restart."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Mosquitto
+          kind: worker
+          image: eclipse-mosquitto:2.0
+          port: 1883
+          internal_ports: [9001]
+          memory_mb: 64
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mosquitto_passwd -b -c /mosquitto/data/passwd "$MQTT_USER" "$MQTT_PASSWORD"
+              chown -R mosquitto:mosquitto /mosquitto/data
+              chmod 0700 /mosquitto/data/passwd
+              printf 'listener 1883\nlistener 9001\nprotocol websockets\nallow_anonymous false\npassword_file /mosquitto/data/passwd\npersistence true\npersistence_location /mosquitto/data/\nlog_dest stdout\n' > /tmp/mosquitto.conf
+              exec mosquitto -c /tmp/mosquitto.conf
+          env:
+            MQTT_USER: "[[input.user]]"
+          secrets:
+            MQTT_PASSWORD: "[[random:password]]"
+          expose:
+            - { port: 1883 }
+          volumes:
+            - { name: data, mount_path: /mosquitto/data, size_mb: 512 }
+
+  - id: emqx
+    name: EMQX (MQTT)
+    category: Messaging
+    icon: mqtt
+    description: Scalable MQTT 5 broker with a web dashboard, rules engine and data bridges. Port 1883 is opened on the server for devices.
+    docs: https://docs.emqx.com/en/emqx/latest/
+    notes: "Dashboard login: admin / EMQX_DASHBOARD__DEFAULT_PASSWORD (Environment tab; it only applies to the first start, change it in the dashboard later). EMQX accepts every client until you add an authenticator (Access Control → Authentication): do it before devices connect. Apps of this project connect to mqtt://${[[name]].host}:1883; devices use the server's address and the node port shown on the app's Overview."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: EMQX
+          image: emqx/emqx:5.8.3
+          port: 18083
+          internal_ports: [1883, 8083]
+          memory_mb: 512
+          env:
+            EMQX_NODE__NAME: emqx@127.0.0.1 # stable node name: the data survives a new pod address
+            EMQX_DASHBOARD__DEFAULT_USERNAME: admin
+          secrets:
+            EMQX_DASHBOARD__DEFAULT_PASSWORD: "[[random:admin]]"
+          expose:
+            - { port: 1883 }
+          volumes:
+            - { name: data, mount_path: /opt/emqx/data, size_mb: 1024 }
+
+  - id: kafka
+    name: Apache Kafka
+    category: Messaging
+    icon: kafka
+    description: Event streaming platform, a single KRaft node (no ZooKeeper), plus Kafka UI behind a login to browse topics and messages.
+    docs: https://kafka.apache.org/documentation/
+    notes: "Apps of this project connect with KAFKA_BROKERS=${[[name]].host}:9092. Kafka UI login: admin / SPRING_SECURITY_USER_PASSWORD on the [[name]]-ui app's Environment tab. One broker means replication factor 1: fine for development and small workloads; give it more memory for heavy use."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Kafka
+          kind: worker
+          image: apache/kafka:3.9.0
+          port: 9092
+          memory_mb: 1024
+          env:
+            CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qg
+            KAFKA_NODE_ID: "1"
+            KAFKA_PROCESS_ROLES: broker,controller
+            KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+            KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://${[[name]].host}:9092"
+            KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+            KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+            KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+            KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+            KAFKA_LOG_DIRS: /var/lib/kafka/data
+            KAFKA_HEAP_OPTS: "-Xms512m -Xmx512m"
+          volumes:
+            - { name: data, mount_path: /var/lib/kafka/data, size_mb: 10240 }
+        - slug: "[[name]]-ui"
+          name: Kafka UI
+          image: provectuslabs/kafka-ui:v0.7.2
+          port: 8080
+          memory_mb: 512
+          health_path: /actuator/health
+          env:
+            KAFKA_CLUSTERS_0_NAME: "[[name]]"
+            KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "${[[name]].host}:9092"
+            AUTH_TYPE: LOGIN_FORM
+            SPRING_SECURITY_USER_NAME: admin
+          secrets:
+            SPRING_SECURITY_USER_PASSWORD: "[[random:ui]]"
+
+  - id: nats
+    name: NATS
+    category: Messaging
+    icon: nats
+    description: High-performance messaging with JetStream persistence (streams, key-value, object store), with a user and password.
+    docs: https://docs.nats.io/
+    inputs:
+      - { key: user, label: NATS user, default: nats }
+    notes: "Apps of this project connect with NATS_URL=nats://${[[name]].NATS_USER}:${[[name]].NATS_PASSWORD}@${[[name]].host}:4222. Monitoring endpoint: http://${[[name]].host}:8222."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: NATS
+          kind: worker
+          image: nats:2.10-alpine
+          port: 4222
+          internal_ports: [8222]
+          memory_mb: 256
+          command: ["sh", "-c", "exec nats-server --jetstream --store_dir /data --http_port 8222 --user \"$NATS_USER\" --pass \"$NATS_PASSWORD\""]
+          env:
+            NATS_USER: "[[input.user]]"
+          secrets:
+            NATS_PASSWORD: "[[random:password]]"
+          volumes:
+            - { name: data, mount_path: /data, size_mb: 2048 }
+
+  # ---------------------------------------------------------------- managed databases (panel add-ons) --
+
+  - id: redis
+    name: Redis
+    category: Databases
+    icon: redis
+    description: In-memory key-value store for caches, sessions and queues, as a managed database (backups, linking, metrics).
+    docs: https://redis.io/docs/latest/
+    notes: Open the database and link it to your apps (or share it with the whole project); they get REDIS_URL on their next deploy.
+    blueprint:
+      addons:
+        - { slug: "[[name]]", name: Redis, kind: redis, version: "7.4", size_mb: 512, memory_mb: 128 }
+
+  - id: postgresql
+    name: PostgreSQL
+    category: Databases
+    icon: postgres
+    description: The relational database, as a managed database (generated credentials, scheduled backups, linking, metrics).
+    docs: https://www.postgresql.org/docs/
+    notes: Open the database and link it to your apps (or share it with the whole project); they get DATABASE_URL and PG* variables on their next deploy.
+    blueprint:
+      addons:
+        - { slug: "[[name]]", name: PostgreSQL, kind: postgres, version: "17", size_mb: 2048 }
+
+  - id: mysql
+    name: MySQL
+    category: Databases
+    icon: mysql
+    description: The popular relational database, as a managed database (generated credentials, scheduled backups, linking, metrics).
+    docs: https://dev.mysql.com/doc/
+    notes: Open the database and link it to your apps (or share it with the whole project); they get DATABASE_URL and MYSQL_* variables on their next deploy.
+    blueprint:
+      addons:
+        - { slug: "[[name]]", name: MySQL, kind: mysql, version: "8.4", size_mb: 2048 }
+
+  # --------------------------------------------------------------------------- data stores and search --
+
+  - id: memcached
+    name: Memcached
+    category: Databases
+    icon: memcached
+    description: Simple in-memory cache, for the project's apps only.
+    docs: https://github.com/memcached/memcached/wiki
+    notes: "Apps of this project connect to ${[[name]].host}:11211 (MEMCACHED_SERVERS). The cache size is the -m value in the command (MiB): keep it below the app's memory limit."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Memcached
+          kind: worker
+          image: memcached:1.6-alpine
+          port: 11211
+          memory_mb: 128
+          command: ["memcached", "-m", "96"]
+
+  - id: clickhouse
+    name: ClickHouse
+    category: Databases
+    icon: clickhouse
+    description: Column-oriented database for analytics and logs, for the project's apps only.
+    docs: https://clickhouse.com/docs
+    inputs:
+      - { key: database, label: Database, default: default }
+    notes: "Apps of this project connect over HTTP at http://${[[name]].host}:8123 or the native protocol at ${[[name]].host}:9000, user default, password CLICKHOUSE_PASSWORD (Environment tab)."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: ClickHouse
+          kind: worker
+          image: clickhouse/clickhouse-server:24.8
+          port: 8123
+          internal_ports: [9000]
+          memory_mb: 1024
+          env:
+            CLICKHOUSE_DB: "[[input.database]]"
+            CLICKHOUSE_USER: default
+            CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+          secrets:
+            CLICKHOUSE_PASSWORD: "[[random:password]]"
+          volumes:
+            - { name: data, mount_path: /var/lib/clickhouse, size_mb: 10240 }
+
+  - id: influxdb
+    name: InfluxDB
+    category: Databases
+    icon: influxdb
+    description: Time series database for metrics, sensors and IoT data, with its web UI on the domain.
+    docs: https://docs.influxdata.com/influxdb/v2/
+    inputs:
+      - { key: org, label: Organization, default: main }
+      - { key: bucket, label: First bucket, default: data }
+    notes: "UI login: admin / DOCKER_INFLUXDB_INIT_PASSWORD (Environment tab). Apps of this project write to http://${[[name]].host}:8086 with the token DOCKER_INFLUXDB_INIT_ADMIN_TOKEN (create narrower tokens in the UI)."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: InfluxDB
+          image: influxdb:2.7-alpine
+          port: 8086
+          memory_mb: 512
+          health_path: /health
+          env:
+            DOCKER_INFLUXDB_INIT_MODE: setup
+            DOCKER_INFLUXDB_INIT_USERNAME: admin
+            DOCKER_INFLUXDB_INIT_ORG: "[[input.org]]"
+            DOCKER_INFLUXDB_INIT_BUCKET: "[[input.bucket]]"
+          secrets:
+            DOCKER_INFLUXDB_INIT_PASSWORD: "[[random:admin]]"
+            DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: "[[random:token]]"
+          volumes:
+            - { name: data, mount_path: /var/lib/influxdb2, size_mb: 4096 }
+            - { name: config, mount_path: /etc/influxdb2, size_mb: 64 }
+
+  - id: qdrant
+    name: Qdrant
+    category: Databases
+    icon: qdrant
+    description: Vector database for embeddings, semantic search and RAG, protected by an API key.
+    docs: https://qdrant.tech/documentation/
+    notes: "Send the api-key header with QDRANT__SERVICE__API_KEY (Environment tab). Apps of this project use http://${[[name]].host}:6333 (gRPC on 6334); the domain serves the same API and the dashboard at /dashboard."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Qdrant
+          image: qdrant/qdrant:v1.12.4
+          port: 6333
+          internal_ports: [6334]
+          memory_mb: 512
+          health_path: /healthz
+          secrets:
+            QDRANT__SERVICE__API_KEY: "[[random:key]]"
+          volumes:
+            - { name: data, mount_path: /qdrant/storage, size_mb: 4096 }
+
+  - id: meilisearch
+    name: Meilisearch
+    category: Search
+    icon: meilisearch
+    description: Fast, typo-tolerant full-text search engine with a simple REST API.
+    docs: https://www.meilisearch.com/docs
+    notes: "The master key is MEILI_MASTER_KEY (Environment tab): use it to create search-only and admin API keys (GET /keys). Apps of this project use http://${[[name]].host}:7700."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Meilisearch
+          image: getmeili/meilisearch:v1.11
+          port: 7700
+          memory_mb: 512
+          health_path: /health
+          env:
+            MEILI_ENV: production
+            MEILI_NO_ANALYTICS: "true"
+          secrets:
+            MEILI_MASTER_KEY: "[[random:master]]"
+          volumes:
+            - { name: data, mount_path: /meili_data, size_mb: 2048 }
+
+  - id: typesense
+    name: Typesense
+    category: Search
+    icon: typesense
+    description: Open-source search engine with typo tolerance, faceting and vector search.
+    docs: https://typesense.org/docs/
+    notes: "Send X-TYPESENSE-API-KEY with TYPESENSE_API_KEY (Environment tab) and create search-only keys for browsers. Apps of this project use http://${[[name]].host}:8108."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Typesense
+          image: typesense/typesense:27.1
+          port: 8108
+          memory_mb: 512
+          health_path: /health
+          env:
+            TYPESENSE_DATA_DIR: /data
+            TYPESENSE_ENABLE_CORS: "true"
+          secrets:
+            TYPESENSE_API_KEY: "[[random:key]]"
+          volumes:
+            - { name: data, mount_path: /data, size_mb: 2048 }
+
+  # -------------------------------------------------------------------------------------- observability --
+
+  - id: prometheus
+    name: Prometheus
+    category: Monitoring
+    icon: prometheus
+    description: Metrics collection and alerting, for the project's apps (add it to Grafana as a data source).
+    docs: https://prometheus.io/docs/
+    notes: "Grafana and other apps of this project use http://${[[name]].host}:9090. Add scrape targets by putting your own /etc/prometheus/prometheus.yml under Config files on the Environment tab. It has no login: to open the UI in a browser, add a domain and limit it with Allowed IPs."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Prometheus
+          kind: worker
+          image: prom/prometheus:v2.55.1
+          port: 9090
+          memory_mb: 512
+          volumes:
+            - { name: data, mount_path: /prometheus, size_mb: 4096 }
+
+  - id: jaeger
+    name: Jaeger
+    category: Monitoring
+    icon: jaeger
+    description: Distributed tracing with OpenTelemetry (OTLP) ingest and the trace UI on the domain. Traces are kept in memory.
+    docs: https://www.jaegertracing.io/docs/
+    notes: "Apps of this project send traces with OTEL_EXPORTER_OTLP_ENDPOINT=http://${[[name]].host}:4318 (gRPC: 4317). The UI has no login: limit the domain with Allowed IPs (Domains tab). Traces are lost on restart (in-memory storage, latest 50 000)."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Jaeger
+          image: jaegertracing/all-in-one:1.62.0
+          port: 16686
+          internal_ports: [4317, 4318]
+          memory_mb: 512
+          health_path: /
+          env:
+            COLLECTOR_OTLP_ENABLED: "true"
+            MEMORY_MAX_TRACES: "50000"
+
+  # ------------------------------------------------------------------------------------ developer tools --
+
+  - id: mailpit
+    name: Mailpit
+    category: Developer tools
+    icon: mail
+    description: Email testing — catches every mail your apps send (SMTP) and shows it in a web inbox behind a login.
+    docs: https://mailpit.axllent.org/docs/
+    notes: "Point your apps' SMTP to ${[[name]].host}:1025 (no TLS, no auth). Inbox login: the MP_UI_AUTH secret (user:password) on the Environment tab. Nothing is delivered to real recipients."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Mailpit
+          image: axllent/mailpit:v1.21.0
+          port: 8025
+          internal_ports: [1025]
+          memory_mb: 128
+          health_path: /livez
+          env:
+            MP_DATABASE: /data/mailpit.db
+            MP_MAX_MESSAGES: "5000"
+          secrets:
+            MP_UI_AUTH: "admin:[[random:ui]]"
+          volumes:
+            - { name: data, mount_path: /data, size_mb: 1024 }
+
+  - id: keycloak
+    name: Keycloak
+    category: Auth
+    icon: keycloak
+    description: Identity and access management (SSO, OpenID Connect, SAML, social login), on PostgreSQL.
+    docs: https://www.keycloak.org/documentation
+    notes: "Admin console: open the domain, sign in as admin / KC_BOOTSTRAP_ADMIN_PASSWORD (Environment tab) and create a permanent admin user. The first start takes a minute or two (it builds its configuration)."
+    blueprint:
+      addons:
+        - { slug: "[[name]]-db", name: "[[name]] database", kind: postgres, version: "17", size_mb: 1024 }
+      apps:
+        - slug: "[[name]]"
+          name: Keycloak
+          image: quay.io/keycloak/keycloak:26.0
+          command: ["/opt/keycloak/bin/kc.sh", "start"]
+          port: 8080
+          memory_mb: 1024
+          env:
+            KC_DB: postgres
+            KC_DB_URL: "jdbc:postgresql://${[[name]]-db.PGHOST}:${[[name]]-db.PGPORT}/${[[name]]-db.PGDATABASE}"
+            KC_DB_USERNAME: "${[[name]]-db.PGUSER}"
+            KC_HTTP_ENABLED: "true"
+            KC_PROXY_HEADERS: xforwarded
+            KC_HOSTNAME_STRICT: "false"
+            KC_HEALTH_ENABLED: "true"
+            KC_BOOTSTRAP_ADMIN_USERNAME: admin
+          secrets:
+            KC_DB_PASSWORD: "${[[name]]-db.PGPASSWORD}"
+            KC_BOOTSTRAP_ADMIN_PASSWORD: "[[random:admin]]"
+
+  - id: pgadmin
+    name: pgAdmin
+    category: Developer tools
+    icon: postgres
+    description: Web administration for PostgreSQL — browse, query and manage the project's databases.
+    docs: https://www.pgadmin.org/docs/
+    inputs:
+      - { key: email, label: Login email, default: admin@example.com, required: true }
+    notes: "Login: the email you entered / PGADMIN_DEFAULT_PASSWORD (Environment tab). Add a server with the host, user and password from the database's Connection card (Show credentials)."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: pgAdmin
+          image: dpage/pgadmin4:8
+          port: 5050
+          memory_mb: 384
+          health_path: /misc/ping
+          env:
+            PGADMIN_LISTEN_PORT: "5050" # not 80: the container may not gain the right to bind low ports
+            PGADMIN_DEFAULT_EMAIL: "[[input.email]]"
+            PGADMIN_CONFIG_UPGRADE_CHECK_ENABLED: "False"
+          secrets:
+            PGADMIN_DEFAULT_PASSWORD: "[[random:admin]]"
+          volumes:
+            - { name: data, mount_path: /var/lib/pgadmin, size_mb: 512 }
+
+  - id: adminer
+    name: Adminer
+    category: Developer tools
+    icon: database
+    description: Tiny database manager in one page — PostgreSQL, MySQL, MariaDB and SQLite. You log in with the database's own credentials.
+    docs: https://www.adminer.org/
+    notes: "On the login page pick the system and enter the host, user and password from the database's Connection card (Show credentials). Restrict the domain with Allowed IPs if only you need it."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Adminer
+          image: adminer:4
+          port: 8080
+          memory_mb: 128
+          health_path: /
+
+  - id: verdaccio
+    name: Verdaccio
+    category: Developer tools
+    icon: npm
+    description: Private npm registry and cache of the public registry, for your packages and CI.
+    docs: https://verdaccio.org/docs/what-is-verdaccio
+    notes: "Use it with npm set registry https://<the app's domain>/ and npm adduser (the first users can register themselves: restrict registration in /verdaccio/conf/config.yaml via Config files once your team has accounts)."
+    blueprint:
+      apps:
+        - slug: "[[name]]"
+          name: Verdaccio
+          image: verdaccio/verdaccio:6
+          port: 4873
+          memory_mb: 256
+          health_path: /-/ping
+          volumes:
+            - { name: storage, mount_path: /verdaccio/storage, size_mb: 4096 }

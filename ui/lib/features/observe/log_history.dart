@@ -43,7 +43,7 @@ class _LogsPanelState extends State<LogsPanel> {
             ),
           ),
           const SizedBox(height: 10),
-          if (_history) LogHistoryView(app: widget.app) else LogViewer(key: ValueKey('logs-${widget.app.id}'), app: widget.app),
+          if (_history) LogHistoryView(app: widget.app) else LogViewer(key: ValueKey('logs-${widget.app.id}'), path: '/apps/${widget.app.id}'),
         ],
       );
   }

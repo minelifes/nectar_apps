@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -31,6 +32,7 @@ type Alert struct {
 	StartedAt  time.Time  `json:"started_at"`
 	ResolvedAt *time.Time `json:"resolved_at,omitempty"`
 	Notified   int        `json:"notified"`
+	Read       bool       `json:"read"` // marked as read by the requesting user (set by MarkReadFor)
 }
 
 // Alert states.
@@ -247,4 +249,56 @@ func (s *Store) CountArtifacts(ctx context.Context) (int, error) {
 	var n int
 	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM artifacts`).Scan(&n)
 	return n, err
+}
+
+// MarkAlertsRead marks incidents as read for a user; ids nil = every firing incident. Unknown ids are ignored.
+func (s *Store) MarkAlertsRead(ctx context.Context, userID int64, ids []int64) error {
+	now := time.Now().Unix()
+	if ids == nil {
+		_, err := s.db.ExecContext(ctx, `INSERT OR IGNORE INTO alert_reads (user_id, alert_id, read_at)
+			SELECT ?, id, ? FROM alerts WHERE state = 'firing'`, userID, now)
+		return err
+	}
+	for _, id := range ids {
+		if _, err := s.db.ExecContext(ctx, `INSERT OR IGNORE INTO alert_reads (user_id, alert_id, read_at)
+			SELECT ?, id, ? FROM alerts WHERE id = ?`, userID, now, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// MarkAlertUnread takes back a read mark.
+func (s *Store) MarkAlertUnread(ctx context.Context, userID, id int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM alert_reads WHERE user_id = ? AND alert_id = ?`, userID, id)
+	return err
+}
+
+// MarkReadFor sets Alert.Read on the list for one user.
+func (s *Store) MarkReadFor(ctx context.Context, userID int64, list []Alert) error {
+	if len(list) == 0 {
+		return nil
+	}
+	ph := strings.TrimSuffix(strings.Repeat("?,", len(list)), ",")
+	args := []any{userID}
+	for _, a := range list {
+		args = append(args, a.ID)
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT alert_id FROM alert_reads WHERE user_id = ? AND alert_id IN (`+ph+`)`, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	read := map[int64]bool{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		read[id] = true
+	}
+	for i := range list {
+		list[i].Read = read[list[i].ID]
+	}
+	return rows.Err()
 }

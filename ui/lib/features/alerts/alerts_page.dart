@@ -94,7 +94,7 @@ class _Firing extends ConsumerWidget {
             onRetry: () => ref.invalidate(firingAlertsProvider),
             data: (list) => list.isEmpty
                 ? noAlerts('Nothing is firing. Rules are checked every 30 seconds.')
-                : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final a in list) AlertTile(alert: a)]),
+                : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final a in list) AlertTile(alert: a, readToggle: true)]),
           ),
         ),
       ],

@@ -1542,5 +1542,47 @@
       }
     }
   },
-  "settingPasskeysWebOnly": "Add and use passkeys in the web panel (a recent Chrome, Edge, Safari or Firefox)."
+  "settingPasskeysWebOnly": "Add and use passkeys in the web panel (a recent Chrome, Edge, Safari or Firefox).",
+  "shellClockBehind": "The server's clock is {amount} behind this device: times in the panel look wrong, and two-factor codes and certificates can fail. On the server run: sudo timedatectl set-ntp true",
+  "@shellClockBehind": {
+    "placeholders": {
+      "amount": {
+        "type": "Object"
+      }
+    }
+  },
+  "shellClockAhead": "The server's clock is {amount} ahead of this device: times in the panel look wrong, and two-factor codes and certificates can fail. On the server run: sudo timedatectl set-ntp true",
+  "@shellClockAhead": {
+    "placeholders": {
+      "amount": {
+        "type": "Object"
+      }
+    }
+  },
+  "alertMarkRead": "Mark as read",
+  "alertMarkUnread": "Mark as unread",
+  "alertMarkAllRead": "Mark all read",
+  "alertReadLabel": "read",
+  "addonTabOverview": "Overview",
+  "addonTabMetrics": "Metrics",
+  "addonTabLogs": "Logs",
+  "addonTabTerminal": "Terminal",
+  "addonTabEvents": "Events",
+  "addonShareWithProject": "Share with the whole project",
+  "addonShareHelp": "Every app in the project gets the connection variables, including apps you add later. No link needed. Redeploy the apps to apply.",
+  "addonSharedAs": "All apps get: {vars}",
+  "@addonSharedAs": {
+    "placeholders": {
+      "vars": {
+        "type": "String"
+      }
+    }
+  },
+  "addonSharedSaved": "Saved. Redeploy the apps to apply.",
+  "addonSharePrefix": "Prefix for the shared variables",
+  "addonLinkOverridesShared": "An app linked here uses its own link (and prefix) instead.",
+  "appSharedWithProject": "shared with the project",
+  "projectOpenTheDatabase": "Open the database",
+  "projectSearchTemplates": "Search: MQTT, Kafka, Redis, search…",
+  "projectAllTemplates": "All"
 }

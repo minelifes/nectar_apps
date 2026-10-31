@@ -44,7 +44,15 @@ func newEnv(t *testing.T) *testEnv {
 		case "/api/v1/nodes":
 			w.Write([]byte(`{"items":[{"metadata":{"name":"n1"},"status":{"capacity":{"cpu":"2","memory":"4Gi"},"conditions":[{"type":"Ready","status":"True"}]}}]}`))
 		case "/api/v1/namespaces/prj-shop/pods":
-			w.Write([]byte(`{"items":[{"metadata":{"name":"api-1","creationTimestamp":"2026-10-28T10:00:00Z"},"status":{"phase":"Running"}}]}`))
+			if strings.HasPrefix(r.URL.Query().Get("labelSelector"), "nectar.dev/addon=") { // a database's StatefulSet pod
+				w.Write([]byte(`{"items":[{"metadata":{"name":"db-0","creationTimestamp":"2026-10-28T09:00:00Z","labels":{"nectar.dev/addon":"db"}},
+					"spec":{"containers":[{"name":"postgres"}]},"status":{"phase":"Running","containerStatuses":[{"name":"postgres","state":{"running":{}}}]}}]}`))
+				return
+			}
+			w.Write([]byte(`{"items":[{"metadata":{"name":"api-1","creationTimestamp":"2026-10-28T10:00:00Z","labels":{"nectar.dev/role":"workload"}},
+				"spec":{"containers":[{"name":"app"}]},"status":{"phase":"Running","containerStatuses":[{"name":"app","state":{"running":{}}}]}},
+				{"metadata":{"name":"api-2","creationTimestamp":"2026-10-28T11:00:00Z","labels":{"nectar.dev/role":"workload"}},
+				"spec":{"containers":[{"name":"app"}]},"status":{"phase":"Running","containerStatuses":[{"name":"app","restartCount":7,"state":{"waiting":{"reason":"CrashLoopBackOff"}}}]}}]}`))
 		case "/api/v1/namespaces/prj-shop/pods/api-1/log":
 			w.Write([]byte("2026-10-28T10:00:01Z hello from api\n"))
 			if r.URL.Query().Get("follow") == "true" {
@@ -53,6 +61,19 @@ func newEnv(t *testing.T) *testEnv {
 				w.(http.Flusher).Flush()
 				<-r.Context().Done() // a follow stream stays open
 			}
+		case "/api/v1/namespaces/prj-shop/pods/db-0/exec":
+			if r.URL.Query().Get("container") != "postgres" {
+				http.Error(w, "bad container", 400)
+				return
+			}
+			c, err := wsock.Upgrade(w, r)
+			if err != nil {
+				return
+			}
+			defer c.Close()
+			c.ReadMessage() // until the client leaves
+		case "/api/v1/namespaces/prj-shop/pods/db-0/log":
+			w.Write([]byte("2026-10-28T09:00:01Z database system is ready to accept connections\n"))
 		case "/api/v1/namespaces/prj-shop/pods/api-1/exec":
 			if r.URL.Query().Get("tty") != "true" || r.URL.Query().Get("container") != "app" || len(r.URL.Query()["command"]) != 3 {
 				http.Error(w, "bad exec request", 400)

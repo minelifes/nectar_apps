@@ -373,7 +373,7 @@ class _LinkedDatabases extends ConsumerWidget {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(l.addon.kind == 'redis' ? Icons.bolt_rounded : Icons.storage_rounded, color: NectarTokens.amber),
-                      title: Text('${l.addon.name} · ${l.addon.kindName} ${l.addon.version}'),
+                      title: Text('${l.addon.name} · ${l.addon.kindName} ${l.addon.version}${l.shared ? ' · ${s.appSharedWithProject}' : ''}'),
                       subtitle: Text(l.env.join(', '), style: monoStyle(context, size: 11.5, color: c.muted)),
                       onTap: () => context.go('/addons/${l.addon.id}'),
                     ),

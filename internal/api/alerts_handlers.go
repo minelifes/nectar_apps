@@ -16,7 +16,7 @@ import (
 
 // ------------------------------------------------------------------ alerts --
 
-func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request, _ *principal) {
+func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request, p *principal) {
 	q := r.URL.Query()
 	state := q.Get("state")
 	if state != "" && state != store.AlertFiring && state != store.AlertResolved {
@@ -26,6 +26,9 @@ func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request, _ *principal
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	before, _ := strconv.ParseInt(q.Get("before"), 10, 64)
 	list, err := s.store.ListAlerts(r.Context(), state, nil, limit, before)
+	if err == nil {
+		err = s.store.MarkReadFor(r.Context(), p.user.ID, list)
+	}
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -33,14 +36,47 @@ func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request, _ *principal
 	writeJSON(w, http.StatusOK, list)
 }
 
-func (s *Server) appAlerts(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, _ store.Project) {
+func (s *Server) appAlerts(w http.ResponseWriter, r *http.Request, p *principal, app store.App, _ store.Project) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	list, err := s.store.ListAlerts(r.Context(), r.URL.Query().Get("state"), &app.ID, limit, 0)
+	if err == nil {
+		err = s.store.MarkReadFor(r.Context(), p.user.ID, list)
+	}
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, list)
+}
+
+// readAlerts: POST /api/alerts/read {ids?} — marks incidents as read for the signed-in user (no ids = every
+// firing one). Read incidents leave the user's dashboard and nav badge; the Alerts page still lists them.
+func (s *Server) readAlerts(w http.ResponseWriter, r *http.Request, p *principal) {
+	var in struct {
+		IDs []int64 `json:"ids"`
+	}
+	if r.ContentLength != 0 && !decode(w, r, &in) {
+		return
+	}
+	if err := s.store.MarkAlertsRead(r.Context(), p.user.ID, in.IDs); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// unreadAlert: DELETE /api/alerts/read/{id} — brings an incident back to the dashboard.
+func (s *Server) unreadAlert(w http.ResponseWriter, r *http.Request, p *principal) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	if err := s.store.MarkAlertUnread(r.Context(), p.user.ID, id); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) getAlertRules(w http.ResponseWriter, r *http.Request, _ *principal) {

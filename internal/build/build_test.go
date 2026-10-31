@@ -339,3 +339,26 @@ func TestParsePullRequests(t *testing.T) {
 		t.Fatalf("git context: %s", ctx)
 	}
 }
+
+func TestPodStatus(t *testing.T) {
+	ctx := context.Background()
+	k := kubefake.New()
+	b := &Builder{Kube: k}
+	bl := store.Build{ID: 7, Status: store.BuildRunning}
+	if s := b.PodStatus(ctx, bl); !strings.Contains(s, "waiting for the build pod") {
+		t.Fatalf("no pod: %q", s)
+	}
+	pod := kube.Object{"apiVersion": "v1", "kind": "Pod", "metadata": map[string]any{"name": "build-7-x", "namespace": DefaultNamespace,
+		"labels": map[string]any{"job-name": "build-7"}},
+		"status": map[string]any{"phase": "Pending", "conditions": []any{map[string]any{"type": "PodScheduled", "status": "False",
+			"message": "0/1 nodes are available: 1 Insufficient memory."}}}}
+	if _, err := k.Apply(ctx, pod); err != nil {
+		t.Fatal(err)
+	}
+	if s := b.PodStatus(ctx, bl); !strings.Contains(s, "Insufficient memory") {
+		t.Fatalf("unschedulable: %q", s)
+	}
+	if s := b.PodStatus(ctx, store.Build{ID: 7, Status: store.BuildSucceeded}); s != "" {
+		t.Fatalf("finished build: %q", s)
+	}
+}

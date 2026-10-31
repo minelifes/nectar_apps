@@ -122,14 +122,16 @@ final serverEventsProvider = FutureProvider.autoDispose<List<KubeEvent>>((ref) a
   return listOf(await api.get('/server/events'), KubeEvent.fromJson);
 });
 
-final appUsageProvider = FutureProvider.autoDispose.family<AppUsage, (int, String)>((ref, key) async {
+/// CPU/memory history of an app or a database: (API path like `/apps/5` or `/addons/3`, range).
+final usageProvider = FutureProvider.autoDispose.family<AppUsage, (String, String)>((ref, key) async {
   final api = ref.watch(apiProvider);
-  return AppUsage.fromJson(await api.get('/apps/${key.$1}/usage', query: {'range': key.$2}));
+  return AppUsage.fromJson(await api.get('${key.$1}/usage', query: {'range': key.$2}));
 });
 
-final appEventsProvider = FutureProvider.autoDispose.family<List<KubeEvent>, int>((ref, id) async {
+/// Kubernetes events of an app or a database (API path like `/apps/5` or `/addons/3`).
+final eventsProvider = FutureProvider.autoDispose.family<List<KubeEvent>, String>((ref, path) async {
   final api = ref.watch(apiProvider);
-  return listOf(await api.get('/apps/$id/events'), KubeEvent.fromJson);
+  return listOf(await api.get('$path/events'), KubeEvent.fromJson);
 });
 
 /// Request statistics of the app's domains (last hour, with per-minute series). Empty without a gateway.

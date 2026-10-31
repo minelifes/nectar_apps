@@ -2,6 +2,7 @@ package wsock
 
 import (
 	"bufio"
+	"context"
 	"crypto/rand"
 	"encoding/binary"
 	"io"
@@ -93,5 +94,45 @@ func TestNotUpgrade(t *testing.T) {
 	rec := httptest.NewRecorder()
 	if _, err := Upgrade(rec, httptest.NewRequest("GET", "/", nil)); err != ErrNotWebSocket {
 		t.Fatalf("plain GET: %v", err)
+	}
+}
+
+// A close started by the browser is answered once: the echo, not a second close frame when the handler
+// returns (Chrome fails such a connection with "Close received after close").
+func TestSingleCloseFrame(t *testing.T) {
+	done := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := Upgrade(w, r)
+		if err != nil {
+			return
+		}
+		_ = c.ReadLoop(nil) // echoes the client's close
+		_ = c.Close()       // the deferred close of every handler
+		close(done)
+	}))
+	defer srv.Close()
+	c, _, err := Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http"), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.write(opClose, []byte{0x03, 0xE8}); err != nil {
+		t.Fatal(err)
+	}
+	<-done
+	closes := 0
+	for {
+		op, _, _, err := c.readFrameFin()
+		if err != nil {
+			break
+		}
+		if op == opClose {
+			closes++
+		}
+	}
+	if closes != 1 {
+		t.Fatalf("close frames from the server: %d", closes)
+	}
+	if err := c.WriteText([]byte("x")); err != ErrClosed {
+		t.Fatalf("write after close: %v", err)
 	}
 }

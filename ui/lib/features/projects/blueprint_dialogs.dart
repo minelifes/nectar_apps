@@ -68,6 +68,8 @@ IconData _templateIcon(String category) => switch (category) {
       'Databases' => Icons.storage_rounded,
       'Messaging' => Icons.forum_outlined,
       'Developer tools' => Icons.code_rounded,
+      'Search' => Icons.manage_search_rounded,
+      'Auth' => Icons.verified_user_outlined,
       _ => Icons.apps_rounded,
     };
 
@@ -92,6 +94,9 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
   List<Map>? _steps;
   String _notes = '';
   int _appId = 0;
+  int _addonId = 0; // templates that only create a managed database
+  String _query = '';
+  String? _category; // gallery filter
 
   @override
   void dispose() {
@@ -126,6 +131,7 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
         _steps = [for (final s in (res['steps'] as List? ?? const [])) s as Map];
         _notes = '${res['notes'] ?? ''}';
         _appId = (res['app_id'] as num?)?.toInt() ?? 0;
+        _addonId = (res['addon_id'] as num?)?.toInt() ?? 0;
       });
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
@@ -161,18 +167,71 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
             },
             child: Text(s.projectOpenTheApp),
           ),
+        if (_steps != null && _appId == 0 && _addonId > 0)
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.go('/addons/$_addonId');
+            },
+            child: Text(s.projectOpenTheDatabase),
+          ),
       ],
     );
   }
 
   Widget _gallery(BuildContext context, NectarColors c) {
+    final s = S.of(context);
     final list = ref.watch(templatesProvider);
     return SizedBox(
-      height: 460,
+      height: 520,
       child: AsyncBlock(
         value: list,
         onRetry: () => ref.invalidate(templatesProvider),
-        data: (ts) => GridView.extent(
+        data: (all) {
+          final categories = {for (final t in all) t.category}.toList()..sort();
+          final q = _query.trim().toLowerCase();
+          final ts = [
+            for (final t in all)
+              if ((_category == null || t.category == _category) &&
+                  (q.isEmpty || '${t.name} ${t.description} ${t.category} ${t.id}'.toLowerCase().contains(q)))
+                t,
+          ];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                autofocus: true,
+                decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded, size: 20), hintText: s.projectSearchTemplates, isDense: true),
+                onChanged: (v) => setState(() => _query = v),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 36,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final cat in [null, ...categories])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(cat ?? s.projectAllTemplates),
+                          selected: _category == cat,
+                          onSelected: (_) => setState(() => _category = cat),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(child: _grid(context, c, ts)),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _grid(BuildContext context, NectarColors c, List<AppTemplate> ts) => GridView.extent(
           maxCrossAxisExtent: 300,
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
@@ -197,10 +256,7 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
                 ),
               ),
           ],
-        ),
-      ),
-    );
-  }
+        );
 
   Widget _form(BuildContext context, NectarColors c, AppTemplate t) {
     final s = S.of(context);
@@ -213,7 +269,7 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
             const SizedBox(height: 8),
             Text(
               [
-                'Images: ${t.images.join(', ')}',
+                if (t.images.isNotEmpty) 'Images: ${t.images.join(', ')}',
                 if (t.addons.isNotEmpty) 'Database: ${t.addons.join(', ')} (managed add-on)',
               ].join('\n'),
               style: monoStyle(context, size: 12, color: c.muted),

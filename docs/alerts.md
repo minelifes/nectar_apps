@@ -11,6 +11,12 @@ Checked every 30 seconds (Alerts → Rules sets thresholds and durations):
 
 Each alert notifies when it fires and when it clears; optional reminders repeat while it keeps firing.
 
+## Marking alerts as read
+
+A firing alert shows on the dashboard and as a badge on **Alerts** in the menu. Once you've seen it, click ✓ (**Mark as read**) on the alert, or **Mark all read** on the dashboard card. The alert leaves your dashboard and badge but stays on the Alerts page, labelled *read*, until it resolves. Use the same button there to mark it unread again.
+
+Read marks are per user: reading an alert doesn't hide it from your teammates. If the problem comes back later, it's a new incident and shows up again.
+
 ## Channels
 
 | Channel | |

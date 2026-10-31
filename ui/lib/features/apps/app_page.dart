@@ -105,8 +105,8 @@ class _AppPageState extends ConsumerState<AppPage> {
       if (source != null) ('Builds', () => BuildsTab(app: app, source: source)),
       if (can('app.metrics')) ('Metrics', () => AppMetrics(app: app, canLogs: can('app.logs'))),
       if (can('app.logs')) ('Logs', () => NCard(child: LogsPanel(key: ValueKey('logs-${app.id}'), app: app))),
-      if (can('app.exec') && app.hasReplicas) ('Terminal', () => NCard(child: TerminalTab(key: ValueKey('term-${app.id}'), app: app))),
-      ('Events', () => _Events(app: app)),
+      if (can('app.exec') && app.hasReplicas) ('Terminal', () => NCard(child: TerminalTab(key: ValueKey('term-${app.id}'), path: '/apps/${app.id}'))),
+      ('Events', () => EventsCard(path: '/apps/${app.id}')),
       if (can('env.view')) ('Environment', () => EnvTab(key: ValueKey('env-${app.id}'), app: app)),
       ('Settings', () => SettingsTab(key: ValueKey('settings-${app.id}-${app.updatedAt}'), app: app, onDeployed: _started)),
       ('Deployments', () => _Deployments(app: app, releases: releases, canRollback: can('app.rollback'), busy: running != null, onStarted: _started)),
@@ -394,7 +394,7 @@ class _LiveCard extends ConsumerWidget {
                       ),
                       if (p.restarts > 0 && canLogs)
                         TextButton.icon(
-                          onPressed: () => showCrashLog(context, ref, app, p.name),
+                          onPressed: () => showCrashLog(context, ref, '/apps/${app.id}', p.name),
                           icon: const Icon(Icons.history_rounded, size: 16),
                           label: Text(l.appCrashLog),
                         ),
@@ -621,28 +621,4 @@ class _Deployments extends ConsumerWidget {
   }
 }
 
-class _Events extends ConsumerWidget {
-  const _Events({required this.app});
 
-  final App app;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final s = S.of(context);
-    final events = ref.watch(appEventsProvider(app.id));
-    return NCard(
-      title: s.appKubernetesEvents,
-      trailing: IconButton(
-        tooltip: s.actionRefresh,
-        icon: const Icon(Icons.refresh_rounded, size: 18),
-        onPressed: () => ref.invalidate(appEventsProvider(app.id)),
-      ),
-      child: AsyncBlock(
-        value: events,
-        loadingHeight: 100,
-        onRetry: () => ref.invalidate(appEventsProvider(app.id)),
-        data: (list) => EventList(events: list, empty: 'No recent events. Kubernetes keeps them for about an hour.'),
-      ),
-    );
-  }
-}

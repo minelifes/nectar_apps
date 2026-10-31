@@ -73,7 +73,7 @@ class AppShell extends ConsumerWidget {
     final width = MediaQuery.sizeOf(context).width;
     final dests = _destinationsFor(ref.watch(sessionProvider));
     final firing = ref.watch(firingAlertsProvider);
-    final alertCount = firing.hasValue ? firing.value!.length : 0;
+    final alertCount = firing.value?.where((a) => !a.read).length ?? 0; // unread only
     final index = _selected(dests, location);
     if (width >= 900) {
       return Scaffold(
