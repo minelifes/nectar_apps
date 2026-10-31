@@ -854,5 +854,9 @@
   "appSharedWithProject": "спільна для проєкту",
   "projectOpenTheDatabase": "Відкрити базу даних",
   "projectSearchTemplates": "Пошук: MQTT, Kafka, Redis, пошук…",
-  "projectAllTemplates": "Усі"
+  "projectAllTemplates": "Усі",
+  "appStartCommandOptional": "Команда запуску (необов'язково)",
+  "appStartCommandHelp": "Виконується через sh -c замість власної команди образу. Залиште порожнім для типової.",
+  "appBaseImageStopsRightAway": "Це базовий образ ОС: його типова команда — оболонка, яка одразу завершується, тож застосунок постійно перезапускатиметься. Задайте довготривалу команду або розгорніть образ, що запускає сервер.",
+  "appUseSleepInfinity": "Використати sleep infinity"
 }

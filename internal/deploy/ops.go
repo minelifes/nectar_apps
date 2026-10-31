@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	"nectar_apps/internal/kube"
@@ -195,6 +195,16 @@ func (d *Deployer) Volumes(ctx context.Context, a store.App, p store.Project) ([
 
 // volumeUsage fills UsedB from the kubelet summaries of the nodes running the app's pods (best effort).
 func (d *Deployer) volumeUsage(ctx context.Context, a store.App, p store.Project, claims map[string]*VolumeInfo) {
+	// node-local folders (k3s local-path): sizes measured by the volume meter (the kubelet cannot tell them)
+	defer func() {
+		for name, vi := range claims {
+			if vi.UsedB <= 0 {
+				if b, ok := d.measuredUsage(p.Namespace + "/" + name); ok {
+					vi.UsedB = b
+				}
+			}
+		}
+	}()
 	rg, ok := d.kube.(rawGetter)
 	if !ok || len(claims) == 0 {
 		return
@@ -210,28 +220,9 @@ func (d *Deployer) volumeUsage(ctx context.Context, a store.App, p store.Project
 		}
 	}
 	for node := range nodes {
-		var sum struct {
-			Pods []struct {
-				Volume []struct {
-					UsedBytes *int64 `json:"usedBytes"`
-					PVCRef    *struct {
-						Name      string `json:"name"`
-						Namespace string `json:"namespace"`
-					} `json:"pvcRef"`
-				} `json:"volume"`
-			} `json:"pods"`
-		}
-		if rg.Get(ctx, "/api/v1/nodes/"+url.PathEscape(node)+"/proxy/stats/summary", &sum) != nil {
-			continue
-		}
-		for _, pod := range sum.Pods {
-			for _, v := range pod.Volume {
-				if v.PVCRef == nil || v.UsedBytes == nil || v.PVCRef.Namespace != p.Namespace {
-					continue
-				}
-				if vi, ok := claims[v.PVCRef.Name]; ok && *v.UsedBytes > vi.UsedB {
-					vi.UsedB = *v.UsedBytes
-				}
+		for key, st := range nodePVCStats(ctx, rg, node) {
+			if vi, ok := claims[strings.TrimPrefix(key, p.Namespace+"/")]; ok && strings.HasPrefix(key, p.Namespace+"/") && st.UsedB > vi.UsedB {
+				vi.UsedB = st.UsedB
 			}
 		}
 	}

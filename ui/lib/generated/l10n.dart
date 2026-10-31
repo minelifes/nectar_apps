@@ -7585,6 +7585,46 @@ class S {
   String get projectAllTemplates {
     return Intl.message('All', name: 'projectAllTemplates', desc: '', args: []);
   }
+
+  /// `Start command (optional)`
+  String get appStartCommandOptional {
+    return Intl.message(
+      'Start command (optional)',
+      name: 'appStartCommandOptional',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Runs with sh -c instead of the image's own command. Leave empty for the default.`
+  String get appStartCommandHelp {
+    return Intl.message(
+      'Runs with sh -c instead of the image\'s own command. Leave empty for the default.',
+      name: 'appStartCommandHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `This is a base OS image: its default command is a shell that exits at once, so the app would keep restarting. Give it a long-running command, or deploy an image that runs a server.`
+  String get appBaseImageStopsRightAway {
+    return Intl.message(
+      'This is a base OS image: its default command is a shell that exits at once, so the app would keep restarting. Give it a long-running command, or deploy an image that runs a server.',
+      name: 'appBaseImageStopsRightAway',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Use sleep infinity`
+  String get appUseSleepInfinity {
+    return Intl.message(
+      'Use sleep infinity',
+      name: 'appUseSleepInfinity',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

@@ -71,6 +71,8 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   String _kind = 'web';
   String? _version;
   final _image = TextEditingController();
+  final _startCommand =
+      TextEditingController(); // optional, image apps: runs with sh -c
   // image apps can be built from Git instead (needs the built-in registry)
   bool _fromGit = false;
   final _repo = TextEditingController();
@@ -126,6 +128,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
     _cancel?.cancel();
     for (final c in [
       _image,
+      _startCommand,
       _name,
       _slug,
       _port,
@@ -276,6 +279,10 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
             if (!rt.takesImage) 'runtime_version': _version,
             'config': {
               if (rt.takesImage && !_fromGit) 'image': _image.text.trim(),
+              if (rt.takesImage &&
+                  !_fromGit &&
+                  _startCommand.text.trim().isNotEmpty)
+                'command': ['sh', '-c', _startCommand.text.trim()],
               if (_kind == 'web') 'port': int.parse(_port.text.trim()),
               if (_kind == 'cron') 'schedule': _schedule.text.trim(),
             },
@@ -409,6 +416,10 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
           if (!rt.takesImage && _version != null) 'runtime_version': _version,
           'config': {
             if (rt.takesImage && !_fromGit) 'image': _image.text.trim(),
+            if (rt.takesImage && !_fromGit)
+              'command': _startCommand.text.trim().isEmpty
+                  ? <String>[]
+                  : ['sh', '-c', _startCommand.text.trim()],
             if (_kind == 'web') 'port': int.parse(_port.text.trim()),
             if (_kind == 'cron') 'schedule': _schedule.text.trim(),
             if (app.hasReplicas) 'replicas': _replicas,
@@ -844,6 +855,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                 hintText: l.appGhcrIoAcmeShop1,
               ),
               autocorrect: false,
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 8),
             Text(
@@ -853,6 +865,44 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                 fontSize: 12.5,
               ),
             ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _startCommand,
+              style: monoStyle(context, size: 14),
+              decoration: InputDecoration(
+                labelText: l.appStartCommandOptional,
+                hintText: 'sleep infinity',
+                helperText: l.appStartCommandHelp,
+              ),
+              autocorrect: false,
+              onChanged: (_) => setState(() {}),
+            ),
+            if (isBareBaseImage(_image.text) &&
+                _startCommand.text.trim().isEmpty) ...[
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 18,
+                    color: NectarTokens.amber,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l.appBaseImageStopsRightAway,
+                      style: const TextStyle(fontSize: 12.5),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        setState(() => _startCommand.text = 'sleep infinity'),
+                    child: Text(l.appUseSleepInfinity),
+                  ),
+                ],
+              ),
+            ],
           ],
         ],
       );
@@ -1786,4 +1836,33 @@ class _Tag extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Base OS images whose default command (a shell) exits at once: as an app they restart forever unless
+/// they get a long-running start command.
+bool isBareBaseImage(String image) {
+  var name = image.trim().toLowerCase();
+  if (name.isEmpty) return false;
+  name = name.split('@').first;
+  final slash = name.lastIndexOf('/');
+  final colon = name.lastIndexOf(':');
+  if (colon > slash) name = name.substring(0, colon);
+  for (final prefix in ['docker.io/library/', 'docker.io/', 'library/']) {
+    if (name.startsWith(prefix)) name = name.substring(prefix.length);
+  }
+  const bare = {
+    'alpine',
+    'ubuntu',
+    'debian',
+    'busybox',
+    'centos',
+    'fedora',
+    'rockylinux',
+    'almalinux',
+    'amazonlinux',
+    'archlinux',
+    'opensuse/leap',
+    'oraclelinux',
+  };
+  return bare.contains(name);
 }

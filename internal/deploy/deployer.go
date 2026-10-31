@@ -72,6 +72,9 @@ type Deployer struct {
 	mu      sync.Mutex
 	running map[int64]bool // app id → deploy in progress
 	wg      sync.WaitGroup
+
+	duMu sync.Mutex
+	du   map[string]duEntry // measured sizes of node-local volumes ("namespace/claim"), see volume_meter.go
 }
 
 // New creates a deployer.
@@ -680,6 +683,25 @@ func (d *Deployer) waitRollout(ctx context.Context, s AppSpec) error {
 	}
 }
 
+// exitHint explains common exit codes of a container that keeps restarting.
+func exitHint(code int64) string {
+	switch code {
+	case 0:
+		return "the container's command finished, but an app must keep running. Base images such as alpine, " +
+			"ubuntu, debian or busybox have no long-running command: set one under Settings → Start command (e.g. " +
+			"sleep infinity to keep a shell box for the terminal) or deploy an image that runs a server"
+	case 126:
+		return "the command is not executable (missing execute permission, or a script without a shebang)"
+	case 127:
+		return "the command was not found in the image: check Settings → Start command and the image's PATH"
+	case 137:
+		return "the container was killed: out of memory or a failing health check (see Events)"
+	case 139:
+		return "the program crashed (segmentation fault): often an image built for another CPU architecture"
+	}
+	return ""
+}
+
 // podProblem returns a human-readable reason if a pod is stuck (image pull, crash loop, …).
 func podProblem(p kube.Object) string {
 	check := func(statuses []kube.Object, init bool) string {
@@ -692,7 +714,11 @@ func podProblem(p kube.Object) string {
 			case "CrashLoopBackOff":
 				last := kube.Str(cs, "lastState", "terminated", "reason")
 				code := kube.Int(cs, "lastState", "terminated", "exitCode")
-				return fmt.Sprintf("%s: CrashLoopBackOff (last exit: %s, code %d)", name, last, code)
+				msg := fmt.Sprintf("%s: CrashLoopBackOff (last exit: %s, code %d)", name, last, code)
+				if hint := exitHint(code); hint != "" {
+					msg += " — " + hint
+				}
+				return msg
 			}
 			if init {
 				if t := kube.Str(cs, "state", "terminated", "reason"); t == "Error" {

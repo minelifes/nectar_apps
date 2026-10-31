@@ -12,6 +12,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/gauge.dart';
 import '../../widgets/status.dart';
 import '../apps/terminal_tab.dart';
 import '../observe/app_metrics.dart';
@@ -625,6 +626,16 @@ class _ResourcesCardState extends ConsumerState<_ResourcesCard> {
               num(_cpu, 'CPU (millicores)', '1000 = one core'),
             ],
           ),
+          if (a.usedBytes >= 0 && a.sizeMb > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: UsageBar(
+                label: s.appUsed,
+                value: a.usedBytes / (a.sizeMb * 1024 * 1024),
+                trailing:
+                    '${formatBytes(a.usedBytes)} of ${formatMb(a.sizeMb)}',
+              ),
+            ),
           if (widget.canEdit)
             Align(
               alignment: Alignment.centerRight,

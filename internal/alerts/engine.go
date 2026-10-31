@@ -770,6 +770,8 @@ type VolumeUsage struct {
 	Path    string // panel link
 	UsedB   int64  // -1 = unknown
 	SizeB   int64  // the size in the settings
+	// Database: a database's data volume (no file browser: grow it or delete data in the database)
+	Database bool
 }
 
 func volumeConds(vols []VolumeUsage, threshold float64) []cond {
@@ -782,9 +784,13 @@ func volumeConds(vols []VolumeUsage, threshold float64) []cond {
 		if pct < threshold {
 			continue
 		}
+		advice := "Grow it or clean up files: app → Settings → Volumes (Files)."
+		if v.Database {
+			advice = "Grow its storage on the database page (Overview → Resources) or delete data in the database."
+		}
 		out = append(out, cond{Rule: VolumeFull, Key: VolumeFull + ":" + v.Key, Subject: v.Subject, Severity: Warning, Path: v.Path,
-			Message: fmt.Sprintf("Volume %s uses %s of %s (%.0f%%, threshold %.0f%%). Grow it in the app settings or clean up files (Volumes → Files).",
-				v.Subject, bytesHuman(v.UsedB), bytesHuman(v.SizeB), pct, threshold)})
+			Message: fmt.Sprintf("Volume %s uses %s of %s (%.0f%%, threshold %.0f%%). %s",
+				v.Subject, bytesHuman(v.UsedB), bytesHuman(v.SizeB), pct, threshold, advice)})
 	}
 	return out
 }

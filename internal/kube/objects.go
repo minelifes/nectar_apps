@@ -31,6 +31,7 @@ var resources = map[string]resource{
 	"ConfigMap":             {"/api/v1", "configmaps", true},
 	"Service":               {"/api/v1", "services", true},
 	"PersistentVolumeClaim": {"/api/v1", "persistentvolumeclaims", true},
+	"PersistentVolume":      {"/api/v1", "persistentvolumes", false},
 	"ResourceQuota":         {"/api/v1", "resourcequotas", true},
 	"LimitRange":            {"/api/v1", "limitranges", true},
 	"Pod":                   {"/api/v1", "pods", true},

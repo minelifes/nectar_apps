@@ -263,6 +263,12 @@ func TestBuilder(t *testing.T) {
 	if kube.Str(c, "resources", "limits", "cpu") != "2000m" {
 		t.Error("default build cpu")
 	}
+	// orphans of RUN steps are reaped and Kaniko may signal what is left (no AppArmor denial)
+	if kube.Field(job, "spec", "template", "spec", "shareProcessNamespace") != true ||
+		kube.Str(c, "securityContext", "appArmorProfile", "type") != "Unconfined" ||
+		kube.Str(job, "spec", "template", "metadata", "annotations", "container.apparmor.security.beta.kubernetes.io/kaniko") != "unconfined" {
+		t.Errorf("build pod: %v", kube.Field(job, "spec", "template"))
+	}
 	// the docker config holds the built-in registry and the private logins; the Secret is gone after the build
 	if k.Fake.Has("Secret", "nectar-builds", JobName(bl.ID)) {
 		t.Error("build secret not removed")

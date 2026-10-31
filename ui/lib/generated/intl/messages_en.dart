@@ -546,6 +546,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "appBackToTheProject": MessageLookupByLibrary.simpleMessage(
       "Back to the project",
     ),
+    "appBaseImageStopsRightAway": MessageLookupByLibrary.simpleMessage(
+      "This is a base OS image: its default command is a shell that exits at once, so the app would keep restarting. Give it a long-running command, or deploy an image that runs a server.",
+    ),
     "appBranch": MessageLookupByLibrary.simpleMessage("Branch"),
     "appBuildAndDeployOnEvery": MessageLookupByLibrary.simpleMessage(
       "Build and deploy on every push",
@@ -872,6 +875,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "appSpringProfilesActiveProd": MessageLookupByLibrary.simpleMessage(
       "--spring.profiles.active=prod",
     ),
+    "appStartCommandHelp": MessageLookupByLibrary.simpleMessage(
+      "Runs with sh -c instead of the image\'s own command. Leave empty for the default.",
+    ),
+    "appStartCommandOptional": MessageLookupByLibrary.simpleMessage(
+      "Start command (optional)",
+    ),
     "appStepOf": m37,
     "appStorage": MessageLookupByLibrary.simpleMessage("Storage"),
     "appTcp": MessageLookupByLibrary.simpleMessage("TCP"),
@@ -916,6 +925,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "appUploadedAndChecked": m40,
     "appUploading": m41,
     "appUse": m42,
+    "appUseSleepInfinity": MessageLookupByLibrary.simpleMessage(
+      "Use sleep infinity",
+    ),
     "appUsed": MessageLookupByLibrary.simpleMessage("Used"),
     "appUsedInKubernetesNamesAnd": MessageLookupByLibrary.simpleMessage(
       "Used in Kubernetes names and the default domain",
