@@ -1158,9 +1158,52 @@
 <p>Workers with a port (e.g. MongoDB) and <code>internal_ports</code> are reachable by the project's apps at
 <code>&lt;app&gt;:&lt;port&gt;</code>, never from outside.</p>
 <h2 id="one-click-apps">One-click apps<a class="headerlink" href="#one-click-apps" title="Permanent link">&para;</a></h2>
-<p>Project → <strong>One-click app</strong>: WordPress, Grafana, n8n, MinIO, MongoDB, RabbitMQ, Uptime Kuma, Gitea. Pick one,
-name it, install: the apps, a managed database where needed, volumes and generated passwords are created and
-deployed. <code>nectar templates</code> lists them and <code>nectar install &lt;template&gt; --project shop</code> installs one. The
+<p>Project → <strong>One-click app</strong>. Search the gallery or filter it by category, pick a template, name it and
+install it. The panel creates the apps, a managed database where one is needed, the volumes and generated
+passwords, then deploys them. After installing, the dialog shows how the project's apps connect (the
+<code>*_URL</code> to use).</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Templates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Messaging</td>
+<td>Mosquitto (MQTT), EMQX (MQTT with dashboard), Apache Kafka + Kafka UI, NATS (JetStream), RabbitMQ</td>
+</tr>
+<tr>
+<td>Databases</td>
+<td>Redis, PostgreSQL, MySQL (managed databases), MongoDB, Memcached, ClickHouse, InfluxDB, Qdrant</td>
+</tr>
+<tr>
+<td>Search</td>
+<td>Meilisearch, Typesense</td>
+</tr>
+<tr>
+<td>Monitoring</td>
+<td>Grafana, Prometheus, Jaeger, Uptime Kuma</td>
+</tr>
+<tr>
+<td>Developer tools</td>
+<td>Gitea, Mailpit, pgAdmin, Adminer, Verdaccio</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>Keycloak</td>
+</tr>
+<tr>
+<td>Websites, automation, storage</td>
+<td>WordPress, n8n, MinIO</td>
+</tr>
+</tbody>
+</table>
+<p>Brokers and data stores without a login of their own (Kafka, NATS, Memcached, ClickHouse, Prometheus) run as
+workers, so only the project's apps can reach them. The MQTT brokers also open port 1883 on the server for
+devices; the node port is on the app's Overview. Tools with a web UI either have a login (Kafka UI, Mailpit,
+pgAdmin, Grafana) or say in their notes to restrict the domain with Allowed IPs (Jaeger, Adminer). <code>nectar templates</code> lists them and <code>nectar install &lt;template&gt; --project shop</code> installs one. The
 catalog is data (<code>internal/blueprint/templates.yaml</code>).</p>
 <h2 id="docker-compose">docker-compose<a class="headerlink" href="#docker-compose" title="Permanent link">&para;</a></h2>
 <p>Project → ⋮ → <strong>Import docker-compose.yml</strong>, or <code>nectar import-compose -f docker-compose.yml --project shop</code>.

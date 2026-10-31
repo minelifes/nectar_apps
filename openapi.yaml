@@ -1429,6 +1429,28 @@ paths:
         - { name: before, in: query, schema: { type: integer }, description: id cursor }
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Alert" } } } } }
+  /alerts/read:
+    post:
+      tags: [alerts]
+      summary: Mark incidents as read for the signed-in user (hidden from their dashboard and nav badge)
+      x-permission: server.view
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids: { type: array, items: { type: integer }, description: "omitted = every firing incident" }
+      responses:
+        "204": { description: Marked }
+  /alerts/read/{id}:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    delete:
+      tags: [alerts]
+      summary: Mark an incident unread again
+      x-permission: server.view
+      responses:
+        "204": { description: Unread }
   /alerts/rules:
     get:
       tags: [alerts]
@@ -1738,6 +1760,77 @@ paths:
       x-permission: app.restart
       responses:
         "200": { description: OK }
+  /addons/{aid}/restart:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    post:
+      tags: [addons]
+      summary: Restart the database pod
+      x-permission: app.restart
+      responses:
+        "204": { description: Restarted }
+        "409": { $ref: "#/components/responses/Error" }
+  /addons/{aid}/shared:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    put:
+      tags: [addons]
+      summary: Share with every app of the project (no link per app; apps added later get it too), or stop sharing
+      x-permission: env.edit
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [shared], properties: { shared: { type: boolean }, prefix: { type: string, example: CACHE_ } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Addon" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { description: Another shared database already sets the same variables (use a prefix) }
+  /addons/{aid}/usage:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [addons]
+      summary: CPU and memory history, same shape as /apps/{id}/usage
+      x-permission: app.metrics
+      parameters: [{ name: range, in: query, schema: { type: string, enum: [1h, 6h, 24h, 7d, 30d] } }]
+      responses:
+        "200": { description: OK }
+  /addons/{aid}/events:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [addons]
+      summary: Kubernetes events of the database's objects
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/KubeEvent" } } } } }
+  /addons/{aid}/pods:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [addons]
+      summary: Pods of the database
+      x-permission: app.logs
+      responses:
+        "200": { description: OK }
+  /addons/{aid}/logs:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [addons]
+      summary: Recent log lines, same parameters as /apps/{id}/logs
+      x-permission: app.logs
+      responses:
+        "200": { description: OK }
+  /addons/{aid}/logs/ws:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [addons]
+      summary: Live logs over a WebSocket (same messages as /apps/{id}/logs/ws)
+      x-permission: app.logs
+      responses:
+        "101": { description: Switching protocols }
+  /addons/{aid}/exec/ws:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [addons]
+      summary: Shell in the database container over a WebSocket (same messages as /apps/{id}/exec/ws)
+      x-permission: app.exec
+      responses:
+        "101": { description: Switching protocols }
   /addons/{aid}/credentials:
     parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
     get:
@@ -2783,6 +2876,8 @@ components:
         live: { type: object, properties: { ready: { type: boolean }, phase: { type: string }, restarts: { type: integer }, problem: { type: string }, volume: { type: string } } }
         links: { type: array, items: { type: object, properties: { app_id: { type: integer }, prefix: { type: string } } } }
         env_names: { type: array, items: { type: string } }
+        shared: { type: boolean, description: every app of the project gets the variables (no link needed) }
+        shared_prefix: { type: string }
     BackupTargetConfig:
       type: object
       description: "s3: endpoint, bucket, prefix, region, access_key, secret_key. sftp: host, port, user, path, private_key. local: path. All: password (restic repository password, generated when empty)."
@@ -2852,6 +2947,7 @@ components:
         started_at: { type: string, format: date-time }
         resolved_at: { type: string, format: date-time }
         notified: { type: integer, description: channels that accepted the notification when it fired }
+        read: { type: boolean, description: marked as read by the requesting user }
     AlertRule:
       type: object
       properties:
@@ -3020,6 +3116,7 @@ components:
         commit: { type: string }
         api_version: { type: integer, example: 1 }
         min_client_version: { type: string }
+        server_time: { type: string, format: date-time, description: "the server clock (clients warn when it is off)" }
     User:
       type: object
       required: [id, email, name, is_owner, disabled, created_at]
