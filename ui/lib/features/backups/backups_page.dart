@@ -42,7 +42,13 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
       return PageScaffold(
         title: s.navBackups,
         children: [
-          NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: s.noAccess, message: s.backupYourRoleDoesNotInclude)),
+          NCard(
+            child: EmptyState(
+              icon: Icons.lock_outline_rounded,
+              title: s.noAccess,
+              message: s.backupYourRoleDoesNotInclude,
+            ),
+          ),
         ],
       );
     }
@@ -57,7 +63,11 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
       subtitle: s.backupVolumesDatabaseDumpsAndThe,
       onRefresh: _refresh,
       children: [
-        NTabs(index: i, labels: [for (final t in tabs) t.$1], onChanged: (n) => setState(() => _tab = tabs[n].$1)),
+        NTabs(
+          index: i,
+          labels: [for (final t in tabs) t.$1],
+          onChanged: (n) => setState(() => _tab = tabs[n].$1),
+        ),
         const SizedBox(height: NectarTokens.gap),
         tabs[i].$2(),
       ],
@@ -66,19 +76,19 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
 }
 
 String scheduleLabel(String s) => switch (s) {
-      '' => 'manual only',
-      '@hourly' || '0 * * * *' => 'every hour',
-      '0 */6 * * *' => 'every 6 hours',
-      '@daily' || '0 3 * * *' => 'daily at 03:00 UTC',
-      '@weekly' || '0 3 * * 0' => 'weekly, Sunday 03:00 UTC',
-      _ => s,
-    };
+  '' => 'manual only',
+  '@hourly' || '0 * * * *' => 'every hour',
+  '0 */6 * * *' => 'every 6 hours',
+  '@daily' || '0 3 * * *' => 'daily at 03:00 UTC',
+  '@weekly' || '0 3 * * 0' => 'weekly, Sunday 03:00 UTC',
+  _ => s,
+};
 
 IconData scopeIcon(String scope) => switch (scope) {
-      'app' => Icons.apps_rounded,
-      'addon' => Icons.storage_rounded,
-      _ => Icons.hexagon_outlined,
-    };
+  'app' => Icons.apps_rounded,
+  'addon' => Icons.storage_rounded,
+  _ => Icons.hexagon_outlined,
+};
 
 // -------------------------------------------------------------------- plans --
 
@@ -93,16 +103,27 @@ class _Plans extends ConsumerWidget {
       await ref.read(apiProvider).post('/backup/plans/${p.id}/run');
       ref.invalidate(backupRunsProvider);
       ref.invalidate(backupPlansProvider);
-      if (context.mounted) showSnack(context, s.backupBackupOfStarted(p.subject));
+      if (context.mounted) {
+        showSnack(context, s.backupBackupOfStarted(p.subject));
+      }
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
   }
 
-  Future<void> _delete(BuildContext context, WidgetRef ref, BackupPlan p) async {
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    BackupPlan p,
+  ) async {
     final s = S.of(context);
-    if (!await confirmAction(context, s.backupDeleteThisPlan, s.backupNoMoreBackupsOfTo(p.subject, p.targetName), s.actionDelete,
-        danger: true)) {
+    if (!await confirmAction(
+      context,
+      s.backupDeleteThisPlan,
+      s.backupNoMoreBackupsOfTo(p.subject, p.targetName),
+      s.actionDelete,
+      danger: true,
+    )) {
       return;
     }
     try {
@@ -118,13 +139,17 @@ class _Plans extends ConsumerWidget {
     final s = S.of(context);
     final plans = ref.watch(backupPlansProvider);
     final targets = ref.watch(backupTargetsProvider);
-    ref.watch(backupRunsProvider); // keeps plans fresh while a run is in progress
+    ref.watch(
+      backupRunsProvider,
+    ); // keeps plans fresh while a run is in progress
     final c = NectarColors.of(context);
     final noTargets = targets.hasValue && targets.value!.isEmpty;
     return NCard(
       title: s.backupWhatIsBackedUp,
       trailing: FilledButton.icon(
-        onPressed: noTargets || !targets.hasValue ? null : () => showPlanDialog(context, ref, targets: targets.value!),
+        onPressed: noTargets || !targets.hasValue
+            ? null
+            : () => showPlanDialog(context, ref, targets: targets.value!),
         icon: const Icon(Icons.add_rounded, size: 18),
         label: Text(s.backupAddPlan),
       ),
@@ -155,7 +180,14 @@ class _Plans extends ConsumerWidget {
                   plan: list[i],
                   canRestore: canRestore,
                   onRun: () => _run(context, ref, list[i]),
-                  onEdit: targets.hasValue ? () => showPlanDialog(context, ref, targets: targets.value!, plan: list[i]) : null,
+                  onEdit: targets.hasValue
+                      ? () => showPlanDialog(
+                          context,
+                          ref,
+                          targets: targets.value!,
+                          plan: list[i],
+                        )
+                      : null,
                   onDelete: () => _delete(context, ref, list[i]),
                 ),
               ],
@@ -173,7 +205,13 @@ class _Plans extends ConsumerWidget {
 }
 
 class _PlanRow extends StatelessWidget {
-  const _PlanRow({required this.plan, required this.canRestore, required this.onRun, required this.onEdit, required this.onDelete});
+  const _PlanRow({
+    required this.plan,
+    required this.canRestore,
+    required this.onRun,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final BackupPlan plan;
   final bool canRestore;
@@ -196,20 +234,32 @@ class _PlanRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(scopeIcon(plan.scope), color: plan.enabled ? NectarTokens.amber : c.muted),
+          Icon(
+            scopeIcon(plan.scope),
+            color: plan.enabled ? NectarTokens.amber : c.muted,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(plan.subject, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text('to ${plan.targetName} · ${plan.enabled ? scheduleLabel(plan.schedule) : 'paused'} · keeps $keep',
-                    style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text(
+                  plan.subject,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  'to ${plan.targetName} · ${plan.enabled ? scheduleLabel(plan.schedule) : 'paused'} · keeps $keep',
+                  style: TextStyle(color: c.muted, fontSize: 12.5),
+                ),
                 const SizedBox(height: 4),
                 if (last != null)
                   Row(
                     children: [
-                      StatusDot(status: last.status == 'succeeded' ? 'running' : 'failed'),
+                      StatusDot(
+                        status: last.status == 'succeeded'
+                            ? 'running'
+                            : 'failed',
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -217,28 +267,54 @@ class _PlanRow extends StatelessWidget {
                           '${last.message.isEmpty ? '' : ' · ${last.message.split('\n').first}'}',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12.5, color: last.status == 'failed' ? c.failed : c.text),
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: last.status == 'failed' ? c.failed : c.text,
+                          ),
                         ),
                       ),
                     ],
                   )
                 else
-                  Text(s.backupNotBackedUpYet, style: TextStyle(fontSize: 12.5, color: c.warning)),
-                if (plan.nextRun != null) Text(s.backupNext(_when(plan.nextRun!)), style: TextStyle(color: c.muted, fontSize: 12)),
+                  Text(
+                    s.backupNotBackedUpYet,
+                    style: TextStyle(fontSize: 12.5, color: c.warning),
+                  ),
+                if (plan.nextRun != null)
+                  Text(
+                    s.backupNext(_when(plan.nextRun!)),
+                    style: TextStyle(color: c.muted, fontSize: 12),
+                  ),
               ],
             ),
           ),
           Wrap(
             children: [
-              IconButton(tooltip: s.backupBackUpNow, icon: const Icon(Icons.play_arrow_rounded), onPressed: onRun),
+              IconButton(
+                tooltip: s.backupBackUpNow,
+                icon: const Icon(Icons.play_arrow_rounded),
+                onPressed: onRun,
+              ),
               if (plan.scope != 'panel')
                 IconButton(
                   tooltip: canRestore ? 'Snapshots and restore' : 'Snapshots',
                   icon: const Icon(Icons.history_rounded),
-                  onPressed: () => showDialog<void>(context: context, builder: (_) => _SnapshotsDialog(plan: plan, canRestore: canRestore)),
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) =>
+                        _SnapshotsDialog(plan: plan, canRestore: canRestore),
+                  ),
                 ),
-              IconButton(tooltip: s.backupEdit, icon: const Icon(Icons.edit_outlined, size: 20), onPressed: onEdit),
-              IconButton(tooltip: s.actionDelete, icon: const Icon(Icons.delete_outline_rounded, size: 20), onPressed: onDelete),
+              IconButton(
+                tooltip: s.backupEdit,
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                onPressed: onEdit,
+              ),
+              IconButton(
+                tooltip: s.actionDelete,
+                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                onPressed: onDelete,
+              ),
             ],
           ),
         ],
@@ -266,18 +342,33 @@ class _SnapshotsDialog extends ConsumerStatefulWidget {
 class _SnapshotsDialogState extends ConsumerState<_SnapshotsDialog> {
   late Future<List<BackupSnapshot>> _snaps = _load();
 
-  Future<List<BackupSnapshot>> _load() async =>
-      listOf(await ref.read(apiProvider).get('/backup/plans/${widget.plan.id}/snapshots'), BackupSnapshot.fromJson);
+  Future<List<BackupSnapshot>> _load() async => listOf(
+    await ref
+        .read(apiProvider)
+        .get('/backup/plans/${widget.plan.id}/snapshots'),
+    BackupSnapshot.fromJson,
+  );
 
   Future<void> _restore(BackupSnapshot s) async {
-        final l = S.of(context);
+    final l = S.of(context);
     final what = widget.plan.scope == 'app'
         ? 'The app is stopped, its volumes are replaced with the snapshot, and it starts again.'
         : 'The database is replaced with the dump in the snapshot.';
-    final ok = await confirmAction(context, l.backupRestore(s.shortId), l.backupChangesSinceThenAreLost(what), l.backupRestore2, danger: true);
+    final ok = await confirmAction(
+      context,
+      l.backupRestore(s.shortId),
+      l.backupChangesSinceThenAreLost(what),
+      l.backupRestore2,
+      danger: true,
+    );
     if (!ok || !mounted) return;
     try {
-      await ref.read(apiProvider).post('/backup/plans/${widget.plan.id}/restore', data: {'snapshot': s.id});
+      await ref
+          .read(apiProvider)
+          .post(
+            '/backup/plans/${widget.plan.id}/restore',
+            data: {'snapshot': s.id},
+          );
       ref.invalidate(backupRunsProvider);
       if (mounted) {
         Navigator.pop(context);
@@ -300,34 +391,61 @@ class _SnapshotsDialogState extends ConsumerState<_SnapshotsDialog> {
         child: FutureBuilder<List<BackupSnapshot>>(
           future: _snaps,
           builder: (context, snap) {
-            if (snap.hasError) return ErrorBlock(error: snap.error!, onRetry: () => setState(() => _snaps = _load()));
+            if (snap.hasError) {
+              return ErrorBlock(
+                error: snap.error!,
+                onRetry: () => setState(() => _snaps = _load()),
+              );
+            }
             if (!snap.hasData) {
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const CircularProgressIndicator(),
                   const SizedBox(height: 12),
-                  Text(l.backupReadingTheRepository, style: TextStyle(color: c.muted)),
+                  Text(
+                    l.backupReadingTheRepository,
+                    style: TextStyle(color: c.muted),
+                  ),
                 ],
               );
             }
             final list = snap.data!;
-            if (list.isEmpty) return Center(child: Text(l.backupNoSnapshotsYet));
+            if (list.isEmpty) {
+              return Center(child: Text(l.backupNoSnapshotsYet));
+            }
             return ListView(
               children: [
                 for (final s in list)
                   ListTile(
                     leading: const Icon(Icons.inventory_2_outlined),
-                    title: Text(s.time == null ? s.shortId : '${timeAgo(s.time)} · ${s.shortId}'),
-                    subtitle: Text(s.paths.join(', '), style: monoStyle(context, size: 11.5, color: c.muted)),
-                    trailing: widget.canRestore ? TextButton(onPressed: () => _restore(s), child: Text(l.backupRestore2)) : null,
+                    title: Text(
+                      s.time == null
+                          ? s.shortId
+                          : '${timeAgo(s.time)} · ${s.shortId}',
+                    ),
+                    subtitle: Text(
+                      s.paths.join(', '),
+                      style: monoStyle(context, size: 11.5, color: c.muted),
+                    ),
+                    trailing: widget.canRestore
+                        ? TextButton(
+                            onPressed: () => _restore(s),
+                            child: Text(l.backupRestore2),
+                          )
+                        : null,
                   ),
               ],
             );
           },
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(l.actionClose))],
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l.actionClose),
+        ),
+      ],
     );
   }
 }
@@ -337,12 +455,23 @@ class _SnapshotsDialogState extends ConsumerState<_SnapshotsDialog> {
 class _Targets extends ConsumerWidget {
   const _Targets();
 
-  Future<void> _check(BuildContext context, WidgetRef ref, BackupTarget t) async {
+  Future<void> _check(
+    BuildContext context,
+    WidgetRef ref,
+    BackupTarget t,
+  ) async {
     final s = S.of(context);
     showSnack(context, s.backupChecking(t.name));
     try {
-      final res = await ref.read(apiProvider).post('/backup/targets/${t.id}/check');
-      if (context.mounted) showSnack(context, '${t.name} works · ${(res as Map)['snapshots']} snapshots');
+      final res = await ref
+          .read(apiProvider)
+          .post('/backup/targets/${t.id}/check');
+      if (context.mounted) {
+        showSnack(
+          context,
+          '${t.name} works · ${(res as Map)['snapshots']} snapshots',
+        );
+      }
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
@@ -351,7 +480,9 @@ class _Targets extends ConsumerWidget {
   Future<void> _kit(BuildContext context, WidgetRef ref, BackupTarget t) async {
     final s = S.of(context);
     try {
-      final kit = await ref.read(apiProvider).get('/backup/targets/${t.id}/recovery-kit');
+      final kit = await ref
+          .read(apiProvider)
+          .get('/backup/targets/${t.id}/recovery-kit');
       if (!context.mounted) return;
       final text = const JsonEncoder.withIndent('  ').convert(kit);
       await showDialog<void>(
@@ -364,19 +495,36 @@ class _Targets extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  s.backupSaveThisAsNectarRecovery,
-                ),
+                Text(s.backupSaveThisAsNectarRecovery),
                 const SizedBox(height: 12),
                 Container(
                   constraints: const BoxConstraints(maxHeight: 300),
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: const Color(0xFF0A0B0D), borderRadius: BorderRadius.circular(NectarTokens.radiusSmall)),
-                  child: SingleChildScrollView(child: SelectableText(text, style: monoStyle(ctx, size: 12, color: const Color(0xFFD9DBE0)))),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0A0B0D),
+                    borderRadius: BorderRadius.circular(
+                      NectarTokens.radiusSmall,
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      text,
+                      style: monoStyle(
+                        ctx,
+                        size: 12,
+                        color: const Color(0xFFD9DBE0),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text(s.backupItHoldsTheRepositoryPassword,
-                    style: TextStyle(color: NectarColors.of(ctx).warning, fontSize: 12.5)),
+                Text(
+                  s.backupItHoldsTheRepositoryPassword,
+                  style: TextStyle(
+                    color: NectarColors.of(ctx).warning,
+                    fontSize: 12.5,
+                  ),
+                ),
               ],
             ),
           ),
@@ -388,7 +536,10 @@ class _Targets extends ConsumerWidget {
               },
               child: Text(s.backupCopy),
             ),
-            FilledButton(onPressed: () => Navigator.pop(ctx), child: Text(s.backupDone)),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(s.backupDone),
+            ),
           ],
         ),
       );
@@ -397,9 +548,21 @@ class _Targets extends ConsumerWidget {
     }
   }
 
-  Future<void> _delete(BuildContext context, WidgetRef ref, BackupTarget t) async {
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    BackupTarget t,
+  ) async {
     final s = S.of(context);
-    if (!await confirmAction(context, s.backupRemove(t.name), s.backupThePanelForgetsTheTarget, s.backupRemove2, danger: true)) return;
+    if (!await confirmAction(
+      context,
+      s.backupRemove(t.name),
+      s.backupThePanelForgetsTheTarget,
+      s.backupRemove2,
+      danger: true,
+    )) {
+      return;
+    }
     try {
       await ref.read(apiProvider).delete('/backup/targets/${t.id}');
       ref.invalidate(backupTargetsProvider);
@@ -431,15 +594,50 @@ class _Targets extends ConsumerWidget {
                   for (final t in list)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(t.kind == 'local' ? Icons.folder_outlined : (t.kind == 'sftp' ? Icons.dns_outlined : Icons.cloud_outlined)),
-                      title: Text(t.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text('${t.repository} · ${t.plans} ${t.plans == 1 ? 'plan' : 'plans'}', style: monoStyle(context, size: 12, color: c.muted)),
+                      leading: Icon(
+                        t.kind == 'local'
+                            ? Icons.folder_outlined
+                            : (t.kind == 'sftp'
+                                  ? Icons.dns_outlined
+                                  : Icons.cloud_outlined),
+                      ),
+                      title: Text(
+                        t.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        '${t.repository} · ${t.plans} ${t.plans == 1 ? 'plan' : 'plans'}',
+                        style: monoStyle(context, size: 12, color: c.muted),
+                      ),
                       trailing: Wrap(
                         children: [
-                          IconButton(tooltip: s.backupCheck, icon: const Icon(Icons.fact_check_outlined, size: 20), onPressed: () => _check(context, ref, t)),
-                          IconButton(tooltip: s.backupRecoveryKit, icon: const Icon(Icons.key_rounded, size: 20), onPressed: () => _kit(context, ref, t)),
-                          IconButton(tooltip: s.backupEdit, icon: const Icon(Icons.edit_outlined, size: 20), onPressed: () => showTargetDialog(context, ref, target: t)),
-                          IconButton(tooltip: s.backupRemove2, icon: const Icon(Icons.delete_outline_rounded, size: 20), onPressed: () => _delete(context, ref, t)),
+                          IconButton(
+                            tooltip: s.backupCheck,
+                            icon: const Icon(
+                              Icons.fact_check_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => _check(context, ref, t),
+                          ),
+                          IconButton(
+                            tooltip: s.backupRecoveryKit,
+                            icon: const Icon(Icons.key_rounded, size: 20),
+                            onPressed: () => _kit(context, ref, t),
+                          ),
+                          IconButton(
+                            tooltip: s.backupEdit,
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            onPressed: () =>
+                                showTargetDialog(context, ref, target: t),
+                          ),
+                          IconButton(
+                            tooltip: s.backupRemove2,
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 20,
+                            ),
+                            onPressed: () => _delete(context, ref, t),
+                          ),
                         ],
                       ),
                     ),
@@ -472,18 +670,30 @@ class _History extends ConsumerWidget {
                   for (final r in list)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: StatusDot(status: switch (r.status) { 'succeeded' => 'running', 'failed' => 'failed', _ => 'deploying' }),
-                      title: Text('${r.kind == 'restore' ? 'Restore' : 'Backup'} · ${r.subject}'),
+                      leading: StatusDot(
+                        status: switch (r.status) {
+                          'succeeded' => 'running',
+                          'failed' => 'failed',
+                          _ => 'deploying',
+                        },
+                      ),
+                      title: Text(
+                        '${r.kind == 'restore' ? 'Restore' : 'Backup'} · ${r.subject}',
+                      ),
                       subtitle: Text(
                         [
                           timeAgo(r.startedAt),
-                          if (r.finishedAt != null && r.startedAt != null) 'took ${_took(r.finishedAt!.difference(r.startedAt!))}',
+                          if (r.finishedAt != null && r.startedAt != null)
+                            'took ${_took(r.finishedAt!.difference(r.startedAt!))}',
                           if (r.status == 'running') 'running…',
                           if (r.message.isNotEmpty) r.message,
                         ].join(' · '),
                         maxLines: 4,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: r.status == 'failed' ? c.failed : c.muted, fontSize: 12.5),
+                        style: TextStyle(
+                          color: r.status == 'failed' ? c.failed : c.muted,
+                          fontSize: 12.5,
+                        ),
                       ),
                     ),
                 ],
@@ -492,5 +702,7 @@ class _History extends ConsumerWidget {
     );
   }
 
-  static String _took(Duration d) => d.inMinutes >= 1 ? '${d.inMinutes}m ${d.inSeconds % 60}s' : '${d.inSeconds}s';
+  static String _took(Duration d) => d.inMinutes >= 1
+      ? '${d.inMinutes}m ${d.inSeconds % 60}s'
+      : '${d.inSeconds}s';
 }

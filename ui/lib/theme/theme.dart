@@ -30,29 +30,65 @@ ThemeData buildNectarTheme(Brightness brightness) {
   );
 
   final radius = BorderRadius.circular(NectarTokens.radius);
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme, brightness: brightness, fontFamily: NectarTokens.fontUi);
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    brightness: brightness,
+    fontFamily: NectarTokens.fontUi,
+  );
 
   TextStyle display(double size, FontWeight w, {double spacing = -0.4}) =>
-      TextStyle(fontFamily: NectarTokens.fontDisplay, fontSize: size, fontWeight: w, letterSpacing: spacing, color: c.text);
+      TextStyle(
+        fontFamily: NectarTokens.fontDisplay,
+        fontSize: size,
+        fontWeight: w,
+        letterSpacing: spacing,
+        color: c.text,
+      );
 
   final text = base.textTheme
-      .apply(bodyColor: c.text, displayColor: c.text, fontFamily: NectarTokens.fontUi)
+      .apply(
+        bodyColor: c.text,
+        displayColor: c.text,
+        fontFamily: NectarTokens.fontUi,
+      )
       .copyWith(
         displaySmall: display(34, FontWeight.w700),
         headlineMedium: display(26, FontWeight.w700),
         headlineSmall: display(22, FontWeight.w700, spacing: -0.2),
         titleLarge: display(19, FontWeight.w500, spacing: -0.1),
-        titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.text),
-        titleSmall: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.text),
+        titleMedium: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: c.text,
+        ),
+        titleSmall: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: c.text,
+        ),
         bodyLarge: TextStyle(fontSize: 15, height: 1.5, color: c.text),
         bodyMedium: TextStyle(fontSize: 14, height: 1.45, color: c.text),
         bodySmall: TextStyle(fontSize: 12.5, height: 1.4, color: c.muted),
         labelLarge: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.muted, letterSpacing: 0.2),
-        labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c.muted, letterSpacing: 0.6),
+        labelMedium: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: c.muted,
+          letterSpacing: 0.2,
+        ),
+        labelSmall: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: c.muted,
+          letterSpacing: 0.6,
+        ),
       );
 
-  final inputBorder = OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: c.border));
+  final inputBorder = OutlineInputBorder(
+    borderRadius: radius,
+    borderSide: BorderSide(color: c.border),
+  );
 
   return base.copyWith(
     scaffoldBackgroundColor: c.background,
@@ -64,7 +100,10 @@ ThemeData buildNectarTheme(Brightness brightness) {
       color: c.surface,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.border)),
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: c.border),
+      ),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: c.background,
@@ -80,26 +119,38 @@ ThemeData buildNectarTheme(Brightness brightness) {
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: inputBorder,
       enabledBorder: inputBorder,
-      focusedBorder: inputBorder.copyWith(borderSide: const BorderSide(color: NectarTokens.amber, width: 1.5)),
-      errorBorder: inputBorder.copyWith(borderSide: BorderSide(color: c.failed)),
-      focusedErrorBorder: inputBorder.copyWith(borderSide: BorderSide(color: c.failed, width: 1.5)),
+      focusedBorder: inputBorder.copyWith(
+        borderSide: const BorderSide(color: NectarTokens.amber, width: 1.5),
+      ),
+      errorBorder: inputBorder.copyWith(
+        borderSide: BorderSide(color: c.failed),
+      ),
+      focusedErrorBorder: inputBorder.copyWith(
+        borderSide: BorderSide(color: c.failed, width: 1.5),
+      ),
       labelStyle: TextStyle(color: c.muted),
       hintStyle: TextStyle(color: c.muted),
     ),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: NectarTokens.amber,
-        foregroundColor: NectarTokens.onAmber,
-        disabledBackgroundColor: c.border,
-        minimumSize: const Size(0, 44),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        shape: RoundedRectangleBorder(borderRadius: radius),
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      ).copyWith(
-        overlayColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.hovered) ? NectarTokens.amberHover.withValues(alpha: 0.35) : null,
-        ),
-      ),
+      style:
+          FilledButton.styleFrom(
+            backgroundColor: NectarTokens.amber,
+            foregroundColor: NectarTokens.onAmber,
+            disabledBackgroundColor: c.border,
+            minimumSize: const Size(0, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            shape: RoundedRectangleBorder(borderRadius: radius),
+            textStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ).copyWith(
+            overlayColor: WidgetStateProperty.resolveWith(
+              (s) => s.contains(WidgetState.hovered)
+                  ? NectarTokens.amberHover.withValues(alpha: 0.35)
+                  : null,
+            ),
+          ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
@@ -118,26 +169,40 @@ ThemeData buildNectarTheme(Brightness brightness) {
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
-    iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: c.muted)),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(foregroundColor: c.muted),
+    ),
     chipTheme: ChipThemeData(
       backgroundColor: c.elevated,
       side: BorderSide(color: c.border),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(NectarTokens.radiusSmall)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(NectarTokens.radiusSmall),
+      ),
       labelStyle: TextStyle(fontSize: 12.5, color: c.text),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: c.surface,
-      shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.border)),
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: c.border),
+      ),
       titleTextStyle: text.titleLarge,
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: c.elevated,
       contentTextStyle: TextStyle(color: c.text),
-      shape: RoundedRectangleBorder(borderRadius: radius, side: BorderSide(color: c.border)),
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(color: c.border),
+      ),
     ),
     tooltipTheme: TooltipThemeData(
-      decoration: BoxDecoration(color: c.elevated, borderRadius: BorderRadius.circular(6), border: Border.all(color: c.border)),
+      decoration: BoxDecoration(
+        color: c.elevated,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: c.border),
+      ),
       textStyle: TextStyle(color: c.text, fontSize: 12),
     ),
     navigationRailTheme: NavigationRailThemeData(
@@ -151,7 +216,11 @@ ThemeData buildNectarTheme(Brightness brightness) {
       indicatorColor: NectarTokens.amber.withValues(alpha: 0.16),
       height: 64,
       iconTheme: WidgetStateProperty.resolveWith(
-        (s) => IconThemeData(color: s.contains(WidgetState.selected) ? NectarTokens.amber : c.muted),
+        (s) => IconThemeData(
+          color: s.contains(WidgetState.selected)
+              ? NectarTokens.amber
+              : c.muted,
+        ),
       ),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => TextStyle(
@@ -161,12 +230,16 @@ ThemeData buildNectarTheme(Brightness brightness) {
         ),
       ),
     ),
-    progressIndicatorTheme: ProgressIndicatorThemeData(color: NectarTokens.amber, linearTrackColor: c.border),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: NectarTokens.amber,
+      linearTrackColor: c.border,
+    ),
   );
 }
 
 /// Monospace style for logs, env values and identifiers.
-TextStyle monoStyle(BuildContext context, {double size = 13, Color? color}) => TextStyle(
+TextStyle monoStyle(BuildContext context, {double size = 13, Color? color}) =>
+    TextStyle(
       fontFamily: NectarTokens.fontMono,
       fontSize: size,
       height: 1.45,

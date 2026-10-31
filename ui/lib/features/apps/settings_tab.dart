@@ -39,7 +39,14 @@ class _Port {
 }
 
 class _Vol {
-  _Vol(this.name, this.mount, this.size, {this.existing = false, this.storageClass = '', this.shared = false});
+  _Vol(
+    this.name,
+    this.mount,
+    this.size, {
+    this.existing = false,
+    this.storageClass = '',
+    this.shared = false,
+  });
 
   final TextEditingController name;
   final TextEditingController mount;
@@ -54,35 +61,63 @@ class _Vol {
 }
 
 class _SettingsTabState extends ConsumerState<SettingsTab> {
-  late final Map<String, dynamic> _cfg = jsonDecode(jsonEncode(widget.app.config)) as Map<String, dynamic>;
+  late final Map<String, dynamic> _cfg =
+      jsonDecode(jsonEncode(widget.app.config)) as Map<String, dynamic>;
   late final _name = TextEditingController(text: widget.app.name);
   late String _version = widget.app.runtimeVersion;
   late final _image = TextEditingController(text: '${_cfg['image'] ?? ''}');
   late final _port = TextEditingController(text: '${_cfg['port'] ?? ''}');
-  late String _healthType = const {'http', 'tcp', 'none'}.contains(_health['type']) ? '${_health['type']}' : 'tcp';
-  late final _healthPath = TextEditingController(text: '${_health['path'] ?? ''}');
-  late final _healthDelay = TextEditingController(text: _nz(_health['initial_delay_seconds']));
-  late final _cpu = TextEditingController(text: '${_res['cpu_millicores'] ?? 250}');
+  late String _healthType =
+      const {'http', 'tcp', 'none'}.contains(_health['type'])
+      ? '${_health['type']}'
+      : 'tcp';
+  late final _healthPath = TextEditingController(
+    text: '${_health['path'] ?? ''}',
+  );
+  late final _healthDelay = TextEditingController(
+    text: _nz(_health['initial_delay_seconds']),
+  );
+  late final _cpu = TextEditingController(
+    text: '${_res['cpu_millicores'] ?? 250}',
+  );
   late final _mem = TextEditingController(text: '${_res['memory_mb'] ?? 256}');
   late bool _noLimit = _res['no_limit'] == true;
-  late final _command = TextEditingController(text: _commandText(_cfg['command']));
+  late final _command = TextEditingController(
+    text: _commandText(_cfg['command']),
+  );
   late final _args = TextEditingController(text: '${_cfg['args'] ?? ''}');
-  late final _release = TextEditingController(text: '${_cfg['release_command'] ?? ''}');
-  late final _schedule = TextEditingController(text: '${_cfg['schedule'] ?? ''}');
+  late final _release = TextEditingController(
+    text: '${_cfg['release_command'] ?? ''}',
+  );
+  late final _schedule = TextEditingController(
+    text: '${_cfg['schedule'] ?? ''}',
+  );
   late final List<_Port> _ports = [
     for (final p in (_cfg['expose'] as List? ?? const []))
-      _Port(TextEditingController(text: '${(p as Map)['port']}'), '${p['protocol'] ?? 'TCP'}'.toUpperCase(), TextEditingController(text: _nz(p['node_port']))),
+      _Port(
+        TextEditingController(text: '${(p as Map)['port']}'),
+        '${p['protocol'] ?? 'TCP'}'.toUpperCase(),
+        TextEditingController(text: _nz(p['node_port'])),
+      ),
   ];
   late final List<_Vol> _vols = [
     for (final v in widget.app.volumes)
-      _Vol(TextEditingController(text: v.name), TextEditingController(text: v.mountPath), TextEditingController(text: '${v.sizeMb}'),
-          existing: true, storageClass: v.storageClass, shared: v.shared),
+      _Vol(
+        TextEditingController(text: v.name),
+        TextEditingController(text: v.mountPath),
+        TextEditingController(text: '${v.sizeMb}'),
+        existing: true,
+        storageClass: v.storageClass,
+        shared: v.shared,
+      ),
   ];
   bool _dirty = false;
   bool _saving = false;
 
-  Map<String, dynamic> get _health => Map<String, dynamic>.from(_cfg['health'] as Map? ?? const {});
-  Map<String, dynamic> get _res => Map<String, dynamic>.from(_cfg['resources'] as Map? ?? const {});
+  Map<String, dynamic> get _health =>
+      Map<String, dynamic>.from(_cfg['health'] as Map? ?? const {});
+  Map<String, dynamic> get _res =>
+      Map<String, dynamic>.from(_cfg['resources'] as Map? ?? const {});
 
   static String _nz(Object? v) => v == null || v == 0 ? '' : '$v';
 
@@ -97,7 +132,19 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
 
   @override
   void dispose() {
-    for (final c in [_name, _image, _port, _healthPath, _healthDelay, _cpu, _mem, _command, _args, _release, _schedule]) {
+    for (final c in [
+      _name,
+      _image,
+      _port,
+      _healthPath,
+      _healthDelay,
+      _cpu,
+      _mem,
+      _command,
+      _args,
+      _release,
+      _schedule,
+    ]) {
       c.dispose();
     }
     for (final p in _ports) {
@@ -122,20 +169,31 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     if (app.runtime == 'image') cfg['image'] = _image.text.trim();
     if (app.isWeb) {
       final port = _int(_port);
-      if (port == null || port < 1 || port > 65535) err ??= 'Port must be 1–65535';
+      if (port == null || port < 1 || port > 65535) {
+        err ??= 'Port must be 1–65535';
+      }
       cfg['port'] = port ?? 0;
       final delay = _healthDelay.text.trim().isEmpty ? 0 : _int(_healthDelay);
-      if (delay == null || delay < 0) err ??= 'Initial delay must be a number of seconds';
+      if (delay == null || delay < 0) {
+        err ??= 'Initial delay must be a number of seconds';
+      }
       cfg['health'] = {
         'type': _healthType,
-        if (_healthType == 'http') 'path': _healthPath.text.trim().isEmpty ? '/' : _healthPath.text.trim(),
+        if (_healthType == 'http')
+          'path': _healthPath.text.trim().isEmpty
+              ? '/'
+              : _healthPath.text.trim(),
         if ((delay ?? 0) > 0) 'initial_delay_seconds': delay,
       };
     }
     final cpu = _int(_cpu), mem = _int(_mem);
     if (cpu == null || cpu < 10) err ??= 'CPU must be at least 10 millicores';
     if (mem == null || mem < 16) err ??= 'Memory must be at least 16 MiB';
-    cfg['resources'] = {'cpu_millicores': cpu ?? 0, 'memory_mb': mem ?? 0, if (_noLimit) 'no_limit': true};
+    cfg['resources'] = {
+      'cpu_millicores': cpu ?? 0,
+      'memory_mb': mem ?? 0,
+      if (_noLimit) 'no_limit': true,
+    };
     final cmd = _command.text.trim();
     cfg['command'] = cmd.isEmpty ? <String>[] : ['sh', '-c', cmd];
     cfg['args'] = _args.text.trim();
@@ -144,7 +202,11 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     if (app.hasReplicas) {
       cfg['expose'] = [
         for (final p in _ports)
-          {'port': _int(p.port) ?? 0, 'protocol': p.protocol, if (_int(p.nodePort) != null) 'node_port': _int(p.nodePort)},
+          {
+            'port': _int(p.port) ?? 0,
+            'protocol': p.protocol,
+            if (_int(p.nodePort) != null) 'node_port': _int(p.nodePort),
+          },
       ];
     }
     cfg['volumes'] = [
@@ -164,7 +226,8 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     }
     return {
       'name': _name.text.trim(),
-      if (app.runtime != 'image' && _version.isNotEmpty) 'runtime_version': _version,
+      if (app.runtime != 'image' && _version.isNotEmpty)
+        'runtime_version': _version,
       'config': cfg,
     };
   }
@@ -202,21 +265,38 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     final canVolumes = session.can('volume.manage', projectId: app.projectId);
     final c = NectarColors.of(context);
     final runtimes = ref.watch(runtimesProvider);
-    final rt = runtimes.hasValue ? runtimes.value!.where((r) => r.id == app.runtime).firstOrNull : null;
+    final rt = runtimes.hasValue
+        ? runtimes.value!.where((r) => r.id == app.runtime).firstOrNull
+        : null;
 
-    Widget field(TextEditingController ctl, String label, {String? hint, String? help, double width = 260, bool mono = false, bool number = false, bool enabled = true}) =>
-        SizedBox(
-          width: width,
-          child: TextField(
-            controller: ctl,
-            enabled: canEdit && enabled,
-            keyboardType: number ? TextInputType.number : null,
-            inputFormatters: number ? [FilteringTextInputFormatter.digitsOnly] : null,
-            style: mono ? monoStyle(context, size: 13.5) : null,
-            decoration: InputDecoration(labelText: label, hintText: hint, helperText: help, helperMaxLines: 2),
-            onChanged: (_) => _changed(),
-          ),
-        );
+    Widget field(
+      TextEditingController ctl,
+      String label, {
+      String? hint,
+      String? help,
+      double width = 260,
+      bool mono = false,
+      bool number = false,
+      bool enabled = true,
+    }) => SizedBox(
+      width: width,
+      child: TextField(
+        controller: ctl,
+        enabled: canEdit && enabled,
+        keyboardType: number ? TextInputType.number : null,
+        inputFormatters: number
+            ? [FilteringTextInputFormatter.digitsOnly]
+            : null,
+        style: mono ? monoStyle(context, size: 13.5) : null,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          helperText: help,
+          helperMaxLines: 2,
+        ),
+        onChanged: (_) => _changed(),
+      ),
+    );
 
     final sections = <Widget>[
       NCard(
@@ -226,8 +306,17 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           runSpacing: 12,
           children: [
             field(_name, 'Name'),
-            if (app.runtime == 'image') field(_image, 'Image', hint: l.appGhcrIoAcmeApp1, width: 420, mono: true),
-            if (app.runtime == 'image' && canEdit && ref.watch(appSourceProvider(app.id)).value == null)
+            if (app.runtime == 'image')
+              field(
+                _image,
+                'Image',
+                hint: l.appGhcrIoAcmeApp1,
+                width: 420,
+                mono: true,
+              ),
+            if (app.runtime == 'image' &&
+                canEdit &&
+                ref.watch(appSourceProvider(app.id)).value == null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: TextButton.icon(
@@ -240,16 +329,30 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               SizedBox(
                 width: 260,
                 child: DropdownButtonFormField<String>(
-                  initialValue: rt.versions.any((v) => v.id == _version) ? _version : null,
+                  initialValue: rt.versions.any((v) => v.id == _version)
+                      ? _version
+                      : null,
                   decoration: InputDecoration(labelText: l.updateVersion),
-                  items: [for (final v in rt.versions) DropdownMenuItem(value: v.id, child: Text(v.label))],
-                  onChanged: canEdit ? (v) => setState(() {
-                        _version = v ?? _version;
-                        _dirty = true;
-                      }) : null,
+                  items: [
+                    for (final v in rt.versions)
+                      DropdownMenuItem(value: v.id, child: Text(v.label)),
+                  ],
+                  onChanged: canEdit
+                      ? (v) => setState(() {
+                          _version = v ?? _version;
+                          _dirty = true;
+                        })
+                      : null,
                 ),
               ),
-            if (app.kind == 'cron') field(_schedule, 'Schedule', hint: '*/15 * * * *', help: 'Cron syntax, server time (UTC)', mono: true),
+            if (app.kind == 'cron')
+              field(
+                _schedule,
+                'Schedule',
+                hint: '*/15 * * * *',
+                help: 'Cron syntax, server time (UTC)',
+                mono: true,
+              ),
           ],
         ),
       ),
@@ -269,14 +372,29 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                   ButtonSegment(value: 'none', label: Text(l.appNone)),
                 ],
                 selected: {_healthType},
-                onSelectionChanged: canEdit ? (s) => setState(() {
-                      _healthType = s.first;
-                      _dirty = true;
-                    }) : null,
+                onSelectionChanged: canEdit
+                    ? (s) => setState(() {
+                        _healthType = s.first;
+                        _dirty = true;
+                      })
+                    : null,
               ),
-              if (_healthType == 'http') field(_healthPath, 'Health path', hint: '/health', width: 220, mono: true),
+              if (_healthType == 'http')
+                field(
+                  _healthPath,
+                  'Health path',
+                  hint: '/health',
+                  width: 220,
+                  mono: true,
+                ),
               if (_healthType != 'none')
-                field(_healthDelay, 'Initial delay (s)', width: 160, number: true, help: 'Wait before the first check'),
+                field(
+                  _healthDelay,
+                  'Initial delay (s)',
+                  width: 160,
+                  number: true,
+                  help: 'Wait before the first check',
+                ),
             ],
           ),
         ),
@@ -291,14 +409,18 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               children: [
                 for (final p in resourcePresets)
                   ChoiceChip(
-                    label: Text('${p.label} · ${formatCpu(p.cpuMillicores)} · ${formatMb(p.memoryMb)}'),
-                    selected: _int(_cpu) == p.cpuMillicores && _int(_mem) == p.memoryMb,
+                    label: Text(
+                      '${p.label} · ${formatCpu(p.cpuMillicores)} · ${formatMb(p.memoryMb)}',
+                    ),
+                    selected:
+                        _int(_cpu) == p.cpuMillicores &&
+                        _int(_mem) == p.memoryMb,
                     onSelected: canEdit
                         ? (_) => setState(() {
-                              _cpu.text = '${p.cpuMillicores}';
-                              _mem.text = '${p.memoryMb}';
-                              _dirty = true;
-                            })
+                            _cpu.text = '${p.cpuMillicores}';
+                            _mem.text = '${p.memoryMb}';
+                            _dirty = true;
+                          })
                         : null,
                   ),
               ],
@@ -309,19 +431,30 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               runSpacing: 12,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                field(_cpu, 'CPU (millicores)', width: 180, number: true, help: '1000 = one core'),
+                field(
+                  _cpu,
+                  'CPU (millicores)',
+                  width: 180,
+                  number: true,
+                  help: '1000 = one core',
+                ),
                 field(_mem, 'Memory (MiB)', width: 180, number: true),
                 SizedBox(
                   width: 320,
                   child: SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: _noLimit,
-                    onChanged: canEdit ? (v) => setState(() {
-                          _noLimit = v;
-                          _dirty = true;
-                        }) : null,
+                    onChanged: canEdit
+                        ? (v) => setState(() {
+                            _noLimit = v;
+                            _dirty = true;
+                          })
+                        : null,
                     title: Text(l.appNoLimit),
-                    subtitle: Text(l.appReserveTheseButAllowUsing, style: TextStyle(color: c.muted, fontSize: 12)),
+                    subtitle: Text(
+                      l.appReserveTheseButAllowUsing,
+                      style: TextStyle(color: c.muted, fontSize: 12),
+                    ),
                   ),
                 ),
               ],
@@ -335,9 +468,30 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           spacing: 16,
           runSpacing: 12,
           children: [
-            field(_command, 'Start command', hint: l.appLeaveEmptyForTheDefault, width: 520, mono: true, help: 'Runs with sh -c, so the image needs a shell'),
-            field(_args, 'Arguments (APP_ARGS)', width: 520, mono: true, help: 'Passed to the default start command of the runtime'),
-            field(_release, 'Release command', hint: l.appEGMigrateUp, width: 520, mono: true, help: 'Runs once before each deploy goes live; a failure stops the deploy'),
+            field(
+              _command,
+              'Start command',
+              hint: l.appLeaveEmptyForTheDefault,
+              width: 520,
+              mono: true,
+              help: 'Runs with sh -c, so the image needs a shell',
+            ),
+            field(
+              _args,
+              'Arguments (APP_ARGS)',
+              width: 520,
+              mono: true,
+              help: 'Passed to the default start command of the runtime',
+            ),
+            field(
+              _release,
+              'Release command',
+              hint: l.appEGMigrateUp,
+              width: 520,
+              mono: true,
+              help:
+                  'Runs once before each deploy goes live; a failure stops the deploy',
+            ),
           ],
         ),
       ),
@@ -348,24 +502,37 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final s in sections) ...[s, const SizedBox(height: NectarTokens.gap)],
+        for (final s in sections) ...[
+          s,
+          const SizedBox(height: NectarTokens.gap),
+        ],
         if (canEdit)
           Wrap(
             alignment: WrapAlignment.end,
             spacing: 8,
             runSpacing: 8,
             children: [
-              OutlinedButton(onPressed: !_dirty || _saving ? null : () => _save(deploy: false), child: Text(l.actionSave)),
+              OutlinedButton(
+                onPressed: !_dirty || _saving
+                    ? null
+                    : () => _save(deploy: false),
+                child: Text(l.actionSave),
+              ),
               if (canDeploy)
                 FilledButton.icon(
-                  onPressed: !_dirty || _saving ? null : () => _save(deploy: true),
+                  onPressed: !_dirty || _saving
+                      ? null
+                      : () => _save(deploy: true),
                   icon: const Icon(Icons.rocket_launch_rounded, size: 18),
                   label: Text(_saving ? 'Saving…' : 'Save and redeploy'),
                 ),
             ],
           )
         else
-          Text(l.appChangingSettingsNeedsTheApp, style: TextStyle(color: c.muted, fontSize: 12.5)),
+          Text(
+            l.appChangingSettingsNeedsTheApp,
+            style: TextStyle(color: c.muted, fontSize: 12.5),
+          ),
       ],
     );
   }
@@ -378,8 +545,10 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(s.appTcpUdpPortsReachableFrom,
-              style: TextStyle(color: c.muted, fontSize: 12.5)),
+          Text(
+            s.appTcpUdpPortsReachableFrom,
+            style: TextStyle(color: c.muted, fontSize: 12.5),
+          ),
           const SizedBox(height: 8),
           for (final p in _ports)
             Padding(
@@ -393,18 +562,26 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                       enabled: canEdit,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: InputDecoration(labelText: s.appContainerPort, isDense: true),
+                      decoration: InputDecoration(
+                        labelText: s.appContainerPort,
+                        isDense: true,
+                      ),
                       onChanged: (_) => _changed(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   DropdownButton<String>(
                     value: p.protocol == 'UDP' ? 'UDP' : 'TCP',
-                    items: [DropdownMenuItem(value: 'TCP', child: Text(s.appTcp)), DropdownMenuItem(value: 'UDP', child: Text(s.appUdp))],
-                    onChanged: canEdit ? (v) => setState(() {
-                          p.protocol = v ?? 'TCP';
-                          _dirty = true;
-                        }) : null,
+                    items: [
+                      DropdownMenuItem(value: 'TCP', child: Text(s.appTcp)),
+                      DropdownMenuItem(value: 'UDP', child: Text(s.appUdp)),
+                    ],
+                    onChanged: canEdit
+                        ? (v) => setState(() {
+                            p.protocol = v ?? 'TCP';
+                            _dirty = true;
+                          })
+                        : null,
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
@@ -414,7 +591,11 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                       enabled: canEdit,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: InputDecoration(labelText: s.appServerPort, hintText: s.appAuto3000032767, isDense: true),
+                      decoration: InputDecoration(
+                        labelText: s.appServerPort,
+                        hintText: s.appAuto3000032767,
+                        isDense: true,
+                      ),
                       onChanged: (_) => _changed(),
                     ),
                   ),
@@ -435,7 +616,13 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 onPressed: () => setState(() {
-                  _ports.add(_Port(TextEditingController(), 'TCP', TextEditingController()));
+                  _ports.add(
+                    _Port(
+                      TextEditingController(),
+                      'TCP',
+                      TextEditingController(),
+                    ),
+                  );
                   _dirty = true;
                 }),
                 icon: const Icon(Icons.add_rounded, size: 18),
@@ -451,16 +638,23 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     final s = S.of(context);
     final c = NectarColors.of(context);
     final live = ref.watch(appVolumesProvider(widget.app.id));
-    final infos = live.hasValue ? {for (final v in live.value!) v.name: v} : const <String, VolumeInfo>{};
-    final orphans = live.hasValue ? live.value!.where((v) => v.orphaned).toList() : const <VolumeInfo>[];
-    final classes = ref.watch(storageClassesProvider).value ?? const <StorageClassInfo>[];
+    final infos = live.hasValue
+        ? {for (final v in live.value!) v.name: v}
+        : const <String, VolumeInfo>{};
+    final orphans = live.hasValue
+        ? live.value!.where((v) => v.orphaned).toList()
+        : const <VolumeInfo>[];
+    final classes =
+        ref.watch(storageClassesProvider).value ?? const <StorageClassInfo>[];
     return NCard(
       title: s.serverVolumes,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(s.appPersistentDisksFilesWrittenThere,
-              style: TextStyle(color: c.muted, fontSize: 12.5)),
+          Text(
+            s.appPersistentDisksFilesWrittenThere,
+            style: TextStyle(color: c.muted, fontSize: 12.5),
+          ),
           const SizedBox(height: 8),
           for (final v in _vols) ...[
             Padding(
@@ -472,7 +666,11 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                     child: TextField(
                       controller: v.name,
                       enabled: canEdit && !v.existing,
-                      decoration: InputDecoration(labelText: s.backupName, hintText: 'data', isDense: true),
+                      decoration: InputDecoration(
+                        labelText: s.backupName,
+                        hintText: 'data',
+                        isDense: true,
+                      ),
                       onChanged: (_) => _changed(),
                     ),
                   ),
@@ -482,7 +680,11 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                       controller: v.mount,
                       enabled: canEdit,
                       style: monoStyle(context, size: 13.5),
-                      decoration: InputDecoration(labelText: s.appMountedAt, hintText: '/data', isDense: true),
+                      decoration: InputDecoration(
+                        labelText: s.appMountedAt,
+                        hintText: '/data',
+                        isDense: true,
+                      ),
                       onChanged: (_) => _changed(),
                     ),
                   ),
@@ -494,7 +696,10 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                       enabled: canEdit,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: InputDecoration(labelText: s.appSizeMib, isDense: true),
+                      decoration: InputDecoration(
+                        labelText: s.appSizeMib,
+                        isDense: true,
+                      ),
                       onChanged: (_) => _changed(),
                     ),
                   ),
@@ -511,20 +716,27 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               ),
             ),
             _volumeStorage(context, v, canEdit, classes),
-            if (infos[v.name.text.trim()] case final info? when info.usedBytes > 0 && info.requestedMb > 0)
+            if (infos[v.name.text.trim()] case final info?
+                when info.usedBytes > 0 && info.requestedMb > 0)
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: UsageBar(
                   label: s.appUsed,
                   value: info.usedBytes / (info.requestedMb * 1024 * 1024),
-                  trailing: '${formatBytes(info.usedBytes)} of ${formatMb(info.requestedMb)}',
+                  trailing:
+                      '${formatBytes(info.usedBytes)} of ${formatMb(info.requestedMb)}',
                 ),
               ),
-            if (infos[v.name.text.trim()] case final info? when info.phase.isNotEmpty && canDelete)
+            if (infos[v.name.text.trim()] case final info?
+                when info.phase.isNotEmpty && canDelete)
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
-                  onPressed: () => showVolumeFiles(context, appId: widget.app.id, volume: info.name),
+                  onPressed: () => showVolumeFiles(
+                    context,
+                    appId: widget.app.id,
+                    volume: info.name,
+                  ),
                   icon: const Icon(Icons.folder_open_rounded, size: 18),
                   label: Text(s.appFiles),
                 ),
@@ -536,24 +748,39 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 onPressed: () => setState(() {
-                  _vols.add(_Vol(TextEditingController(text: _vols.isEmpty ? 'data' : ''), TextEditingController(text: _vols.isEmpty ? '/data' : ''),
-                      TextEditingController(text: '1024')));
+                  _vols.add(
+                    _Vol(
+                      TextEditingController(text: _vols.isEmpty ? 'data' : ''),
+                      TextEditingController(text: _vols.isEmpty ? '/data' : ''),
+                      TextEditingController(text: '1024'),
+                    ),
+                  );
                   _dirty = true;
                 }),
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: Text(s.appAddVolume),
               ),
             ),
-          if (!canEdit && widget.app.volumes.isEmpty) Text(s.appNoVolumes, style: TextStyle(color: c.muted, fontSize: 13)),
+          if (!canEdit && widget.app.volumes.isEmpty)
+            Text(
+              s.appNoVolumes,
+              style: TextStyle(color: c.muted, fontSize: 13),
+            ),
           if (orphans.isNotEmpty) ...[
             const Divider(height: 24),
-            Text(s.appRemovedFromTheAppData, style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              s.appRemovedFromTheAppData,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             for (final o in orphans)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.inventory_2_outlined, color: c.muted),
                 title: Text(o.name),
-                subtitle: Text('${o.claim} · ${formatMb(o.requestedMb)}', style: TextStyle(color: c.muted, fontSize: 12)),
+                subtitle: Text(
+                  '${o.claim} · ${formatMb(o.requestedMb)}',
+                  style: TextStyle(color: c.muted, fontSize: 12),
+                ),
                 trailing: canDelete
                     ? TextButton(
                         style: TextButton.styleFrom(foregroundColor: c.failed),
@@ -569,17 +796,27 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
   }
 
   /// Storage class and sharing of a volume: chosen for new volumes, shown for existing ones.
-  Widget _volumeStorage(BuildContext context, _Vol v, bool canEdit, List<StorageClassInfo> classes) {
+  Widget _volumeStorage(
+    BuildContext context,
+    _Vol v,
+    bool canEdit,
+    List<StorageClassInfo> classes,
+  ) {
     final s = S.of(context);
     final c = NectarColors.of(context);
     if (v.existing || !canEdit) {
       final cls = v.storageClass.isEmpty ? 'default storage' : v.storageClass;
       return Padding(
         padding: const EdgeInsets.only(bottom: 4),
-        child: Text('$cls${v.shared ? ' · shared' : ''}', style: TextStyle(color: c.muted, fontSize: 12)),
+        child: Text(
+          '$cls${v.shared ? ' · shared' : ''}',
+          style: TextStyle(color: c.muted, fontSize: 12),
+        ),
       );
     }
-    if (classes.length < 2) return const SizedBox.shrink(); // only local-path: nothing to choose
+    if (classes.length < 2) {
+      return const SizedBox.shrink(); // only local-path: nothing to choose
+    }
     final chosen = classes.where((x) => x.name == v.storageClass).firstOrNull;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -593,30 +830,52 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             child: DropdownButtonFormField<String>(
               initialValue: v.storageClass,
               isExpanded: true,
-              decoration: InputDecoration(labelText: s.appStorage, isDense: true),
+              decoration: InputDecoration(
+                labelText: s.appStorage,
+                isDense: true,
+              ),
               items: [
                 DropdownMenuItem(value: '', child: Text(s.appDefault)),
-                for (final x in classes) DropdownMenuItem(value: x.name, child: Text('${x.name}${x.description.isEmpty ? '' : ' — ${x.description}'}', overflow: TextOverflow.ellipsis)),
+                for (final x in classes)
+                  DropdownMenuItem(
+                    value: x.name,
+                    child: Text(
+                      '${x.name}${x.description.isEmpty ? '' : ' — ${x.description}'}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
               ],
               onChanged: (val) => setState(() {
                 v.storageClass = val ?? '';
-                if (!(classes.where((x) => x.name == v.storageClass).firstOrNull?.shared ?? false)) v.shared = false;
+                if (!(classes
+                        .where((x) => x.name == v.storageClass)
+                        .firstOrNull
+                        ?.shared ??
+                    false)) {
+                  v.shared = false;
+                }
                 _dirty = true;
               }),
             ),
           ),
           if (chosen?.shared ?? false)
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              Checkbox(
-                value: v.shared,
-                onChanged: (val) => setState(() {
-                  v.shared = val ?? false;
-                  _dirty = true;
-                }),
-              ),
-              Text(s.appSharedByAllReplicas, style: TextStyle(fontSize: 13)),
-            ]),
-          Text(s.appFixedOnceTheVolumeExists, style: TextStyle(color: c.muted, fontSize: 12)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Checkbox(
+                  value: v.shared,
+                  onChanged: (val) => setState(() {
+                    v.shared = val ?? false;
+                    _dirty = true;
+                  }),
+                ),
+                Text(s.appSharedByAllReplicas, style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          Text(
+            s.appFixedOnceTheVolumeExists,
+            style: TextStyle(color: c.muted, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -624,10 +883,18 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
 
   Future<void> _deleteVolume(VolumeInfo v) async {
     final s = S.of(context);
-    final ok = await confirmAction(context, s.appDeleteTheDataOf(v.name), s.appEverythingStoredOnThisVolume, s.appDeleteData, danger: true);
+    final ok = await confirmAction(
+      context,
+      s.appDeleteTheDataOf(v.name),
+      s.appEverythingStoredOnThisVolume,
+      s.appDeleteData,
+      danger: true,
+    );
     if (!ok || !mounted) return;
     try {
-      await ref.read(apiProvider).delete('/apps/${widget.app.id}/volumes/${v.name}');
+      await ref
+          .read(apiProvider)
+          .delete('/apps/${widget.app.id}/volumes/${v.name}');
       ref.invalidate(appVolumesProvider(widget.app.id));
       if (mounted) showSnack(context, s.appVolumeDeleted(v.name));
     } on Object catch (e) {

@@ -24,7 +24,10 @@ final _slugRe = RegExp(r'^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$');
 /// Creates a project and opens it. Quota presets come with the project settings later; new projects
 /// are unlimited (the default).
 Future<void> showNewProjectDialog(BuildContext context, WidgetRef ref) async {
-  final created = await showDialog<Project>(context: context, builder: (_) => const NewProjectDialog());
+  final created = await showDialog<Project>(
+    context: context,
+    builder: (_) => const NewProjectDialog(),
+  );
   if (created != null && context.mounted) {
     ref.invalidate(projectsProvider);
     context.go('/projects/${created.id}');
@@ -69,7 +72,12 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
       _error = null;
     });
     try {
-      final res = await ref.read(apiProvider).post('/projects', data: {'name': _name.text.trim(), 'slug': _slug.text.trim()});
+      final res = await ref
+          .read(apiProvider)
+          .post(
+            '/projects',
+            data: {'name': _name.text.trim(), 'slug': _slug.text.trim()},
+          );
       if (mounted) Navigator.of(context).pop(Project.fromJson(res));
     } on Object catch (e) {
       if (mounted) setState(() => _error = describeError(e));
@@ -96,9 +104,13 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
               TextFormField(
                 controller: _name,
                 autofocus: true,
-                decoration: InputDecoration(labelText: s.backupName, hintText: s.projectMyShop),
+                decoration: InputDecoration(
+                  labelText: s.backupName,
+                  hintText: s.projectMyShop,
+                ),
                 textInputAction: TextInputAction.next,
-                validator: (v) => (v ?? '').trim().isEmpty ? 'Enter a name' : null,
+                validator: (v) =>
+                    (v ?? '').trim().isEmpty ? 'Enter a name' : null,
               ),
               const SizedBox(height: 14),
               TextFormField(
@@ -107,7 +119,9 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
                 decoration: InputDecoration(labelText: s.projectSlug),
                 onChanged: (_) => _slugEdited = true,
                 onFieldSubmitted: (_) => _create(),
-                validator: (v) => _slugRe.hasMatch((v ?? '').trim()) ? null : '1–30 lowercase letters, digits or dashes',
+                validator: (v) => _slugRe.hasMatch((v ?? '').trim())
+                    ? null
+                    : '1–30 lowercase letters, digits or dashes',
               ),
               const SizedBox(height: 8),
               ValueListenableBuilder(
@@ -122,8 +136,18 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: Text(s.actionCancel)),
-        SizedBox(width: 120, child: BusyButton(label: s.projectCreate, busy: _busy, onPressed: _create)),
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text(s.actionCancel),
+        ),
+        SizedBox(
+          width: 120,
+          child: BusyButton(
+            label: s.projectCreate,
+            busy: _busy,
+            onPressed: _create,
+          ),
+        ),
       ],
     );
   }

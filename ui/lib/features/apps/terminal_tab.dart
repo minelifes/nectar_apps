@@ -40,7 +40,9 @@ class _TermSink implements Sink<String> {
 class _TerminalTabState extends ConsumerState<TerminalTab> {
   final _terminal = Terminal(maxLines: 10000);
   final _controller = TerminalController();
-  late ByteConversionSink _decoder = const Utf8Decoder(allowMalformed: true).startChunkedConversion(_TermSink(_terminal));
+  late ByteConversionSink _decoder = const Utf8Decoder(
+    allowMalformed: true,
+  ).startChunkedConversion(_TermSink(_terminal));
   WebSocketChannel? _ch;
   StreamSubscription<dynamic>? _sub;
   List<PodBrief> _pods = const [];
@@ -76,8 +78,15 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
 
   Future<void> _loadPods() async {
     try {
-      final pods = listOf(await ref.read(apiProvider).get('${widget.path}/pods'), PodBrief.fromJson);
-      if (mounted) setState(() => _pods = pods.where((p) => p.phase == 'Running').toList());
+      final pods = listOf(
+        await ref.read(apiProvider).get('${widget.path}/pods'),
+        PodBrief.fromJson,
+      );
+      if (mounted) {
+        setState(
+          () => _pods = pods.where((p) => p.phase == 'Running').toList(),
+        );
+      }
     } on Object {
       // the pod list is only a convenience; the server picks a pod anyway
     }
@@ -91,17 +100,27 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
       _state = 'connecting';
       _message = null;
     });
-    _decoder = const Utf8Decoder(allowMalformed: true).startChunkedConversion(_TermSink(_terminal));
+    _decoder = const Utf8Decoder(
+      allowMalformed: true,
+    ).startChunkedConversion(_TermSink(_terminal));
     try {
-      await api.get('${widget.path}/pods'); // renews an expired access token before it goes into the URL
-      final ch = WebSocketChannel.connect(api.wsUri('${widget.path}/exec/ws', {'pod': ?_pod}));
+      await api.get(
+        '${widget.path}/pods',
+      ); // renews an expired access token before it goes into the URL
+      final ch = WebSocketChannel.connect(
+        api.wsUri('${widget.path}/exec/ws', {'pod': ?_pod}),
+      );
       _ch = ch;
       await ch.ready;
       if (!mounted) {
         await ch.sink.close();
         return;
       }
-      _sub = ch.stream.listen(_onMessage, onDone: _closed, onError: (Object e) => _closed(describeError(e)));
+      _sub = ch.stream.listen(
+        _onMessage,
+        onDone: _closed,
+        onError: (Object e) => _closed(describeError(e)),
+      );
     } on Object catch (e) {
       _closed(describeError(e));
     }
@@ -159,8 +178,12 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
               underline: const SizedBox.shrink(),
               hint: Text(s.appNewestPod),
               items: [
-                DropdownMenuItem<String?>(value: null, child: Text(s.appNewestPod)),
-                for (final p in _pods) DropdownMenuItem<String?>(value: p.name, child: Text(p.name)),
+                DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text(s.appNewestPod),
+                ),
+                for (final p in _pods)
+                  DropdownMenuItem<String?>(value: p.name, child: Text(p.name)),
               ],
               onChanged: (v) {
                 setState(() => _pod = v);
@@ -171,7 +194,9 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
               FilledButton.icon(
                 onPressed: _state == 'connecting' ? null : _connect,
                 icon: const Icon(Icons.terminal_rounded, size: 18),
-                label: Text(_state == 'connecting' ? 'Connecting…' : 'Open a shell'),
+                label: Text(
+                  _state == 'connecting' ? 'Connecting…' : 'Open a shell',
+                ),
               )
             else
               OutlinedButton.icon(
@@ -185,10 +210,16 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
                 Container(
                   width: 8,
                   height: 8,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: open ? c.running : c.stopped),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: open ? c.running : c.stopped,
+                  ),
                 ),
                 const SizedBox(width: 6),
-                Text(_message ?? '', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text(
+                  _message ?? '',
+                  style: TextStyle(color: c.muted, fontSize: 12.5),
+                ),
               ],
             ),
           ],
@@ -207,7 +238,10 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
             controller: _controller,
             autofocus: true,
             backgroundOpacity: 0,
-            textStyle: const TerminalStyle(fontSize: 13, fontFamily: NectarTokens.fontMono),
+            textStyle: const TerminalStyle(
+              fontSize: 13,
+              fontFamily: NectarTokens.fontMono,
+            ),
           ),
         ),
         const SizedBox(height: 8),

@@ -105,7 +105,8 @@ class NectarColors extends ThemeExtension<NectarColors> {
   );
 
   static NectarColors of(BuildContext context) =>
-      Theme.of(context).extension<NectarColors>() ?? (Theme.of(context).brightness == Brightness.dark ? dark : light);
+      Theme.of(context).extension<NectarColors>() ??
+      (Theme.of(context).brightness == Brightness.dark ? dark : light);
 
   @override
   NectarColors copyWith({
@@ -120,20 +121,19 @@ class NectarColors extends ThemeExtension<NectarColors> {
     Color? warning,
     Color? failed,
     Color? stopped,
-  }) =>
-      NectarColors(
-        background: background ?? this.background,
-        surface: surface ?? this.surface,
-        elevated: elevated ?? this.elevated,
-        border: border ?? this.border,
-        text: text ?? this.text,
-        muted: muted ?? this.muted,
-        running: running ?? this.running,
-        deploying: deploying ?? this.deploying,
-        warning: warning ?? this.warning,
-        failed: failed ?? this.failed,
-        stopped: stopped ?? this.stopped,
-      );
+  }) => NectarColors(
+    background: background ?? this.background,
+    surface: surface ?? this.surface,
+    elevated: elevated ?? this.elevated,
+    border: border ?? this.border,
+    text: text ?? this.text,
+    muted: muted ?? this.muted,
+    running: running ?? this.running,
+    deploying: deploying ?? this.deploying,
+    warning: warning ?? this.warning,
+    failed: failed ?? this.failed,
+    stopped: stopped ?? this.stopped,
+  );
 
   @override
   NectarColors lerp(ThemeExtension<NectarColors>? other, double t) {

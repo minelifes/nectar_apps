@@ -57,9 +57,17 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
     final q = _query.toLowerCase();
     final rows = o.domains.where((r) {
       final d = r.domain;
-      if (q.isNotEmpty && !('${d.host}${d.pathPrefix} ${r.appName} ${r.projectName}'.toLowerCase().contains(q))) return false;
+      if (q.isNotEmpty &&
+          !('${d.host}${d.pathPrefix} ${r.appName} ${r.projectName}'
+              .toLowerCase()
+              .contains(q))) {
+        return false;
+      }
       return switch (_filter) {
-        'problems' => d.status == 'error' || d.dnsState == 'error' || d.dnsState == 'conflict',
+        'problems' =>
+          d.status == 'error' ||
+              d.dnsState == 'error' ||
+              d.dnsState == 'conflict',
         'custom' => !d.isDefault,
         _ => true,
       };
@@ -77,7 +85,11 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
               SizedBox(
                 width: 260,
                 child: TextField(
-                  decoration: InputDecoration(prefixIcon: Icon(Icons.search_rounded, size: 18), hintText: l.domainSearchDomainsAppsProjects, isDense: true),
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.search_rounded, size: 18),
+                    hintText: l.domainSearchDomainsAppsProjects,
+                    isDense: true,
+                  ),
                   onChanged: (v) => setState(() => _query = v.trim()),
                 ),
               ),
@@ -85,7 +97,10 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
                 segments: [
                   ButtonSegment(value: 'all', label: Text(l.domainAll)),
                   ButtonSegment(value: 'custom', label: Text(l.domainCustom)),
-                  ButtonSegment(value: 'problems', label: Text(l.domainProblems)),
+                  ButtonSegment(
+                    value: 'problems',
+                    label: Text(l.domainProblems),
+                  ),
                 ],
                 selected: {_filter},
                 onSelectionChanged: (s) => setState(() => _filter = s.first),
@@ -95,11 +110,24 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
           ),
           const SizedBox(height: 12),
           if (o.domains.isEmpty)
-            EmptyState(icon: Icons.language_rounded, title: l.domainNoDomainsYet, message: l.domainWebAppsGetADomain)
+            EmptyState(
+              icon: Icons.language_rounded,
+              title: l.domainNoDomainsYet,
+              message: l.domainWebAppsGetADomain,
+            )
           else if (rows.isEmpty)
-            Padding(padding: const EdgeInsets.all(12), child: Text(l.domainNothingMatches, style: TextStyle(color: c.muted)))
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                l.domainNothingMatches,
+                style: TextStyle(color: c.muted),
+              ),
+            )
           else
-            for (final r in rows) ...[const Divider(height: 1), _DomainTile(row: r, overview: o)],
+            for (final r in rows) ...[
+              const Divider(height: 1),
+              _DomainTile(row: r, overview: o),
+            ],
         ],
       ),
     );
@@ -125,18 +153,26 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
     try {
       final api = ref.read(apiProvider);
       final cur = await api.get('/settings');
-      final res = await api.put('/settings', data: {
-        'base_domain': (cur as Map)['base_domain'] ?? '',
-        'public_ips': cur['public_ips'] ?? const [],
-        'dns_auto': on,
-      });
+      final res = await api.put(
+        '/settings',
+        data: {
+          'base_domain': (cur as Map)['base_domain'] ?? '',
+          'public_ips': cur['public_ips'] ?? const [],
+          'dns_auto': on,
+        },
+      );
       ref.invalidate(domainsOverviewProvider);
       final dns = res is Map ? res['dns'] : null;
       if (!mounted) return;
       if (dns is Map && dns['conflict'] != null) {
         showSnack(context, '${dns['conflict']}', error: true);
       } else {
-        showSnack(context, on ? 'New domains get their DNS records automatically' : s.domainAutomaticDnsRecordsOff);
+        showSnack(
+          context,
+          on
+              ? 'New domains get their DNS records automatically'
+              : s.domainAutomaticDnsRecordsOff,
+        );
       }
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
@@ -171,35 +207,58 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
           if (ips.isEmpty)
             Text(l.domainTheServerSPublicIp, style: TextStyle(color: c.warning))
           else
-            Text(l.domainPointDomainsAtThisServer, style: TextStyle(color: c.muted, fontSize: 13)),
+            Text(
+              l.domainPointDomainsAtThisServer,
+              style: TextStyle(color: c.muted, fontSize: 13),
+            ),
           const SizedBox(height: 8),
           for (final (name, type, value) in records)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Row(
                 children: [
-                  Expanded(flex: 4, child: Text(name, style: monoStyle(context, size: 12.5))),
-                  SizedBox(width: 64, child: Text(type, style: monoStyle(context, size: 12.5, color: c.muted))),
-                  Expanded(flex: 4, child: SelectableText(value, style: monoStyle(context, size: 12.5))),
+                  Expanded(
+                    flex: 4,
+                    child: Text(name, style: monoStyle(context, size: 12.5)),
+                  ),
+                  SizedBox(
+                    width: 64,
+                    child: Text(
+                      type,
+                      style: monoStyle(context, size: 12.5, color: c.muted),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 4,
+                    child: SelectableText(
+                      value,
+                      style: monoStyle(context, size: 12.5),
+                    ),
+                  ),
                   IconButton(
                     tooltip: l.backupCopy,
                     visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.copy_rounded, size: 15),
-                    onPressed: () => Clipboard.setData(ClipboardData(text: value)),
+                    onPressed: () =>
+                        Clipboard.setData(ClipboardData(text: value)),
                   ),
                 ],
               ),
             ),
           if (o.baseDomain.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(l.domainTheRecordServesEveryApp(o.baseDomain, o.baseHost),
-                style: TextStyle(color: c.muted, fontSize: 12.5)),
+            Text(
+              l.domainTheRecordServesEveryApp(o.baseDomain, o.baseHost),
+              style: TextStyle(color: c.muted, fontSize: 12.5),
+            ),
           ],
           const Divider(height: 24),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: o.dnsAuto,
-            onChanged: canManage && !_busy && (o.dnsAvailable || o.dnsAuto) ? _toggleAuto : null,
+            onChanged: canManage && !_busy && (o.dnsAvailable || o.dnsAuto)
+                ? _toggleAuto
+                : null,
             title: Text(l.domainCreateDnsRecordsAutomatically),
             subtitle: Text(
               o.dnsAvailable
@@ -231,8 +290,12 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
     final d = widget.row.domain;
     setState(() => _busy = true);
     try {
-      final res = await ref.read(apiProvider).post('/apps/${widget.row.appId}/domains/${d.id}/check');
-      if (mounted && res is Map) showSnack(context, '${res['message']}', error: res['ok'] != true);
+      final res = await ref
+          .read(apiProvider)
+          .post('/apps/${widget.row.appId}/domains/${d.id}/check');
+      if (mounted && res is Map) {
+        showSnack(context, '${res['message']}', error: res['ok'] != true);
+      }
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     } finally {
@@ -244,9 +307,17 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
     final d = widget.row.domain;
     setState(() => _busy = true);
     try {
-      final res = await ref.read(apiProvider).post('/apps/${widget.row.appId}/domains/${d.id}/dns');
+      final res = await ref
+          .read(apiProvider)
+          .post('/apps/${widget.row.appId}/domains/${d.id}/dns');
       ref.invalidate(domainsOverviewProvider);
-      if (mounted && res is Map) showSnack(context, '${res['message']}', error: res['state'] == 'conflict');
+      if (mounted && res is Map) {
+        showSnack(
+          context,
+          '${res['message']}',
+          error: res['state'] == 'conflict',
+        );
+      }
     } on Object catch (e) {
       ref.invalidate(domainsOverviewProvider);
       if (mounted) showSnack(context, describeError(e), error: true);
@@ -271,13 +342,19 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
     final details = [
       '${r.projectName} / ${r.appName}',
       if (d.kind == 'redirect') 'redirect → ${d.redirectTo}',
-      if (d.tls && d.certNotAfter != null) 'HTTPS until ${d.certNotAfter!.toLocal().toString().substring(0, 10)}' else if (d.tls) 'HTTPS pending' else 'HTTP only',
+      if (d.tls && d.certNotAfter != null)
+        'HTTPS until ${d.certNotAfter!.toLocal().toString().substring(0, 10)}'
+      else if (d.tls)
+        'HTTPS pending'
+      else
+        'HTTP only',
       if (d.web != null && !d.web!.isEmpty) d.web!.summary,
       if (dnsText.isNotEmpty) dnsText,
     ].join(' · ');
-    final problem = [if (d.status == 'error' || d.statusMessage.isNotEmpty) d.statusMessage, if (d.dnsState == 'conflict' || d.dnsState == 'error') d.dnsMessage]
-        .where((m) => m.isNotEmpty)
-        .join(' · ');
+    final problem = [
+      if (d.status == 'error' || d.statusMessage.isNotEmpty) d.statusMessage,
+      if (d.dnsState == 'conflict' || d.dnsState == 'error') d.dnsMessage,
+    ].where((m) => m.isNotEmpty).join(' · ');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -294,24 +371,57 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
               children: [
                 Row(
                   children: [
-                    Flexible(child: Text('${d.host}${d.pathPrefix == '/' ? '' : d.pathPrefix}', style: monoStyle(context, size: 13.5), overflow: TextOverflow.ellipsis)),
+                    Flexible(
+                      child: Text(
+                        '${d.host}${d.pathPrefix == '/' ? '' : d.pathPrefix}',
+                        style: monoStyle(context, size: 13.5),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     if (d.isDefault) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(border: Border.all(color: c.muted.withValues(alpha: 0.5)), borderRadius: BorderRadius.circular(6)),
-                        child: Text('default', style: TextStyle(color: c.muted, fontSize: 11)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: c.muted.withValues(alpha: 0.5),
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'default',
+                          style: TextStyle(color: c.muted, fontSize: 11),
+                        ),
                       ),
                     ],
                   ],
                 ),
                 Text(details, style: TextStyle(color: c.muted, fontSize: 12)),
-                if (problem.isNotEmpty) Text(problem, style: TextStyle(color: d.status == 'error' || d.dnsState == 'error' ? c.failed : c.warning, fontSize: 12)),
+                if (problem.isNotEmpty)
+                  Text(
+                    problem,
+                    style: TextStyle(
+                      color: d.status == 'error' || d.dnsState == 'error'
+                          ? c.failed
+                          : c.warning,
+                      fontSize: 12,
+                    ),
+                  ),
               ],
             ),
           ),
           if (_busy)
-            const Padding(padding: EdgeInsets.all(10), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
+            const Padding(
+              padding: EdgeInsets.all(10),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
           else
             PopupMenuButton<String>(
               tooltip: s.domainActions,
@@ -325,9 +435,20 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
               itemBuilder: (_) => [
                 PopupMenuItem(value: 'open', child: Text(s.domainOpenApp)),
                 PopupMenuItem(value: 'check', child: Text(s.domainCheckDns)),
-                if (r.canManage && widget.overview.dnsAvailable && !d.host.startsWith('*.') && d.dnsState != 'covered')
-                  PopupMenuItem(value: 'dns', child: Text(d.dnsState == 'managed' ? 'Update DNS record' : 'Create DNS record')),
-                if (r.canManage) PopupMenuItem(value: 'edit', child: Text(s.backupEdit)),
+                if (r.canManage &&
+                    widget.overview.dnsAvailable &&
+                    !d.host.startsWith('*.') &&
+                    d.dnsState != 'covered')
+                  PopupMenuItem(
+                    value: 'dns',
+                    child: Text(
+                      d.dnsState == 'managed'
+                          ? 'Update DNS record'
+                          : 'Create DNS record',
+                    ),
+                  ),
+                if (r.canManage)
+                  PopupMenuItem(value: 'edit', child: Text(s.backupEdit)),
               ],
             ),
         ],
@@ -336,7 +457,11 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
   }
 
   Future<void> _edit(BuildContext context) async {
-    await showDomainDialog(context, appId: widget.row.appId, domain: widget.row.domain);
+    await showDomainDialog(
+      context,
+      appId: widget.row.appId,
+      domain: widget.row.domain,
+    );
     ref.invalidate(domainsOverviewProvider);
   }
 }

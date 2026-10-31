@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Light / dark / system, remembered on this device.
-final themeModeProvider = NotifierProvider<ThemeModeController, ThemeMode>(ThemeModeController.new);
+final themeModeProvider = NotifierProvider<ThemeModeController, ThemeMode>(
+  ThemeModeController.new,
+);
 
 class ThemeModeController extends Notifier<ThemeMode> {
   static const _key = 'nectar.theme_mode';
@@ -11,13 +13,17 @@ class ThemeModeController extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
     Future.microtask(_load);
-    return ThemeMode.dark; // dark-first brand; the saved choice loads right after
+    return ThemeMode
+        .dark; // dark-first brand; the saved choice loads right after
   }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_key);
-    state = ThemeMode.values.firstWhere((m) => m.name == saved, orElse: () => ThemeMode.dark);
+    state = ThemeMode.values.firstWhere(
+      (m) => m.name == saved,
+      orElse: () => ThemeMode.dark,
+    );
   }
 
   Future<void> set(ThemeMode mode) async {

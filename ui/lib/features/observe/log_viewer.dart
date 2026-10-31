@@ -53,7 +53,8 @@ class _LogViewerState extends ConsumerState<LogViewer> {
     super.initState();
     _scroll.addListener(() {
       if (!_scroll.hasClients) return;
-      _stickToBottom = _scroll.position.pixels >= _scroll.position.maxScrollExtent - 40;
+      _stickToBottom =
+          _scroll.position.pixels >= _scroll.position.maxScrollExtent - 40;
     });
     _connect();
   }
@@ -75,13 +76,18 @@ class _LogViewerState extends ConsumerState<LogViewer> {
     final api = ref.read(apiProvider);
     try {
       // also renews an expired access token before it goes into the WebSocket URL
-      final pods = listOf(await api.get('${widget.path}/pods'), PodBrief.fromJson);
+      final pods = listOf(
+        await api.get('${widget.path}/pods'),
+        PodBrief.fromJson,
+      );
       if (!mounted) return;
       setState(() {
         _pods = pods;
         _error = null;
       });
-      final ch = WebSocketChannel.connect(api.wsUri('${widget.path}/logs/ws', {'tail': '200', 'pod': ?_pod}));
+      final ch = WebSocketChannel.connect(
+        api.wsUri('${widget.path}/logs/ws', {'tail': '200', 'pod': ?_pod}),
+      );
       _ch = ch;
       await ch.ready;
       if (!mounted) {
@@ -89,7 +95,11 @@ class _LogViewerState extends ConsumerState<LogViewer> {
         return;
       }
       setState(() => _connected = true);
-      _sub = ch.stream.listen(_onMessage, onError: (Object e) => _lost(describeError(e)), onDone: () => _lost(null));
+      _sub = ch.stream.listen(
+        _onMessage,
+        onError: (Object e) => _lost(describeError(e)),
+        onDone: () => _lost(null),
+      );
     } on Object catch (e) {
       _lost(describeError(e));
     }
@@ -119,7 +129,9 @@ class _LogViewerState extends ConsumerState<LogViewer> {
         final line = LogLine.fromJson(msg);
         if (_paused) {
           _held.add(line);
-          if (_held.length > _maxLines) _held.removeRange(0, _held.length - _maxLines);
+          if (_held.length > _maxLines) {
+            _held.removeRange(0, _held.length - _maxLines);
+          }
           setState(() {});
         } else {
           _add([line]);
@@ -134,11 +146,15 @@ class _LogViewerState extends ConsumerState<LogViewer> {
   void _add(List<LogLine> lines) {
     setState(() {
       _lines.addAll(lines);
-      if (_lines.length > _maxLines) _lines.removeRange(0, _lines.length - _maxLines);
+      if (_lines.length > _maxLines) {
+        _lines.removeRange(0, _lines.length - _maxLines);
+      }
     });
     if (_stickToBottom) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+        if (_scroll.hasClients) {
+          _scroll.jumpTo(_scroll.position.maxScrollExtent);
+        }
       });
     }
   }
@@ -165,10 +181,14 @@ class _LogViewerState extends ConsumerState<LogViewer> {
 
   List<LogLine> get _visible {
     final f = _filter.toLowerCase();
-    return f.isEmpty ? _lines : _lines.where((l) => l.line.toLowerCase().contains(f)).toList();
+    return f.isEmpty
+        ? _lines
+        : _lines.where((l) => l.line.toLowerCase().contains(f)).toList();
   }
 
-  String _asText(List<LogLine> lines) => lines.map((l) => '${l.t?.toIso8601String() ?? ''} ${l.pod} ${l.line}').join('\n');
+  String _asText(List<LogLine> lines) => lines
+      .map((l) => '${l.t?.toIso8601String() ?? ''} ${l.pod} ${l.line}')
+      .join('\n');
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +197,14 @@ class _LogViewerState extends ConsumerState<LogViewer> {
     final visible = _visible;
     final api = ref.watch(apiProvider);
     final podColors = <String, Color>{};
-    final palette = [NectarTokens.amber, c.deploying, c.running, NectarTokens.pollen, c.failed, c.muted];
+    final palette = [
+      NectarTokens.amber,
+      c.deploying,
+      c.running,
+      NectarTokens.pollen,
+      c.failed,
+      c.muted,
+    ];
     for (var i = 0; i < _pods.length; i++) {
       podColors[_pods[i].name] = palette[i % palette.length];
     }
@@ -195,11 +222,17 @@ class _LogViewerState extends ConsumerState<LogViewer> {
               value: _pods.any((p) => p.name == _pod) ? _pod : null,
               underline: const SizedBox.shrink(),
               items: [
-                DropdownMenuItem<String?>(value: null, child: Text(s.observeAllPods)),
+                DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text(s.observeAllPods),
+                ),
                 for (final p in _pods)
                   DropdownMenuItem<String?>(
                     value: p.name,
-                    child: Text('${p.name}${p.restarts > 0 ? '  (${p.restarts} restarts)' : ''}', style: monoStyle(context, size: 12.5)),
+                    child: Text(
+                      '${p.name}${p.restarts > 0 ? '  (${p.restarts} restarts)' : ''}',
+                      style: monoStyle(context, size: 12.5),
+                    ),
                   ),
               ],
               onChanged: _selectPod,
@@ -207,18 +240,32 @@ class _LogViewerState extends ConsumerState<LogViewer> {
             SizedBox(
               width: 220,
               child: TextField(
-                decoration: InputDecoration(isDense: true, prefixIcon: Icon(Icons.search_rounded, size: 18), hintText: s.observeFilter),
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixIcon: Icon(Icons.search_rounded, size: 18),
+                  hintText: s.observeFilter,
+                ),
                 onChanged: (v) => setState(() => _filter = v.trim()),
               ),
             ),
             OutlinedButton.icon(
               onPressed: _togglePause,
-              icon: Icon(_paused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 18),
-              label: Text(_paused ? 'Resume${_held.isEmpty ? '' : ' (${_held.length} new)'}' : 'Pause'),
+              icon: Icon(
+                _paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                size: 18,
+              ),
+              label: Text(
+                _paused
+                    ? 'Resume${_held.isEmpty ? '' : ' (${_held.length} new)'}'
+                    : 'Pause',
+              ),
             ),
             IconButton(
               tooltip: _wrap ? 'No wrapping' : 'Wrap lines',
-              icon: Icon(_wrap ? Icons.wrap_text_rounded : Icons.notes_rounded, size: 20),
+              icon: Icon(
+                _wrap ? Icons.wrap_text_rounded : Icons.notes_rounded,
+                size: 20,
+              ),
               onPressed: () => setState(() => _wrap = !_wrap),
             ),
             IconButton(
@@ -231,13 +278,16 @@ class _LogViewerState extends ConsumerState<LogViewer> {
                       showSnack(context, s.observeCopiedLines2(visible.length));
                     },
             ),
-            if (!api.useTokens) // the web build served by the panel: a plain download with the session cookie
+            if (!api
+                .useTokens) // the web build served by the panel: a plain download with the session cookie
               IconButton(
                 tooltip: s.observeDownloadLast5000Lines,
                 icon: const Icon(Icons.download_rounded, size: 20),
-                onPressed: () => launchUrl(Uri.parse(
-                  '${api.baseUrl}/api${widget.path}/logs?format=text&tail=5000${_pod == null ? '' : '&pod=$_pod'}',
-                )),
+                onPressed: () => launchUrl(
+                  Uri.parse(
+                    '${api.baseUrl}/api${widget.path}/logs?format=text&tail=5000${_pod == null ? '' : '&pod=$_pod'}',
+                  ),
+                ),
               ),
             IconButton(
               tooltip: s.observeClear,
@@ -253,16 +303,28 @@ class _LogViewerState extends ConsumerState<LogViewer> {
                 Container(
                   width: 8,
                   height: 8,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: _connected ? c.running : c.stopped),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _connected ? c.running : c.stopped,
+                  ),
                 ),
                 const SizedBox(width: 6),
-                Text(_connected ? (_paused ? 'paused' : 'live') : 'reconnecting…', style: TextStyle(color: c.muted, fontSize: 12)),
+                Text(
+                  _connected ? (_paused ? 'paused' : 'live') : 'reconnecting…',
+                  style: TextStyle(color: c.muted, fontSize: 12),
+                ),
               ],
             ),
           ],
         ),
         if (_error != null)
-          Padding(padding: const EdgeInsets.only(top: 6), child: Text(_error!, style: TextStyle(color: c.warning, fontSize: 12.5))),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              _error!,
+              style: TextStyle(color: c.warning, fontSize: 12.5),
+            ),
+          ),
         const SizedBox(height: 10),
         Container(
           height: widget.height,
@@ -274,8 +336,15 @@ class _LogViewerState extends ConsumerState<LogViewer> {
           child: visible.isEmpty
               ? Center(
                   child: Text(
-                    _lines.isEmpty ? (_pods.isEmpty ? 'No pods are running.' : 'Waiting for output…') : 'No line matches the filter.',
-                    style: const TextStyle(color: Color(0xFF8A8F98), fontSize: 13),
+                    _lines.isEmpty
+                        ? (_pods.isEmpty
+                              ? 'No pods are running.'
+                              : 'Waiting for output…')
+                        : 'No line matches the filter.',
+                    style: const TextStyle(
+                      color: Color(0xFF8A8F98),
+                      fontSize: 13,
+                    ),
                   ),
                 )
               : Scrollbar(
@@ -290,17 +359,38 @@ class _LogViewerState extends ConsumerState<LogViewer> {
                         TextSpan(
                           children: [
                             if (l.t != null)
-                              TextSpan(text: '${_hms(l.t!)} ', style: const TextStyle(color: Color(0xFF5C616B))),
+                              TextSpan(
+                                text: '${_hms(l.t!)} ',
+                                style: const TextStyle(
+                                  color: Color(0xFF5C616B),
+                                ),
+                              ),
                             if (multiPod)
-                              TextSpan(text: '${_short(l.pod)} ', style: TextStyle(color: podColors[l.pod] ?? NectarTokens.amber)),
+                              TextSpan(
+                                text: '${_short(l.pod)} ',
+                                style: TextStyle(
+                                  color: podColors[l.pod] ?? NectarTokens.amber,
+                                ),
+                              ),
                             TextSpan(text: l.line),
                           ],
                         ),
                         softWrap: _wrap,
-                        overflow: _wrap ? TextOverflow.visible : TextOverflow.clip,
-                        style: monoStyle(context, size: 12.5, color: const Color(0xFFD9DBE0)),
+                        overflow: _wrap
+                            ? TextOverflow.visible
+                            : TextOverflow.clip,
+                        style: monoStyle(
+                          context,
+                          size: 12.5,
+                          color: const Color(0xFFD9DBE0),
+                        ),
                       );
-                      return _wrap ? text : SingleChildScrollView(scrollDirection: Axis.horizontal, child: text);
+                      return _wrap
+                          ? text
+                          : SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: text,
+                            );
                     },
                   ),
                 ),
@@ -323,36 +413,63 @@ class _LogViewerState extends ConsumerState<LogViewer> {
 }
 
 /// The output of the previous (crashed) container of a pod.
-Future<void> showCrashLog(BuildContext context, WidgetRef ref, String path, String pod) => showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(S.of(context).observeBeforeTheLastRestart(pod)),
-        content: SizedBox(
-          width: 760,
-          height: 440,
-          child: FutureBuilder<List<LogLine>>(
-            future: ref
-                .read(apiProvider)
-                .get('$path/logs', query: {'pod': pod, 'previous': '1', 'tail': 300}).then((v) => listOf(v, LogLine.fromJson)),
-            builder: (ctx, snap) {
-              if (snap.hasError) return ErrorBlock(error: snap.error!);
-              if (!snap.hasData) return const LoadingBlock();
-              final lines = snap.data!;
-              if (lines.isEmpty) return Center(child: Text(S.of(context).observeThePreviousContainerWroteNothing));
-              return Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: const Color(0xFF0A0B0D), borderRadius: BorderRadius.circular(NectarTokens.radius)),
-                child: SingleChildScrollView(
-                  reverse: true,
-                  child: SelectableText(
-                    lines.map((l) => l.line).join('\n'),
-                    style: monoStyle(ctx, size: 12.5, color: const Color(0xFFD9DBE0)),
-                  ),
+Future<void> showCrashLog(
+  BuildContext context,
+  WidgetRef ref,
+  String path,
+  String pod,
+) => showDialog<void>(
+  context: context,
+  builder: (ctx) => AlertDialog(
+    title: Text(S.of(context).observeBeforeTheLastRestart(pod)),
+    content: SizedBox(
+      width: 760,
+      height: 440,
+      child: FutureBuilder<List<LogLine>>(
+        future: ref
+            .read(apiProvider)
+            .get(
+              '$path/logs',
+              query: {'pod': pod, 'previous': '1', 'tail': 300},
+            )
+            .then((v) => listOf(v, LogLine.fromJson)),
+        builder: (ctx, snap) {
+          if (snap.hasError) return ErrorBlock(error: snap.error!);
+          if (!snap.hasData) return const LoadingBlock();
+          final lines = snap.data!;
+          if (lines.isEmpty) {
+            return Center(
+              child: Text(
+                S.of(context).observeThePreviousContainerWroteNothing,
+              ),
+            );
+          }
+          return Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A0B0D),
+              borderRadius: BorderRadius.circular(NectarTokens.radius),
+            ),
+            child: SingleChildScrollView(
+              reverse: true,
+              child: SelectableText(
+                lines.map((l) => l.line).join('\n'),
+                style: monoStyle(
+                  ctx,
+                  size: 12.5,
+                  color: const Color(0xFFD9DBE0),
                 ),
-              );
-            },
-          ),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(S.of(context).actionClose))],
+              ),
+            ),
+          );
+        },
       ),
-    );
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(ctx),
+        child: Text(S.of(context).actionClose),
+      ),
+    ],
+  ),
+);

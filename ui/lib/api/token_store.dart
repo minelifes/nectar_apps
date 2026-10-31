@@ -65,10 +65,15 @@ class TokenStore {
     await p.remove(_kRefresh);
   }
 
-  static Future<void> _write(String key, String? value) =>
-      value == null ? _secure.delete(key: key) : _secure.write(key: key, value: value);
+  static Future<void> _write(String key, String? value) => value == null
+      ? _secure.delete(key: key)
+      : _secure.write(key: key, value: value);
 
-  static Future<void> _pref(SharedPreferences p, String key, String? value) async {
+  static Future<void> _pref(
+    SharedPreferences p,
+    String key,
+    String? value,
+  ) async {
     if (value == null) {
       await p.remove(key);
     } else {

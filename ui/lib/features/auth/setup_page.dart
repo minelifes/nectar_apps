@@ -44,7 +44,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
       _error = null;
     });
     try {
-      await ref.read(sessionProvider.notifier).setup(
+      await ref
+          .read(sessionProvider.notifier)
+          .setup(
             token: _token.text,
             name: _name.text,
             email: _email.text,
@@ -65,7 +67,8 @@ class _SetupPageState extends ConsumerState<SetupPage> {
     final hasToken = (widget.token ?? '').isNotEmpty;
     return AuthFrame(
       title: s.authWelcomeToNectarApps,
-      subtitle: 'Create the Owner account for ${session.serverHost.isEmpty ? 'this panel' : session.serverHost}.',
+      subtitle:
+          'Create the Owner account for ${session.serverHost.isEmpty ? 'this panel' : session.serverHost}.',
       children: [
         Form(
           key: _form,
@@ -79,7 +82,9 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                     controller: _token,
                     style: monoStyle(context),
                     decoration: InputDecoration(labelText: s.authSetupToken),
-                    validator: (v) => (v ?? '').trim().isEmpty ? 'Paste the setup token' : null,
+                    validator: (v) => (v ?? '').trim().isEmpty
+                        ? 'Paste the setup token'
+                        : null,
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 6, bottom: 14),
@@ -94,7 +99,8 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   decoration: InputDecoration(labelText: s.authYourName),
                   autofillHints: const [AutofillHints.name],
                   textInputAction: TextInputAction.next,
-                  validator: (v) => (v ?? '').trim().isEmpty ? 'Enter your name' : null,
+                  validator: (v) =>
+                      (v ?? '').trim().isEmpty ? 'Enter your name' : null,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
@@ -103,16 +109,22 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   keyboardType: TextInputType.emailAddress,
                   autofillHints: const [AutofillHints.email],
                   textInputAction: TextInputAction.next,
-                  validator: (v) => (v ?? '').contains('@') ? null : 'Enter a valid email',
+                  validator: (v) =>
+                      (v ?? '').contains('@') ? null : 'Enter a valid email',
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _password,
-                  decoration: InputDecoration(labelText: s.loginPassword, helperText: s.authAtLeast10Characters),
+                  decoration: InputDecoration(
+                    labelText: s.loginPassword,
+                    helperText: s.authAtLeast10Characters,
+                  ),
                   obscureText: true,
                   autofillHints: const [AutofillHints.newPassword],
                   textInputAction: TextInputAction.next,
-                  validator: (v) => (v ?? '').length < 10 ? 'Use at least 10 characters' : null,
+                  validator: (v) => (v ?? '').length < 10
+                      ? 'Use at least 10 characters'
+                      : null,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
@@ -121,10 +133,15 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   obscureText: true,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _submit(),
-                  validator: (v) => v == _password.text ? null : 'The passwords do not match',
+                  validator: (v) =>
+                      v == _password.text ? null : 'The passwords do not match',
                 ),
                 const SizedBox(height: 22),
-                BusyButton(label: s.authCreateOwnerAccount, busy: _busy, onPressed: _submit),
+                BusyButton(
+                  label: s.authCreateOwnerAccount,
+                  busy: _busy,
+                  onPressed: _submit,
+                ),
               ],
             ),
           ),

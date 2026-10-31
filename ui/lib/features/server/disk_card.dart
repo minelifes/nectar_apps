@@ -27,16 +27,24 @@ class _DiskCardState extends ConsumerState<DiskCard> {
     setState(() => _cleaning = true);
     try {
       final res = await ref.read(apiProvider).post('/server/cleanup');
-      final r = res is Map ? Map<String, dynamic>.from(res['result'] as Map? ?? const {}) : const <String, dynamic>{};
+      final r = res is Map
+          ? Map<String, dynamic>.from(res['result'] as Map? ?? const {})
+          : const <String, dynamic>{};
       int n(String k) => (r[k] as num?)?.toInt() ?? 0;
       final parts = [
-        if (n('files') > 0) '${n('files')} old uploads (${formatBytes(n('bytes_freed'))})',
+        if (n('files') > 0)
+          '${n('files')} old uploads (${formatBytes(n('bytes_freed'))})',
         if (n('uploads') > 0) '${n('uploads')} unfinished uploads',
         if (n('audit_entries') > 0) '${n('audit_entries')} audit entries',
         if (n('resolved_alerts') > 0) '${n('resolved_alerts')} old alerts',
       ];
       ref.invalidate(serverDiskProvider);
-      if (mounted) showSnack(context, parts.isEmpty ? 'Nothing to clean up' : 'Removed ${parts.join(', ')}');
+      if (mounted) {
+        showSnack(
+          context,
+          parts.isEmpty ? 'Nothing to clean up' : 'Removed ${parts.join(', ')}',
+        );
+      }
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     } finally {
@@ -55,7 +63,9 @@ class _DiskCardState extends ConsumerState<DiskCard> {
     if (!ok || !mounted) return;
     setState(() => _pruning = true);
     try {
-      await ref.read(apiProvider).post('/server/image-cleanup', data: <String, dynamic>{});
+      await ref
+          .read(apiProvider)
+          .post('/server/image-cleanup', data: <String, dynamic>{});
       ref.invalidate(serverDiskProvider);
       if (mounted) showSnack(context, s.serverImageCleanupStarted);
     } on Object catch (e) {
@@ -88,19 +98,29 @@ class _DiskCardState extends ConsumerState<DiskCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (final n in d.nodes) ...[
-              if (d.nodes.length > 1) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(n.name, style: Theme.of(context).textTheme.titleSmall)),
+              if (d.nodes.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    n.name,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
               if (n.error.isNotEmpty)
                 Text(n.error, style: TextStyle(color: c.muted, fontSize: 12.5))
               else ...[
                 UsageBar(
                   label: s.serverServerDisk,
                   value: n.fsTotal > 0 ? n.fsUsed / n.fsTotal : 0,
-                  trailing: '${formatBytes(n.fsUsed)} of ${formatBytes(n.fsTotal)}',
+                  trailing:
+                      '${formatBytes(n.fsUsed)} of ${formatBytes(n.fsTotal)}',
                 ),
                 if (n.imagesTotal > 0) ...[
                   const SizedBox(height: 10),
                   UsageBar(
-                    label: n.imagesTotal == n.fsTotal ? 'Container images (part of the disk)' : 'Container images',
+                    label: n.imagesTotal == n.fsTotal
+                        ? 'Container images (part of the disk)'
+                        : 'Container images',
                     value: n.imagesUsed / n.imagesTotal,
                     trailing: formatBytes(n.imagesUsed),
                   ),
@@ -112,7 +132,8 @@ class _DiskCardState extends ConsumerState<DiskCard> {
               UsageBar(
                 label: s.serverPanelDataVolume,
                 value: (d.volumeTotal - d.volumeFree) / d.volumeTotal,
-                trailing: '${formatBytes(d.volumeTotal - d.volumeFree)} of ${formatBytes(d.volumeTotal)}',
+                trailing:
+                    '${formatBytes(d.volumeTotal - d.volumeFree)} of ${formatBytes(d.volumeTotal)}',
               ),
               const SizedBox(height: 8),
             ],
@@ -121,13 +142,21 @@ class _DiskCardState extends ConsumerState<DiskCard> {
               runSpacing: 6,
               children: [
                 _Fact('Database', formatBytes(d.databaseBytes)),
-                _Fact('Uploaded files', '${formatBytes(d.artifactBytes)} · ${d.artifactFiles} ${d.artifactFiles == 1 ? 'file' : 'files'}'),
-                if (d.uploadBytes > 0) _Fact('Unfinished uploads', formatBytes(d.uploadBytes)),
+                _Fact(
+                  'Uploaded files',
+                  '${formatBytes(d.artifactBytes)} · ${d.artifactFiles} ${d.artifactFiles == 1 ? 'file' : 'files'}',
+                ),
+                if (d.uploadBytes > 0)
+                  _Fact('Unfinished uploads', formatBytes(d.uploadBytes)),
               ],
             ),
             const SizedBox(height: 16),
             Text(
-              s.serverKeptTheLastUploadsPer(d.settings.keepArtifacts, d.settings.auditDays, d.settings.alertDays),
+              s.serverKeptTheLastUploadsPer(
+                d.settings.keepArtifacts,
+                d.settings.auditDays,
+                d.settings.alertDays,
+              ),
               style: TextStyle(color: c.muted, fontSize: 12.5),
             ),
             if (canManage || canSettings) ...[
@@ -139,18 +168,30 @@ class _DiskCardState extends ConsumerState<DiskCard> {
                   if (canManage)
                     OutlinedButton.icon(
                       onPressed: _cleaning ? null : _cleanup,
-                      icon: const Icon(Icons.cleaning_services_outlined, size: 18),
+                      icon: const Icon(
+                        Icons.cleaning_services_outlined,
+                        size: 18,
+                      ),
                       label: Text(_cleaning ? 'Cleaning…' : 'Clean up now'),
                     ),
                   if (canManage)
                     OutlinedButton.icon(
-                      onPressed: _pruning || d.cleanupRunning || d.nodes.isEmpty ? null : _pruneImages,
+                      onPressed: _pruning || d.cleanupRunning || d.nodes.isEmpty
+                          ? null
+                          : _pruneImages,
                       icon: const Icon(Icons.layers_clear_outlined, size: 18),
-                      label: Text(d.cleanupRunning ? 'Removing images…' : 'Remove unused images'),
+                      label: Text(
+                        d.cleanupRunning
+                            ? 'Removing images…'
+                            : 'Remove unused images',
+                      ),
                     ),
                   if (canSettings)
                     TextButton.icon(
-                      onPressed: () => showDialog<void>(context: context, builder: (_) => _RetentionDialog(settings: d.settings)),
+                      onPressed: () => showDialog<void>(
+                        context: context,
+                        builder: (_) => _RetentionDialog(settings: d.settings),
+                      ),
                       icon: const Icon(Icons.tune_rounded, size: 18),
                       label: Text(s.serverRetention),
                     ),
@@ -159,7 +200,10 @@ class _DiskCardState extends ConsumerState<DiskCard> {
             ],
             if (d.cleanups.isNotEmpty) ...[
               const SizedBox(height: 16),
-              Text(s.serverImageCleanups, style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                s.serverImageCleanups,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 6),
               for (final j in d.cleanups.take(5)) _CleanupRow(job: j),
             ],
@@ -180,10 +224,18 @@ class _Fact extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = NectarColors.of(context);
     return Text.rich(
-      TextSpan(children: [
-        TextSpan(text: '$label  ', style: TextStyle(color: c.muted)),
-        TextSpan(text: value, style: const TextStyle(fontWeight: FontWeight.w600)),
-      ]),
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$label  ',
+            style: TextStyle(color: c.muted),
+          ),
+          TextSpan(
+            text: value,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
       style: const TextStyle(fontSize: 13),
     );
   }
@@ -198,8 +250,16 @@ class _CleanupRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = NectarColors.of(context);
     final (icon, color, text) = switch (job.status) {
-      'succeeded' => (Icons.check_circle_rounded, c.running, job.removed == 1 ? '1 image removed' : '${job.removed} images removed'),
-      'failed' => (Icons.error_rounded, c.failed, job.message.isEmpty ? 'failed' : 'failed: ${job.message}'),
+      'succeeded' => (
+        Icons.check_circle_rounded,
+        c.running,
+        job.removed == 1 ? '1 image removed' : '${job.removed} images removed',
+      ),
+      'failed' => (
+        Icons.error_rounded,
+        c.failed,
+        job.message.isEmpty ? 'failed' : 'failed: ${job.message}',
+      ),
       _ => (Icons.autorenew_rounded, c.deploying, 'running…'),
     };
     return Padding(
@@ -208,8 +268,16 @@ class _CleanupRow extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 8),
-          Expanded(child: Text('${job.node} · $text', style: const TextStyle(fontSize: 13))),
-          Text(timeAgo(job.started), style: TextStyle(color: c.muted, fontSize: 12)),
+          Expanded(
+            child: Text(
+              '${job.node} · $text',
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          Text(
+            timeAgo(job.started),
+            style: TextStyle(color: c.muted, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -226,21 +294,41 @@ class _RetentionDialog extends ConsumerStatefulWidget {
 }
 
 class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
-  late final _keep = TextEditingController(text: '${widget.settings.keepArtifacts}');
-  late final _audit = TextEditingController(text: '${widget.settings.auditDays}');
-  late final _alerts = TextEditingController(text: '${widget.settings.alertDays}');
+  late final _keep = TextEditingController(
+    text: '${widget.settings.keepArtifacts}',
+  );
+  late final _audit = TextEditingController(
+    text: '${widget.settings.auditDays}',
+  );
+  late final _alerts = TextEditingController(
+    text: '${widget.settings.alertDays}',
+  );
   late final _dataDir = TextEditingController(text: widget.settings.k3sDataDir);
-  late final _images = TextEditingController(text: widget.settings.prepullImages.join('\n'));
+  late final _images = TextEditingController(
+    text: widget.settings.prepullImages.join('\n'),
+  );
   late bool _prepull = widget.settings.prepull;
   late bool _logHistory = widget.settings.logHistory;
-  late final _logDays = TextEditingController(text: '${widget.settings.logDays}');
-  late final _logMax = TextEditingController(text: '${widget.settings.logMaxMb}');
+  late final _logDays = TextEditingController(
+    text: '${widget.settings.logDays}',
+  );
+  late final _logMax = TextEditingController(
+    text: '${widget.settings.logMaxMb}',
+  );
   bool _saving = false;
   String? _error;
 
   @override
   void dispose() {
-    for (final c in [_keep, _audit, _alerts, _dataDir, _images, _logDays, _logMax]) {
+    for (final c in [
+      _keep,
+      _audit,
+      _alerts,
+      _dataDir,
+      _images,
+      _logDays,
+      _logMax,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -252,20 +340,25 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
       _error = null;
     });
     try {
-      await ref.read(apiProvider).put('/settings/housekeeping', data: HousekeepingSettings(
-        keepArtifacts: int.tryParse(_keep.text.trim()) ?? 0,
-        auditDays: int.tryParse(_audit.text.trim()) ?? 0,
-        alertDays: int.tryParse(_alerts.text.trim()) ?? 0,
-        k3sDataDir: _dataDir.text.trim(),
-        prepull: _prepull,
-        logHistory: _logHistory,
-        logDays: int.tryParse(_logDays.text.trim()) ?? 0,
-        logMaxMb: int.tryParse(_logMax.text.trim()) ?? 0,
-        prepullImages: [
-          for (final l in _images.text.split(RegExp(r'[\s,]+')))
-            if (l.trim().isNotEmpty) l.trim(),
-        ],
-      ).toJson());
+      await ref
+          .read(apiProvider)
+          .put(
+            '/settings/housekeeping',
+            data: HousekeepingSettings(
+              keepArtifacts: int.tryParse(_keep.text.trim()) ?? 0,
+              auditDays: int.tryParse(_audit.text.trim()) ?? 0,
+              alertDays: int.tryParse(_alerts.text.trim()) ?? 0,
+              k3sDataDir: _dataDir.text.trim(),
+              prepull: _prepull,
+              logHistory: _logHistory,
+              logDays: int.tryParse(_logDays.text.trim()) ?? 0,
+              logMaxMb: int.tryParse(_logMax.text.trim()) ?? 0,
+              prepullImages: [
+                for (final l in _images.text.split(RegExp(r'[\s,]+')))
+                  if (l.trim().isNotEmpty) l.trim(),
+              ],
+            ).toJson(),
+          );
       ref.invalidate(serverDiskProvider);
       if (mounted) Navigator.pop(context);
     } on Object catch (e) {
@@ -280,9 +373,13 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
     final s = S.of(context);
     final c = NectarColors.of(context);
     Widget num(TextEditingController ctl, String label, String help) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: TextField(controller: ctl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: label, helperText: help)),
-        );
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: ctl,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(labelText: label, helperText: help),
+      ),
+    );
     return AlertDialog(
       title: Text(s.serverRetention),
       content: SizedBox(
@@ -292,7 +389,11 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              num(_keep, 'Uploads kept per app', '1–100; uploads used by a live release are always kept'),
+              num(
+                _keep,
+                'Uploads kept per app',
+                '1–100; uploads used by a live release are always kept',
+              ),
               num(_audit, 'Audit log, days', '30–3650'),
               num(_alerts, 'Resolved alerts, days', '7–3650'),
               SwitchListTile(
@@ -304,11 +405,18 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
               ),
               if (_logHistory) ...[
                 num(_logDays, 'Log history, days', '1–90'),
-                num(_logMax, 'Log history per app, MB', '16–20480; the oldest hours go first'),
+                num(
+                  _logMax,
+                  'Log history per app, MB',
+                  '16–20480; the oldest hours go first',
+                ),
               ],
               TextField(
                 controller: _dataDir,
-                decoration: InputDecoration(labelText: s.serverK3sDataDirectory, helperText: s.serverUsedToFindCrictlFor),
+                decoration: InputDecoration(
+                  labelText: s.serverK3sDataDirectory,
+                  helperText: s.serverUsedToFindCrictlFor,
+                ),
               ),
               const SizedBox(height: 8),
               SwitchListTile(
@@ -323,16 +431,29 @@ class _RetentionDialogState extends ConsumerState<_RetentionDialog> {
                   controller: _images,
                   minLines: 1,
                   maxLines: 4,
-                  decoration: InputDecoration(labelText: s.serverExtraImages, helperText: s.serverOnePerLineEG),
+                  decoration: InputDecoration(
+                    labelText: s.serverExtraImages,
+                    helperText: s.serverOnePerLineEG,
+                  ),
                 ),
-              if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: c.failed))),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(_error!, style: TextStyle(color: c.failed)),
+                ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-        FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? 'Saving…' : 'Save'),
+        ),
       ],
     );
   }

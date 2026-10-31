@@ -40,50 +40,115 @@ final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: '/',
     refreshListenable: session,
-    redirect: (context, state) => sessionRedirect(session.value, state.matchedLocation, state.uri),
+    redirect: (context, state) =>
+        sessionRedirect(session.value, state.matchedLocation, state.uri),
     routes: [
       GoRoute(path: '/splash', builder: (context, state) => const SplashPage()),
-      GoRoute(path: '/connect', builder: (context, state) => const ConnectPage()),
+      GoRoute(
+        path: '/connect',
+        builder: (context, state) => const ConnectPage(),
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
-      GoRoute(path: '/reset', builder: (context, state) => ResetPage(token: state.uri.queryParameters['token'] ?? '')),
-      GoRoute(path: '/setup', builder: (context, state) => SetupPage(token: setupTokenFrom(state.uri))),
-      GoRoute(path: '/welcome', builder: (context, state) => const OnboardingPage()),
+      GoRoute(
+        path: '/reset',
+        builder: (context, state) =>
+            ResetPage(token: state.uri.queryParameters['token'] ?? ''),
+      ),
+      GoRoute(
+        path: '/setup',
+        builder: (context, state) =>
+            SetupPage(token: setupTokenFrom(state.uri)),
+      ),
+      GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const OnboardingPage(),
+      ),
       ShellRoute(
-        builder: (context, state, child) => AppShell(location: state.matchedLocation, child: child),
+        builder: (context, state, child) =>
+            AppShell(location: state.matchedLocation, child: child),
         routes: [
-          GoRoute(path: '/', pageBuilder: (context, state) => page(const DashboardPage())),
+          GoRoute(
+            path: '/',
+            pageBuilder: (context, state) => page(const DashboardPage()),
+          ),
           GoRoute(
             path: '/projects',
             pageBuilder: (context, state) => page(const ProjectsPage()),
             routes: [
               GoRoute(
                 path: ':pid',
-                pageBuilder: (context, state) => page(ProjectPage(id: int.tryParse(state.pathParameters['pid'] ?? '') ?? 0)),
+                pageBuilder: (context, state) => page(
+                  ProjectPage(
+                    id: int.tryParse(state.pathParameters['pid'] ?? '') ?? 0,
+                  ),
+                ),
               ),
             ],
           ),
           GoRoute(
             path: '/apps/new',
-            pageBuilder: (context, state) => page(NewAppPage(projectId: int.tryParse(state.uri.queryParameters['project'] ?? ''))),
+            pageBuilder: (context, state) => page(
+              NewAppPage(
+                projectId: int.tryParse(
+                  state.uri.queryParameters['project'] ?? '',
+                ),
+              ),
+            ),
           ),
           GoRoute(
             path: '/apps/:id',
-            pageBuilder: (context, state) => page(AppPage(id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0)),
+            pageBuilder: (context, state) => page(
+              AppPage(id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0),
+            ),
           ),
-          GoRoute(path: '/server', pageBuilder: (context, state) => page(const ServerPage())),
-          GoRoute(path: '/domains', pageBuilder: (context, state) => page(const DomainsPage())),
+          GoRoute(
+            path: '/server',
+            pageBuilder: (context, state) => page(const ServerPage()),
+          ),
+          GoRoute(
+            path: '/domains',
+            pageBuilder: (context, state) => page(const DomainsPage()),
+          ),
           GoRoute(
             path: '/addons/:id',
-            pageBuilder: (context, state) => page(AddonPage(id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0)),
+            pageBuilder: (context, state) => page(
+              AddonPage(
+                id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+              ),
+            ),
           ),
-          GoRoute(path: '/backups', pageBuilder: (context, state) => page(const BackupsPage())),
-          GoRoute(path: '/alerts', pageBuilder: (context, state) => page(const AlertsPage())),
-          GoRoute(path: '/settings', pageBuilder: (context, state) => page(const SettingsPage())),
-          GoRoute(path: '/updates', pageBuilder: (context, state) => page(const UpdatesPage())),
-          GoRoute(path: '/users', pageBuilder: (context, state) => page(const UsersPage())),
-          GoRoute(path: '/roles', pageBuilder: (context, state) => page(const RolesPage())),
-          GoRoute(path: '/tokens', pageBuilder: (context, state) => page(const TokensPage())),
-          GoRoute(path: '/gateway', pageBuilder: (context, state) => page(const GatewayPage())),
+          GoRoute(
+            path: '/backups',
+            pageBuilder: (context, state) => page(const BackupsPage()),
+          ),
+          GoRoute(
+            path: '/alerts',
+            pageBuilder: (context, state) => page(const AlertsPage()),
+          ),
+          GoRoute(
+            path: '/settings',
+            pageBuilder: (context, state) => page(const SettingsPage()),
+          ),
+          GoRoute(
+            path: '/updates',
+            pageBuilder: (context, state) => page(const UpdatesPage()),
+          ),
+          GoRoute(
+            path: '/users',
+            pageBuilder: (context, state) => page(const UsersPage()),
+          ),
+          GoRoute(
+            path: '/roles',
+            pageBuilder: (context, state) => page(const RolesPage()),
+          ),
+          GoRoute(
+            path: '/tokens',
+            pageBuilder: (context, state) => page(const TokensPage()),
+          ),
+          GoRoute(
+            path: '/gateway',
+            pageBuilder: (context, state) => page(const GatewayPage()),
+          ),
         ],
       ),
     ],
@@ -93,7 +158,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           icon: Icons.explore_off_rounded,
           title: S.of(context).pageNotFound,
           message: state.uri.path,
-          action: FilledButton(onPressed: () => context.go('/'), child: Text(S.of(context).goToDashboard)),
+          action: FilledButton(
+            onPressed: () => context.go('/'),
+            child: Text(S.of(context).goToDashboard),
+          ),
         ),
       ),
     ),
@@ -108,9 +176,16 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// Sends the user to the page their session state needs, remembering where they wanted to go
 /// (`?from=`), and back there once they are signed in.
 String? sessionRedirect(SessionState s, String location, Uri uri) {
-  if (location == '/reset') return null; // a reset or invitation link works signed in or out
+  if (location == '/reset') {
+    return null; // a reset or invitation link works signed in or out
+  }
   final isPublic = publicPaths.contains(location);
-  final wanted = isPublic ? _safe(uri.queryParameters['from'] ?? (location == '/setup' ? uri.toString() : '/')) : uri.toString();
+  final wanted = isPublic
+      ? _safe(
+          uri.queryParameters['from'] ??
+              (location == '/setup' ? uri.toString() : '/'),
+        )
+      : uri.toString();
 
   String? go(String page) {
     if (location == page) return null;

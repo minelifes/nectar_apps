@@ -9,28 +9,41 @@ import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 
 IconData channelIcon(String kind) => switch (kind) {
-      'ntfy' => Icons.notifications_active_outlined,
-      'telegram' => Icons.send_outlined,
-      'email' => Icons.mail_outline_rounded,
-      'push' => Icons.phone_iphone_rounded,
-      _ => Icons.webhook_rounded,
-    };
+  'ntfy' => Icons.notifications_active_outlined,
+  'telegram' => Icons.send_outlined,
+  'email' => Icons.mail_outline_rounded,
+  'push' => Icons.phone_iphone_rounded,
+  _ => Icons.webhook_rounded,
+};
 
 String channelLabel(String kind) => switch (kind) {
-      'ntfy' => 'ntfy',
-      'telegram' => 'Telegram',
-      'email' => 'Email',
-      'webhook' => 'Webhook',
-      'push' => 'Mobile app',
-      _ => kind,
-    };
+  'ntfy' => 'ntfy',
+  'telegram' => 'Telegram',
+  'email' => 'Email',
+  'webhook' => 'Webhook',
+  'push' => 'Mobile app',
+  _ => kind,
+};
 
 /// Adds a channel, or edits [channel].
-Future<void> showChannelDialog(BuildContext context, WidgetRef ref, {AlertChannel? channel}) =>
-    showDialog<void>(context: context, builder: (_) => _ChannelDialog(channel: channel));
+Future<void> showChannelDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  AlertChannel? channel,
+}) => showDialog<void>(
+  context: context,
+  builder: (_) => _ChannelDialog(channel: channel),
+);
 
 class _Field {
-  const _Field(this.key, this.label, {this.hint, this.help, this.secret = false, this.number = false});
+  const _Field(
+    this.key,
+    this.label, {
+    this.hint,
+    this.help,
+    this.secret = false,
+    this.number = false,
+  });
 
   final String key;
   final String label;
@@ -42,13 +55,35 @@ class _Field {
 
 const _fields = <String, List<_Field>>{
   'ntfy': [
-    _Field('url', 'Server', hint: 'https://ntfy.sh', help: 'Your own ntfy server or ntfy.sh'),
-    _Field('topic', 'Topic', hint: 'nectar-alerts-7f3k', help: 'On ntfy.sh anyone who knows the topic can read it: pick a hard-to-guess name'),
+    _Field(
+      'url',
+      'Server',
+      hint: 'https://ntfy.sh',
+      help: 'Your own ntfy server or ntfy.sh',
+    ),
+    _Field(
+      'topic',
+      'Topic',
+      hint: 'nectar-alerts-7f3k',
+      help:
+          'On ntfy.sh anyone who knows the topic can read it: pick a hard-to-guess name',
+    ),
     _Field('token', 'Access token (optional)', secret: true),
   ],
   'telegram': [
-    _Field('bot_token', 'Bot token', hint: '123456789:AA…', help: 'Create a bot with @BotFather and paste its token', secret: true),
-    _Field('chat_id', 'Chat id', hint: '123456789 or @channel', help: 'Send the bot a message, then read your id from @userinfobot'),
+    _Field(
+      'bot_token',
+      'Bot token',
+      hint: '123456789:AA…',
+      help: 'Create a bot with @BotFather and paste its token',
+      secret: true,
+    ),
+    _Field(
+      'chat_id',
+      'Chat id',
+      hint: '123456789 or @channel',
+      help: 'Send the bot a message, then read your id from @userinfobot',
+    ),
   ],
   'email': [
     _Field('host', 'SMTP server', hint: 'smtp.example.com'),
@@ -56,16 +91,35 @@ const _fields = <String, List<_Field>>{
     _Field('username', 'User name (optional)'),
     _Field('password', 'Password', secret: true),
     _Field('from', 'From', hint: 'Nectar Apps <alerts@example.com>'),
-    _Field('to', 'To', hint: 'ops@example.com, me@example.com', help: 'Comma-separated'),
+    _Field(
+      'to',
+      'To',
+      hint: 'ops@example.com, me@example.com',
+      help: 'Comma-separated',
+    ),
   ],
   'webhook': [
-    _Field('url', 'URL', hint: 'https://example.com/hooks/nectar', help: 'Receives a JSON POST for every alert'),
-    _Field('secret', 'Signing secret (optional)', help: 'Signs the body: X-Nectar-Signature: sha256=<HMAC>', secret: true),
+    _Field(
+      'url',
+      'URL',
+      hint: 'https://example.com/hooks/nectar',
+      help: 'Receives a JSON POST for every alert',
+    ),
+    _Field(
+      'secret',
+      'Signing secret (optional)',
+      help: 'Signs the body: X-Nectar-Signature: sha256=<HMAC>',
+      secret: true,
+    ),
   ],
   'push': [
-    _Field('to', 'Users (optional)',
-        hint: 'me@example.com, ops@example.com',
-        help: 'Comma-separated emails. Empty: everyone who can see the server. Needs Settings → Push notifications and the Nectar app on the phone.'),
+    _Field(
+      'to',
+      'Users (optional)',
+      hint: 'me@example.com, ops@example.com',
+      help:
+          'Comma-separated emails. Empty: everyone who can see the server. Needs Settings → Push notifications and the Nectar app on the phone.',
+    ),
   ],
 };
 
@@ -83,7 +137,9 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
   late final _name = TextEditingController(text: widget.channel?.name ?? '');
   final Map<String, TextEditingController> _ctl = {};
   late String _security = '${widget.channel?.config['security'] ?? 'starttls'}';
-  late bool _panelSmtp = widget.channel?.config['use_panel_smtp'] == true || widget.channel == null;
+  late bool _panelSmtp =
+      widget.channel?.config['use_panel_smtp'] == true ||
+      widget.channel == null;
 
   /// Email channels can use the panel's SMTP server (Settings → Email): then only the recipients matter.
   bool _shown(_Field f) => !(_kind == 'email' && _panelSmtp && f.key != 'to');
@@ -91,9 +147,9 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
   String? _error;
 
   TextEditingController _c(String key) => _ctl.putIfAbsent(key, () {
-        final v = widget.channel?.config[key];
-        return TextEditingController(text: v == null || v == 0 ? '' : '$v');
-      });
+    final v = widget.channel?.config[key];
+    return TextEditingController(text: v == null || v == 0 ? '' : '$v');
+  });
 
   @override
   void dispose() {
@@ -116,7 +172,9 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
     }
     if (_kind == 'email' && _panelSmtp) config['use_panel_smtp'] = true;
     if (_kind == 'email' && !_panelSmtp) config['security'] = _security;
-    final name = _name.text.trim().isEmpty ? channelLabel(_kind) : _name.text.trim();
+    final name = _name.text.trim().isEmpty
+        ? channelLabel(_kind)
+        : _name.text.trim();
     setState(() {
       _saving = true;
       _error = null;
@@ -125,9 +183,15 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
     try {
       final ch = widget.channel;
       if (ch == null) {
-        await api.post('/alerts/channels', data: {'kind': _kind, 'name': name, 'config': config});
+        await api.post(
+          '/alerts/channels',
+          data: {'kind': _kind, 'name': name, 'config': config},
+        );
       } else {
-        await api.put('/alerts/channels/${ch.id}', data: {'name': name, 'enabled': ch.enabled, 'config': config});
+        await api.put(
+          '/alerts/channels/${ch.id}',
+          data: {'name': name, 'enabled': ch.enabled, 'config': config},
+        );
       }
       ref.invalidate(alertChannelsProvider);
       if (mounted) Navigator.pop(context);
@@ -157,7 +221,12 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
                   scrollDirection: Axis.horizontal,
                   child: SegmentedButton<String>(
                     segments: [
-                      for (final k in _fields.keys) ButtonSegment(value: k, icon: Icon(channelIcon(k), size: 16), label: Text(channelLabel(k))),
+                      for (final k in _fields.keys)
+                        ButtonSegment(
+                          value: k,
+                          icon: Icon(channelIcon(k), size: 16),
+                          label: Text(channelLabel(k)),
+                        ),
                     ],
                     selected: {_kind},
                     showSelectedIcon: false,
@@ -166,7 +235,13 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
                 ),
                 const SizedBox(height: 16),
               ],
-              TextField(controller: _name, decoration: InputDecoration(labelText: l.backupName, hintText: channelLabel(_kind))),
+              TextField(
+                controller: _name,
+                decoration: InputDecoration(
+                  labelText: l.backupName,
+                  hintText: channelLabel(_kind),
+                ),
+              ),
               if (_kind == 'email')
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -184,10 +259,14 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
                   decoration: InputDecoration(
                     labelText: f.label,
                     hintText: f.hint,
-                    helperText: f.secret && _c(f.key).text == maskedSecret ? 'Saved. Replace it to change it.' : f.help,
+                    helperText: f.secret && _c(f.key).text == maskedSecret
+                        ? 'Saved. Replace it to change it.'
+                        : f.help,
                     helperMaxLines: 2,
                   ),
-                  onTap: f.secret && _c(f.key).text == maskedSecret ? () => setState(() => _c(f.key).clear()) : null,
+                  onTap: f.secret && _c(f.key).text == maskedSecret
+                      ? () => setState(() => _c(f.key).clear())
+                      : null,
                 ),
               ],
               if (_kind == 'email' && !_panelSmtp) ...[
@@ -199,24 +278,43 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
                     DropdownButton<String>(
                       value: _security,
                       items: [
-                        DropdownMenuItem(value: 'starttls', child: Text(l.alertStarttlsPort587)),
-                        DropdownMenuItem(value: 'tls', child: Text(l.alertTlsPort465)),
-                        DropdownMenuItem(value: 'none', child: Text(l.alertNonePort25LocalRelays)),
+                        DropdownMenuItem(
+                          value: 'starttls',
+                          child: Text(l.alertStarttlsPort587),
+                        ),
+                        DropdownMenuItem(
+                          value: 'tls',
+                          child: Text(l.alertTlsPort465),
+                        ),
+                        DropdownMenuItem(
+                          value: 'none',
+                          child: Text(l.alertNonePort25LocalRelays),
+                        ),
                       ],
-                      onChanged: (v) => setState(() => _security = v ?? 'starttls'),
+                      onChanged: (v) =>
+                          setState(() => _security = v ?? 'starttls'),
                     ),
                   ],
                 ),
               ],
               if (_error != null)
-                Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: c.failed))),
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(_error!, style: TextStyle(color: c.failed)),
+                ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.actionCancel)),
-        FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? 'Saving…' : 'Save'),
+        ),
       ],
     );
   }

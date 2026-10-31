@@ -38,7 +38,9 @@ class _ServerPageState extends ConsumerState<ServerPage> {
   @override
   Widget build(BuildContext context) {
     final l = S.of(context);
-    final canView = ref.watch(sessionProvider.select((s) => s.can('server.view')));
+    final canView = ref.watch(
+      sessionProvider.select((s) => s.can('server.view')),
+    );
     if (!canView) {
       return PageScaffold(
         title: l.navServer,
@@ -61,14 +63,25 @@ class _ServerPageState extends ConsumerState<ServerPage> {
       subtitle: l.serverClusterNodesTheirResourcesAnd,
       onRefresh: _refresh,
       actions: [
-        OutlinedButton.icon(onPressed: () => context.go('/gateway'), icon: const Icon(Icons.alt_route_rounded, size: 18), label: Text(l.serverGateway)),
+        OutlinedButton.icon(
+          onPressed: () => context.go('/gateway'),
+          icon: const Icon(Icons.alt_route_rounded, size: 18),
+          label: Text(l.serverGateway),
+        ),
         if (ref.watch(sessionProvider).can('server.manage'))
           OutlinedButton.icon(
-            onPressed: () => showDialog<void>(context: context, builder: (_) => const AddNodeDialog()),
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => const AddNodeDialog(),
+            ),
             icon: const Icon(Icons.add_to_queue_rounded, size: 18),
             label: Text(l.serverAddNode),
           ),
-        RangePicker(value: _range, options: usageRanges, onChanged: (r) => setState(() => _range = r)),
+        RangePicker(
+          value: _range,
+          options: usageRanges,
+          onChanged: (r) => setState(() => _range = r),
+        ),
       ],
       children: [
         AsyncBlock(
@@ -77,10 +90,15 @@ class _ServerPageState extends ConsumerState<ServerPage> {
           data: (list) => Column(
             children: [
               for (final n in list) ...[
-                NodeCard(node: n, multiNode: list.length > 1 || n.unschedulable),
+                NodeCard(
+                  node: n,
+                  multiNode: list.length > 1 || n.unschedulable,
+                ),
                 const SizedBox(height: NectarTokens.gap),
                 if (history.hasValue)
-                  for (final h in history.value!.where((h) => h.name == n.name)) ...[
+                  for (final h in history.value!.where(
+                    (h) => h.name == n.name,
+                  )) ...[
                     _NodeHistoryCard(history: h, range: _range),
                     const SizedBox(height: NectarTokens.gap),
                   ],
@@ -97,7 +115,11 @@ class _ServerPageState extends ConsumerState<ServerPage> {
           child: AsyncBlock(
             value: events,
             loadingHeight: 80,
-            data: (list) => EventList(events: list, showNamespace: true, empty: 'No warnings. All quiet.'),
+            data: (list) => EventList(
+              events: list,
+              showNamespace: true,
+              empty: 'No warnings. All quiet.',
+            ),
           ),
         ),
       ],
@@ -129,12 +151,40 @@ class _NodeHistoryCard extends StatelessWidget {
       fill: true,
       points: [for (final p in pts) (p.t, p.memB.toDouble())],
     );
-    final rx = ChartSeries(label: l.serverIn, color: c.running, points: [for (final p in pts) (p.t, p.rxBps.toDouble())]);
-    final tx = ChartSeries(label: l.serverOut, color: NectarTokens.amber, points: [for (final p in pts) (p.t, p.txBps.toDouble())]);
+    final rx = ChartSeries(
+      label: l.serverIn,
+      color: c.running,
+      points: [for (final p in pts) (p.t, p.rxBps.toDouble())],
+    );
+    final tx = ChartSeries(
+      label: l.serverOut,
+      color: NectarTokens.amber,
+      points: [for (final p in pts) (p.t, p.txBps.toDouble())],
+    );
     final charts = [
-      ('CPU', TimeSeriesChart(series: [cpu], formatY: (v) => formatCpu(v.round()), yMax: history.cpuAllocM.toDouble())),
-      ('Memory', TimeSeriesChart(series: [mem], formatY: (v) => formatBytes(v.round()), yMax: history.memAllocB.toDouble())),
-      ('Network', TimeSeriesChart(series: [rx, tx], formatY: (v) => '${formatBytes(v.round())}/s')),
+      (
+        'CPU',
+        TimeSeriesChart(
+          series: [cpu],
+          formatY: (v) => formatCpu(v.round()),
+          yMax: history.cpuAllocM.toDouble(),
+        ),
+      ),
+      (
+        'Memory',
+        TimeSeriesChart(
+          series: [mem],
+          formatY: (v) => formatBytes(v.round()),
+          yMax: history.memAllocB.toDouble(),
+        ),
+      ),
+      (
+        'Network',
+        TimeSeriesChart(
+          series: [rx, tx],
+          formatY: (v) => '${formatBytes(v.round())}/s',
+        ),
+      ),
     ];
     return NCard(
       title: l.serverHistoryLast(history.name, range),
@@ -143,7 +193,9 @@ class _NodeHistoryCard extends StatelessWidget {
         children: [
           LayoutBuilder(
             builder: (context, box) {
-              final cols = box.maxWidth >= 1000 ? 3 : (box.maxWidth >= 640 ? 2 : 1);
+              final cols = box.maxWidth >= 1000
+                  ? 3
+                  : (box.maxWidth >= 640 ? 2 : 1);
               final w = (box.maxWidth - (cols - 1) * 20) / cols;
               return Wrap(
                 spacing: 20,
@@ -154,7 +206,14 @@ class _NodeHistoryCard extends StatelessWidget {
                       width: w,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [Text(title, style: Theme.of(context).textTheme.titleSmall), const SizedBox(height: 8), chart],
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          chart,
+                        ],
                       ),
                     ),
                 ],
@@ -166,7 +225,8 @@ class _NodeHistoryCard extends StatelessWidget {
             UsageBar(
               label: l.serverDisk,
               value: last.diskUsed / last.diskTotal,
-              trailing: '${formatBytes(last.diskUsed)} of ${formatBytes(last.diskTotal)}',
+              trailing:
+                  '${formatBytes(last.diskUsed)} of ${formatBytes(last.diskTotal)}',
             ),
           ],
         ],

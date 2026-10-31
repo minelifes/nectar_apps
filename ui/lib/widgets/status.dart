@@ -6,12 +6,16 @@ import '../theme/tokens.dart';
 enum StatusTone { running, deploying, warning, failed, stopped }
 
 StatusTone toneFor(String status) => switch (status) {
-      'running' || 'live' || 'active' || 'ready' || 'scheduled' => StatusTone.running,
-      'deploying' || 'pending' || 'waiting' || 'new' => StatusTone.deploying,
-      'degraded' || 'warning' => StatusTone.warning,
-      'failed' || 'error' => StatusTone.failed,
-      _ => StatusTone.stopped,
-    };
+  'running' ||
+  'live' ||
+  'active' ||
+  'ready' ||
+  'scheduled' => StatusTone.running,
+  'deploying' || 'pending' || 'waiting' || 'new' => StatusTone.deploying,
+  'degraded' || 'warning' => StatusTone.warning,
+  'failed' || 'error' => StatusTone.failed,
+  _ => StatusTone.stopped,
+};
 
 Color toneColor(BuildContext context, StatusTone tone) {
   final c = NectarColors.of(context);
@@ -25,10 +29,10 @@ Color toneColor(BuildContext context, StatusTone tone) {
 }
 
 String statusLabel(String status) => switch (status) {
-      'new' => 'Not deployed',
-      '' => 'Unknown',
-      _ => status[0].toUpperCase() + status.substring(1),
-    };
+  'new' => 'Not deployed',
+  '' => 'Unknown',
+  _ => status[0].toUpperCase() + status.substring(1),
+};
 
 /// A small colored dot. Pulses while the status is in progress (deploying).
 class StatusDot extends StatefulWidget {
@@ -41,10 +45,12 @@ class StatusDot extends StatefulWidget {
   State<StatusDot> createState() => _StatusDotState();
 }
 
-class _StatusDotState extends State<StatusDot> with SingleTickerProviderStateMixin {
+class _StatusDotState extends State<StatusDot>
+    with SingleTickerProviderStateMixin {
   AnimationController? _pulse;
 
-  bool get _animated => toneFor(widget.status) == StatusTone.deploying && widget.status != 'new';
+  bool get _animated =>
+      toneFor(widget.status) == StatusTone.deploying && widget.status != 'new';
 
   @override
   void initState() {
@@ -60,7 +66,10 @@ class _StatusDotState extends State<StatusDot> with SingleTickerProviderStateMix
 
   void _sync() {
     if (_animated && _pulse == null) {
-      _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat(reverse: true);
+      _pulse = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 1100),
+      )..repeat(reverse: true);
     } else if (!_animated && _pulse != null) {
       _pulse!.dispose();
       _pulse = null;
@@ -82,12 +91,20 @@ class _StatusDotState extends State<StatusDot> with SingleTickerProviderStateMix
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: widget.size)],
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.45),
+            blurRadius: widget.size,
+          ),
+        ],
       ),
     );
     final pulse = _pulse;
     if (pulse == null) return dot;
-    return FadeTransition(opacity: Tween(begin: 0.35, end: 1.0).animate(pulse), child: dot);
+    return FadeTransition(
+      opacity: Tween(begin: 0.35, end: 1.0).animate(pulse),
+      child: dot,
+    );
   }
 }
 
@@ -115,7 +132,12 @@ class StatusPill extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label ?? statusLabel(status),
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color, height: 1.2),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+              height: 1.2,
+            ),
           ),
         ],
       ),

@@ -57,7 +57,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   String _greeting(String name) {
     final h = DateTime.now().hour;
-    final part = h < 5 ? 'evening' : (h < 12 ? 'morning' : (h < 18 ? 'afternoon' : 'evening'));
+    final part = h < 5
+        ? 'evening'
+        : (h < 12 ? 'morning' : (h < 18 ? 'afternoon' : 'evening'));
     final first = name.trim().split(' ').first;
     return first.isEmpty ? 'Good $part' : 'Good $part, $first';
   }
@@ -71,7 +73,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final activity = ref.watch(recentActivityProvider);
     final wide = MediaQuery.sizeOf(context).width >= 1180;
     final onboarding = ref.watch(onboardingProvider);
-    final needsSetup = onboarding.hasValue && onboarding.value != null && onboarding.value!['done'] != true;
+    final needsSetup =
+        onboarding.hasValue &&
+        onboarding.value != null &&
+        onboarding.value!['done'] != true;
     if (needsSetup && !_onboardingShown) {
       _onboardingShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -80,7 +85,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     }
 
     final firing = ref.watch(firingAlertsProvider);
-    final server = canServer ? _ServerSection(nodes: ref.watch(nodesProvider)) : null;
+    final server = canServer
+        ? _ServerSection(nodes: ref.watch(nodesProvider))
+        : null;
     final entries = activity.hasValue ? activity.value : null;
     final feed = entries == null ? null : ActivityCard(entries: entries);
 
@@ -109,13 +116,23 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   const Icon(Icons.flag_rounded, color: NectarTokens.amber),
                   const SizedBox(width: 12),
                   Expanded(child: Text(l.dashboardFinishSettingUpDomainHttps)),
-                  FilledButton(onPressed: () => context.go('/welcome'), child: Text(l.dashboardContinueSetup)),
+                  FilledButton(
+                    onPressed: () => context.go('/welcome'),
+                    child: Text(l.dashboardContinueSetup),
+                  ),
                 ],
               ),
             ),
           ),
         // alerts I marked as read stay on the Alerts page only
-        if (firing.value case final list?) FiringAlertsCard(alerts: [for (final a in list) if (!a.read) a], readActions: true),
+        if (firing.value case final list?)
+          FiringAlertsCard(
+            alerts: [
+              for (final a in list)
+                if (!a.read) a,
+            ],
+            readActions: true,
+          ),
         // .value keeps the last stats during refreshes and failed refreshes (no layout jump)
         if (projects.value case final list?) _Stats(items: list),
         if (wide && (server != null || feed != null))
@@ -123,7 +140,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (server != null) Expanded(flex: 3, child: server),
-              if (server != null && feed != null) const SizedBox(width: NectarTokens.gap),
+              if (server != null && feed != null)
+                const SizedBox(width: NectarTokens.gap),
               if (feed != null) Expanded(flex: 2, child: feed),
             ],
           )
@@ -132,16 +150,27 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         const SizedBox(height: NectarTokens.gapLarge),
         SectionLabel(
           'Projects',
-          trailing: TextButton(onPressed: () => context.go('/projects'), child: Text(l.projectAllProjects)),
+          trailing: TextButton(
+            onPressed: () => context.go('/projects'),
+            child: Text(l.projectAllProjects),
+          ),
         ),
         AsyncBlock(
           value: projects,
           onRetry: _refresh,
           data: (list) => list.isEmpty
               ? _NoProjects(canCreate: session.can('project.create'))
-              : Column(children: [for (final (p, apps) in list) _ProjectApps(project: p, apps: apps)]),
+              : Column(
+                  children: [
+                    for (final (p, apps) in list)
+                      _ProjectApps(project: p, apps: apps),
+                  ],
+                ),
         ),
-        if (!wide && feed != null) ...[const SizedBox(height: NectarTokens.gapLarge), feed],
+        if (!wide && feed != null) ...[
+          const SizedBox(height: NectarTokens.gapLarge),
+          feed,
+        ],
       ],
     );
   }
@@ -156,20 +185,26 @@ class _ServerSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = S.of(context);
     return nodes.when(
-        skipLoadingOnRefresh: true,
-        skipLoadingOnReload: true,
-        skipError: nodes.hasValue, // a failed refresh keeps the last values on screen
-        data: (list) => Column(
-          children: [
-            for (final n in list) Padding(padding: const EdgeInsets.only(bottom: NectarTokens.gap), child: NodeCard(node: n)),
-          ],
-        ),
-        loading: () => NCard(title: s.navServer, child: LoadingBlock(height: 140)),
-        error: (e, _) => NCard(
-          title: s.navServer,
-          child: ErrorBlock(error: e, compact: true),
-        ),
-      );
+      skipLoadingOnRefresh: true,
+      skipLoadingOnReload: true,
+      skipError:
+          nodes.hasValue, // a failed refresh keeps the last values on screen
+      data: (list) => Column(
+        children: [
+          for (final n in list)
+            Padding(
+              padding: const EdgeInsets.only(bottom: NectarTokens.gap),
+              child: NodeCard(node: n),
+            ),
+        ],
+      ),
+      loading: () =>
+          NCard(title: s.navServer, child: LoadingBlock(height: 140)),
+      error: (e, _) => NCard(
+        title: s.navServer,
+        child: ErrorBlock(error: e, compact: true),
+      ),
+    );
   }
 }
 
@@ -182,8 +217,16 @@ class _Stats extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final apps = [for (final (_, a) in items) ...a];
-    final running = apps.where((a) => toneFor(a.status) == StatusTone.running).length;
-    final failing = apps.where((a) => toneFor(a.status) == StatusTone.failed || toneFor(a.status) == StatusTone.warning).length;
+    final running = apps
+        .where((a) => toneFor(a.status) == StatusTone.running)
+        .length;
+    final failing = apps
+        .where(
+          (a) =>
+              toneFor(a.status) == StatusTone.failed ||
+              toneFor(a.status) == StatusTone.warning,
+        )
+        .length;
     final deploying = apps.where((a) => a.status == 'deploying').length;
     return Padding(
       padding: const EdgeInsets.only(bottom: NectarTokens.gap),
@@ -191,10 +234,29 @@ class _Stats extends StatelessWidget {
         spacing: NectarTokens.gap,
         runSpacing: NectarTokens.gap,
         children: [
-          _StatTile(label: s.navProjects, value: '${items.length}', icon: Icons.folder_rounded),
-          _StatTile(label: s.projectApps, value: '${apps.length}', icon: Icons.apps_rounded),
-          _StatTile(label: s.statusRunning, value: '$running', icon: Icons.check_circle_rounded, tone: StatusTone.running),
-          if (deploying > 0) _StatTile(label: s.statusDeploying, value: '$deploying', icon: Icons.sync_rounded, tone: StatusTone.deploying),
+          _StatTile(
+            label: s.navProjects,
+            value: '${items.length}',
+            icon: Icons.folder_rounded,
+          ),
+          _StatTile(
+            label: s.projectApps,
+            value: '${apps.length}',
+            icon: Icons.apps_rounded,
+          ),
+          _StatTile(
+            label: s.statusRunning,
+            value: '$running',
+            icon: Icons.check_circle_rounded,
+            tone: StatusTone.running,
+          ),
+          if (deploying > 0)
+            _StatTile(
+              label: s.statusDeploying,
+              value: '$deploying',
+              icon: Icons.sync_rounded,
+              tone: StatusTone.deploying,
+            ),
           _StatTile(
             label: s.dashboardNeedAttention,
             value: '$failing',
@@ -208,7 +270,12 @@ class _Stats extends StatelessWidget {
 }
 
 class _StatTile extends StatelessWidget {
-  const _StatTile({required this.label, required this.value, required this.icon, this.tone});
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.tone,
+  });
 
   final String label;
   final String value;
@@ -235,7 +302,10 @@ class _StatTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value, style: theme.textTheme.headlineSmall?.copyWith(height: 1.1)),
+              Text(
+                value,
+                style: theme.textTheme.headlineSmall?.copyWith(height: 1.1),
+              ),
               Text(label, style: theme.textTheme.bodySmall),
             ],
           ),
@@ -271,7 +341,10 @@ class _ProjectApps extends StatelessWidget {
                 children: [
                   Text(project.name, style: theme.textTheme.titleMedium),
                   const SizedBox(width: 8),
-                  Text(project.namespace, style: TextStyle(color: c.muted, fontSize: 12.5)),
+                  Text(
+                    project.namespace,
+                    style: TextStyle(color: c.muted, fontSize: 12.5),
+                  ),
                   Icon(Icons.chevron_right_rounded, size: 18, color: c.muted),
                 ],
               ),
@@ -279,12 +352,18 @@ class _ProjectApps extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (apps.isEmpty)
-            Text(s.dashboardNoAppsYet, style: TextStyle(color: c.muted, fontSize: 13.5))
+            Text(
+              s.dashboardNoAppsYet,
+              style: TextStyle(color: c.muted, fontSize: 13.5),
+            )
           else
             Wrap(
               spacing: 12,
               runSpacing: 12,
-              children: [for (final a in apps) AppTile(app: a, onTap: () => context.go('/apps/${a.id}'))],
+              children: [
+                for (final a in apps)
+                  AppTile(app: a, onTap: () => context.go('/apps/${a.id}')),
+              ],
             ),
         ],
       ),
@@ -301,18 +380,18 @@ class _NoProjects extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = S.of(context);
     return NCard(
-        child: EmptyState(
-          icon: Icons.rocket_launch_rounded,
-          title: s.dashboardNothingDeployedYet,
-          message: s.dashboardAProjectIsASpace,
-          action: canCreate
-              ? FilledButton.icon(
-                  onPressed: () => showNewProjectDialog(context, ref),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text(s.projectNewProject),
-                )
-              : null,
-        ),
-      );
+      child: EmptyState(
+        icon: Icons.rocket_launch_rounded,
+        title: s.dashboardNothingDeployedYet,
+        message: s.dashboardAProjectIsASpace,
+        action: canCreate
+            ? FilledButton.icon(
+                onPressed: () => showNewProjectDialog(context, ref),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: Text(s.projectNewProject),
+              )
+            : null,
+      ),
+    );
   }
 }

@@ -42,20 +42,25 @@ class WebOptionsForm {
   String get jsonKey => value.toJson().toString();
 
   WebOptions get value => WebOptions(
-        redirects: [
-          for (final r in rules)
-            if (r.from.text.trim().isNotEmpty && r.to.text.trim().isNotEmpty)
-              RedirectRule(from: r.from.text.trim(), to: r.to.text.trim(), code: r.code, prefix: r.prefix),
-        ],
-        allowIps: _lines(allowIps.text),
-        responseHeaders: _parseHeaders(responseHeaders.text),
-        requestHeaders: _parseHeaders(requestHeaders.text),
-        corsOrigins: cors ? _lines(corsOrigins.text) : const [],
-        corsCredentials: cors && corsCredentials,
-        compress: compress,
-        hsts: hsts,
-        hstsSubdomains: hsts > 0 && hstsSubdomains,
-      );
+    redirects: [
+      for (final r in rules)
+        if (r.from.text.trim().isNotEmpty && r.to.text.trim().isNotEmpty)
+          RedirectRule(
+            from: r.from.text.trim(),
+            to: r.to.text.trim(),
+            code: r.code,
+            prefix: r.prefix,
+          ),
+    ],
+    allowIps: _lines(allowIps.text),
+    responseHeaders: _parseHeaders(responseHeaders.text),
+    requestHeaders: _parseHeaders(requestHeaders.text),
+    corsOrigins: cors ? _lines(corsOrigins.text) : const [],
+    corsCredentials: cors && corsCredentials,
+    compress: compress,
+    hsts: hsts,
+    hstsSubdomains: hsts > 0 && hstsSubdomains,
+  );
 
   void dispose() {
     for (final c in [allowIps, responseHeaders, requestHeaders, corsOrigins]) {
@@ -66,15 +71,22 @@ class WebOptionsForm {
     }
   }
 
-  static List<String> _lines(String t) => t.split(RegExp(r'[\n,]')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+  static List<String> _lines(String t) => t
+      .split(RegExp(r'[\n,]'))
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
 
-  static String _headersText(Map<String, String> h) => h.entries.map((e) => '${e.key}: ${e.value}').join('\n');
+  static String _headersText(Map<String, String> h) =>
+      h.entries.map((e) => '${e.key}: ${e.value}').join('\n');
 
   static Map<String, String> _parseHeaders(String t) {
     final out = <String, String>{};
     for (final line in t.split('\n')) {
       final i = line.indexOf(':');
-      if (i > 0) out[line.substring(0, i).trim()] = line.substring(i + 1).trim();
+      if (i > 0) {
+        out[line.substring(0, i).trim()] = line.substring(i + 1).trim();
+      }
     }
     return out;
   }
@@ -82,10 +94,10 @@ class WebOptionsForm {
 
 class _RuleRow {
   _RuleRow([RedirectRule? r])
-      : from = TextEditingController(text: r?.from ?? ''),
-        to = TextEditingController(text: r?.to ?? ''),
-        code = r?.code ?? 301,
-        prefix = r?.prefix ?? false;
+    : from = TextEditingController(text: r?.from ?? ''),
+      to = TextEditingController(text: r?.to ?? ''),
+      code = r?.code ?? 301,
+      prefix = r?.prefix ?? false;
 
   final TextEditingController from;
   final TextEditingController to;
@@ -100,7 +112,11 @@ class _RuleRow {
 
 /// The fields of a [WebOptionsForm]; [onChanged] rebuilds the parent.
 class WebOptionsFields extends StatelessWidget {
-  const WebOptionsFields({super.key, required this.form, required this.onChanged});
+  const WebOptionsFields({
+    super.key,
+    required this.form,
+    required this.onChanged,
+  });
 
   final WebOptionsForm form;
   final VoidCallback onChanged;
@@ -122,10 +138,27 @@ class WebOptionsFields extends StatelessWidget {
               runSpacing: 6,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                SizedBox(width: 120, child: TextField(controller: r.from, decoration: InputDecoration(labelText: s.updateFrom, hintText: '/old', isDense: true))),
+                SizedBox(
+                  width: 120,
+                  child: TextField(
+                    controller: r.from,
+                    decoration: InputDecoration(
+                      labelText: s.updateFrom,
+                      hintText: '/old',
+                      isDense: true,
+                    ),
+                  ),
+                ),
                 SizedBox(
                   width: 190,
-                  child: TextField(controller: r.to, decoration: InputDecoration(labelText: s.backupTo, hintText: s.appNewOrHttps, isDense: true)),
+                  child: TextField(
+                    controller: r.to,
+                    decoration: InputDecoration(
+                      labelText: s.backupTo,
+                      hintText: s.appNewOrHttps,
+                      isDense: true,
+                    ),
+                  ),
                 ),
                 DropdownButton<int>(
                   value: r.code,
@@ -143,17 +176,20 @@ class WebOptionsFields extends StatelessWidget {
                 ),
                 Tooltip(
                   message: s.appAlsoRedirectFromAndKeep,
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Checkbox(
-                      value: r.prefix,
-                      visualDensity: VisualDensity.compact,
-                      onChanged: (v) {
-                        r.prefix = v ?? false;
-                        onChanged();
-                      },
-                    ),
-                    const Text('sub-paths', style: TextStyle(fontSize: 12.5)),
-                  ]),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        value: r.prefix,
+                        visualDensity: VisualDensity.compact,
+                        onChanged: (v) {
+                          r.prefix = v ?? false;
+                          onChanged();
+                        },
+                      ),
+                      const Text('sub-paths', style: TextStyle(fontSize: 12.5)),
+                    ],
+                  ),
                 ),
                 IconButton(
                   tooltip: s.appRemoveRule,
@@ -185,7 +221,11 @@ class WebOptionsFields extends StatelessWidget {
           controller: form.allowIps,
           minLines: 1,
           maxLines: 4,
-          decoration: InputDecoration(labelText: s.appAllowedIps, hintText: '203.0.113.0/24', isDense: true),
+          decoration: InputDecoration(
+            labelText: s.appAllowedIps,
+            hintText: '203.0.113.0/24',
+            isDense: true,
+          ),
         ),
         const SizedBox(height: 4),
         Text(s.appOneIpOrCidrPer, style: hint),
@@ -195,14 +235,22 @@ class WebOptionsFields extends StatelessWidget {
           controller: form.responseHeaders,
           minLines: 1,
           maxLines: 5,
-          decoration: InputDecoration(labelText: s.appResponseHeaders, hintText: s.appXFrameOptionsDeny, isDense: true),
+          decoration: InputDecoration(
+            labelText: s.appResponseHeaders,
+            hintText: s.appXFrameOptionsDeny,
+            isDense: true,
+          ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: form.requestHeaders,
           minLines: 1,
           maxLines: 4,
-          decoration: InputDecoration(labelText: s.appRequestHeadersToTheApp, hintText: s.appXEnvStaging, isDense: true),
+          decoration: InputDecoration(
+            labelText: s.appRequestHeadersToTheApp,
+            hintText: s.appXEnvStaging,
+            isDense: true,
+          ),
         ),
         const SizedBox(height: 4),
         Text(s.appNameValuePerLineAn, style: hint),
@@ -221,7 +269,11 @@ class WebOptionsFields extends StatelessWidget {
             controller: form.corsOrigins,
             minLines: 1,
             maxLines: 4,
-            decoration: InputDecoration(labelText: s.appAllowedOrigins, hintText: 'https://app.example.com', isDense: true),
+            decoration: InputDecoration(
+              labelText: s.appAllowedOrigins,
+              hintText: 'https://app.example.com',
+              isDense: true,
+            ),
           ),
           const SizedBox(height: 4),
           Text(s.appOnePerLineOrFor, style: hint),
@@ -247,8 +299,21 @@ class WebOptionsFields extends StatelessWidget {
           subtitle: Text(s.appHtmlCssJsJsonThat),
         ),
         DropdownButtonFormField<int>(
-          initialValue: const [0, 300, 86400, 15768000, 31536000, 63072000].contains(form.hsts) ? form.hsts : 31536000,
-          decoration: InputDecoration(labelText: s.appHstsBrowsersOnlyUseHttps, isDense: true),
+          initialValue:
+              const [
+                0,
+                300,
+                86400,
+                15768000,
+                31536000,
+                63072000,
+              ].contains(form.hsts)
+              ? form.hsts
+              : 31536000,
+          decoration: InputDecoration(
+            labelText: s.appHstsBrowsersOnlyUseHttps,
+            isDense: true,
+          ),
           items: [
             DropdownMenuItem(value: 0, child: Text(s.appOff)),
             DropdownMenuItem(value: 300, child: Text(s.app5MinutesTesting)),

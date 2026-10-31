@@ -6,7 +6,11 @@ const _apiOverride = String.fromEnvironment('NECTAR_API');
 
 /// Where the panel is and how to authenticate against it.
 class ServerConfig {
-  const ServerConfig({required this.baseUrl, required this.useTokens, required this.canChange});
+  const ServerConfig({
+    required this.baseUrl,
+    required this.useTokens,
+    required this.canChange,
+  });
 
   /// Panel origin without `/api` (null = native app that has not been connected yet).
   final String? baseUrl;
@@ -21,14 +25,26 @@ class ServerConfig {
 
   static Future<ServerConfig> load() async {
     if (_apiOverride.isNotEmpty) {
-      return ServerConfig(baseUrl: normalize(_apiOverride), useTokens: true, canChange: false);
+      return ServerConfig(
+        baseUrl: normalize(_apiOverride),
+        useTokens: true,
+        canChange: false,
+      );
     }
     if (kIsWeb) {
       // the panel serves this web app: same origin, cookie session
-      return ServerConfig(baseUrl: Uri.base.origin, useTokens: false, canChange: false);
+      return ServerConfig(
+        baseUrl: Uri.base.origin,
+        useTokens: false,
+        canChange: false,
+      );
     }
     final prefs = await SharedPreferences.getInstance();
-    return ServerConfig(baseUrl: prefs.getString(_key), useTokens: true, canChange: true);
+    return ServerConfig(
+      baseUrl: prefs.getString(_key),
+      useTokens: true,
+      canChange: true,
+    );
   }
 
   static Future<void> save(String? url) async {

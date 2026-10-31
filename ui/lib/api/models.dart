@@ -3,12 +3,20 @@
 int _int(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
 String _str(Object? v) => v is String ? v : (v == null ? '' : '$v');
 bool _bool(Object? v) => v == true;
-DateTime? _time(Object? v) => v is String ? DateTime.tryParse(v)?.toLocal() : null;
-Map<String, dynamic> _map(Object? v) => v is Map ? Map<String, dynamic>.from(v) : const {};
+DateTime? _time(Object? v) =>
+    v is String ? DateTime.tryParse(v)?.toLocal() : null;
+Map<String, dynamic> _map(Object? v) =>
+    v is Map ? Map<String, dynamic>.from(v) : const {};
 List<dynamic> _list(Object? v) => v is List ? v : const [];
 
 class VersionInfo {
-  const VersionInfo({required this.version, required this.apiVersion, this.commit = '', this.minClientVersion = '', this.clockSkew});
+  const VersionInfo({
+    required this.version,
+    required this.apiVersion,
+    this.commit = '',
+    this.minClientVersion = '',
+    this.clockSkew,
+  });
 
   final String version;
   final int apiVersion;
@@ -25,13 +33,20 @@ class VersionInfo {
       apiVersion: _int(m['api_version']),
       commit: _str(m['commit']),
       minClientVersion: _str(m['min_client_version']),
-      clockSkew: DateTime.tryParse(_str(m['server_time']))?.difference(DateTime.now()),
+      clockSkew: DateTime.tryParse(
+        _str(m['server_time']),
+      )?.difference(DateTime.now()),
     );
   }
 }
 
 class User {
-  const User({required this.id, required this.email, required this.name, required this.isOwner});
+  const User({
+    required this.id,
+    required this.email,
+    required this.name,
+    required this.isOwner,
+  });
 
   final int id;
   final String email;
@@ -39,19 +54,31 @@ class User {
   final bool isOwner;
 
   String get initials {
-    final parts = (name.trim().isEmpty ? email : name).trim().split(RegExp(r'[\s@._-]+')).where((p) => p.isNotEmpty);
+    final parts = (name.trim().isEmpty ? email : name)
+        .trim()
+        .split(RegExp(r'[\s@._-]+'))
+        .where((p) => p.isNotEmpty);
     return parts.take(2).map((p) => p[0].toUpperCase()).join();
   }
 
   factory User.fromJson(Object? j) {
     final m = _map(j);
-    return User(id: _int(m['id']), email: _str(m['email']), name: _str(m['name']), isOwner: _bool(m['is_owner']));
+    return User(
+      id: _int(m['id']),
+      email: _str(m['email']),
+      name: _str(m['name']),
+      isOwner: _bool(m['is_owner']),
+    );
   }
 }
 
 /// Effective permissions (`GET /api/me/permissions`). The UI hides what the user cannot do; the API enforces it.
 class Permissions {
-  const Permissions({required this.owner, required this.global, required this.projects});
+  const Permissions({
+    required this.owner,
+    required this.global,
+    required this.projects,
+  });
 
   final bool owner;
   final Set<String> global;
@@ -61,11 +88,15 @@ class Permissions {
 
   /// True if the permission is granted globally or in at least one project.
   bool canAnywhere(String permission) =>
-      owner || global.contains(permission) || projects.values.any((p) => p.contains(permission));
+      owner ||
+      global.contains(permission) ||
+      projects.values.any((p) => p.contains(permission));
 
   bool can(String permission, {int? projectId}) {
     if (owner || global.contains(permission)) return true;
-    if (projectId != null) return projects[projectId]?.contains(permission) ?? false;
+    if (projectId != null) {
+      return projects[projectId]?.contains(permission) ?? false;
+    }
     return false;
   }
 
@@ -75,13 +106,22 @@ class Permissions {
     for (final e in _map(m['projects']).entries) {
       projects[int.tryParse(e.key) ?? -1] = _list(e.value).map(_str).toSet();
     }
-    return Permissions(owner: _bool(m['owner']), global: _list(m['global']).map(_str).toSet(), projects: projects);
+    return Permissions(
+      owner: _bool(m['owner']),
+      global: _list(m['global']).map(_str).toSet(),
+      projects: projects,
+    );
   }
 }
 
 /// CPU/memory amounts reported for nodes.
 class NodeResources {
-  const NodeResources({required this.cpuMillicores, required this.memoryBytes, this.storageBytes = 0, this.pods = 0});
+  const NodeResources({
+    required this.cpuMillicores,
+    required this.memoryBytes,
+    this.storageBytes = 0,
+    this.pods = 0,
+  });
 
   final int cpuMillicores;
   final int memoryBytes;
@@ -136,8 +176,12 @@ class NodeInfo {
   /// null when metrics-server is not available.
   final NodeResources? usage;
 
-  double? get cpuRatio => usage == null || allocatable.cpuMillicores == 0 ? null : usage!.cpuMillicores / allocatable.cpuMillicores;
-  double? get memoryRatio => usage == null || allocatable.memoryBytes == 0 ? null : usage!.memoryBytes / allocatable.memoryBytes;
+  double? get cpuRatio => usage == null || allocatable.cpuMillicores == 0
+      ? null
+      : usage!.cpuMillicores / allocatable.cpuMillicores;
+  double? get memoryRatio => usage == null || allocatable.memoryBytes == 0
+      ? null
+      : usage!.memoryBytes / allocatable.memoryBytes;
 
   factory NodeInfo.fromJson(Object? j) {
     final m = _map(j);
@@ -161,7 +205,13 @@ class NodeInfo {
 }
 
 class Quota {
-  const Quota({this.cpuMillicores = 0, this.memoryMb = 0, this.storageGb = 0, this.pods = 0, this.apps = 0});
+  const Quota({
+    this.cpuMillicores = 0,
+    this.memoryMb = 0,
+    this.storageGb = 0,
+    this.pods = 0,
+    this.apps = 0,
+  });
 
   final int cpuMillicores;
   final int memoryMb;
@@ -229,7 +279,11 @@ class Project {
 
 /// A project env group: variables shared by several apps of the project.
 class EnvGroupInfo {
-  const EnvGroupInfo({required this.name, required this.vars, required this.apps});
+  const EnvGroupInfo({
+    required this.name,
+    required this.vars,
+    required this.apps,
+  });
 
   final String name;
   final List<EnvVar> vars;
@@ -237,7 +291,11 @@ class EnvGroupInfo {
 
   factory EnvGroupInfo.fromJson(Object? j) {
     final m = _map(j);
-    return EnvGroupInfo(name: _str(m['name']), vars: listOf(m['vars'], EnvVar.fromJson), apps: _list(m['apps']).map(_str).toList());
+    return EnvGroupInfo(
+      name: _str(m['name']),
+      vars: listOf(m['vars'], EnvVar.fromJson),
+      apps: _list(m['apps']).map(_str).toList(),
+    );
   }
 }
 
@@ -289,7 +347,8 @@ class App {
   final DateTime? updatedAt;
 
   int get resumeReplicas => _int(config['resume_replicas']);
-  List<AppVolume> get volumes => _list(config['volumes']).map(AppVolume.fromJson).toList();
+  List<AppVolume> get volumes =>
+      _list(config['volumes']).map(AppVolume.fromJson).toList();
 
   /// Project env groups whose variables the app gets.
   List<String> get envGroups => _list(config['env_groups']).map(_str).toList();
@@ -330,7 +389,13 @@ class App {
 }
 
 class AuditEntry {
-  const AuditEntry({required this.id, required this.userEmail, required this.action, required this.target, this.createdAt});
+  const AuditEntry({
+    required this.id,
+    required this.userEmail,
+    required this.action,
+    required this.target,
+    this.createdAt,
+  });
 
   final int id;
   final String userEmail;
@@ -351,7 +416,12 @@ class AuditEntry {
 }
 
 class PanelSettings {
-  const PanelSettings({required this.baseDomain, required this.gatewayConfigured, required this.gatewayReachable, required this.routing});
+  const PanelSettings({
+    required this.baseDomain,
+    required this.gatewayConfigured,
+    required this.gatewayReachable,
+    required this.routing,
+  });
 
   final String baseDomain;
   final bool gatewayConfigured;
@@ -371,7 +441,12 @@ class PanelSettings {
 }
 
 class RuntimeVersion {
-  const RuntimeVersion({required this.id, required this.label, required this.image, required this.isDefault});
+  const RuntimeVersion({
+    required this.id,
+    required this.label,
+    required this.image,
+    required this.isDefault,
+  });
 
   final String id;
   final String label;
@@ -380,7 +455,12 @@ class RuntimeVersion {
 
   factory RuntimeVersion.fromJson(Object? j) {
     final m = _map(j);
-    return RuntimeVersion(id: _str(m['id']), label: _str(m['label']), image: _str(m['image']), isDefault: _bool(m['default']));
+    return RuntimeVersion(
+      id: _str(m['id']),
+      label: _str(m['label']),
+      image: _str(m['image']),
+      isDefault: _bool(m['default']),
+    );
   }
 }
 
@@ -416,8 +496,9 @@ class Runtime {
 
   bool get takesImage => artifactKind == 'none';
 
-  RuntimeVersion? get defaultVersion =>
-      versions.isEmpty ? null : versions.firstWhere((v) => v.isDefault, orElse: () => versions.first);
+  RuntimeVersion? get defaultVersion => versions.isEmpty
+      ? null
+      : versions.firstWhere((v) => v.isDefault, orElse: () => versions.first);
 
   factory Runtime.fromJson(Object? j) {
     final m = _map(j);
@@ -491,7 +572,14 @@ class DetectResult {
 }
 
 class Artifact {
-  const Artifact({required this.id, required this.filename, required this.size, required this.sha256, required this.detect, this.createdAt});
+  const Artifact({
+    required this.id,
+    required this.filename,
+    required this.size,
+    required this.sha256,
+    required this.detect,
+    this.createdAt,
+  });
 
   final int id;
   final String filename;
@@ -601,7 +689,8 @@ class Domain {
   final String redirectTo;
   final DateTime? certNotAfter;
 
-  String get url => '${tls ? 'https' : 'http'}://$host${pathPrefix == '/' || pathPrefix.isEmpty ? '' : pathPrefix}';
+  String get url =>
+      '${tls ? 'https' : 'http'}://$host${pathPrefix == '/' || pathPrefix.isEmpty ? '' : pathPrefix}';
 
   factory Domain.fromJson(Object? j) {
     final m = _map(j);
@@ -629,7 +718,12 @@ class Domain {
 
 /// One redirect rule of a domain (checked in order before the app).
 class RedirectRule {
-  const RedirectRule({required this.from, required this.to, this.code = 301, this.prefix = false});
+  const RedirectRule({
+    required this.from,
+    required this.to,
+    this.code = 301,
+    this.prefix = false,
+  });
 
   final String from;
   final String to;
@@ -640,10 +734,20 @@ class RedirectRule {
 
   factory RedirectRule.fromJson(Object? j) {
     final m = _map(j);
-    return RedirectRule(from: _str(m['from']), to: _str(m['to']), code: m['code'] == null ? 301 : _int(m['code']), prefix: _bool(m['prefix']));
+    return RedirectRule(
+      from: _str(m['from']),
+      to: _str(m['to']),
+      code: m['code'] == null ? 301 : _int(m['code']),
+      prefix: _bool(m['prefix']),
+    );
   }
 
-  Map<String, dynamic> toJson() => {'from': from, 'to': to, 'code': code, if (prefix) 'prefix': true};
+  Map<String, dynamic> toJson() => {
+    'from': from,
+    'to': to,
+    'code': code,
+    if (prefix) 'prefix': true,
+  };
 }
 
 /// The gateway's per-domain HTTP options (feature web-options).
@@ -675,21 +779,30 @@ class WebOptions {
   final bool hstsSubdomains;
 
   bool get isEmpty =>
-      redirects.isEmpty && allowIps.isEmpty && responseHeaders.isEmpty && requestHeaders.isEmpty && corsOrigins.isEmpty && !compress && hsts == 0;
+      redirects.isEmpty &&
+      allowIps.isEmpty &&
+      responseHeaders.isEmpty &&
+      requestHeaders.isEmpty &&
+      corsOrigins.isEmpty &&
+      !compress &&
+      hsts == 0;
 
   /// Short summary for lists ("2 redirects · allowlist · CORS · gzip · HSTS").
   String get summary => [
-        if (redirects.isNotEmpty) '${redirects.length} redirect${redirects.length == 1 ? '' : 's'}',
-        if (allowIps.isNotEmpty) 'IP allowlist',
-        if (responseHeaders.isNotEmpty || requestHeaders.isNotEmpty) 'headers',
-        if (corsOrigins.isNotEmpty) 'CORS',
-        if (compress) 'gzip',
-        if (hsts > 0) 'HSTS',
-      ].join(' · ');
+    if (redirects.isNotEmpty)
+      '${redirects.length} redirect${redirects.length == 1 ? '' : 's'}',
+    if (allowIps.isNotEmpty) 'IP allowlist',
+    if (responseHeaders.isNotEmpty || requestHeaders.isNotEmpty) 'headers',
+    if (corsOrigins.isNotEmpty) 'CORS',
+    if (compress) 'gzip',
+    if (hsts > 0) 'HSTS',
+  ].join(' · ');
 
   factory WebOptions.fromJson(Object? j) {
     final m = _map(j);
-    Map<String, String> headers(Object? v) => {for (final e in _map(v).entries) e.key: _str(e.value)};
+    Map<String, String> headers(Object? v) => {
+      for (final e in _map(v).entries) e.key: _str(e.value),
+    };
     final cors = _map(m['cors']);
     return WebOptions(
       redirects: listOf(m['redirects'], RedirectRule.fromJson),
@@ -706,15 +819,20 @@ class WebOptions {
 
   /// JSON for the API; an empty object clears every option.
   Map<String, dynamic> toJson() => {
-        if (redirects.isNotEmpty) 'redirects': [for (final r in redirects) r.toJson()],
-        if (allowIps.isNotEmpty) 'allow_ips': allowIps,
-        if (responseHeaders.isNotEmpty) 'response_headers': responseHeaders,
-        if (requestHeaders.isNotEmpty) 'request_headers': requestHeaders,
-        if (corsOrigins.isNotEmpty) 'cors': {'origins': corsOrigins, if (corsCredentials) 'credentials': true},
-        if (compress) 'compress': true,
-        if (hsts > 0) 'hsts': hsts,
-        if (hsts > 0 && hstsSubdomains) 'hsts_subdomains': true,
-      };
+    if (redirects.isNotEmpty)
+      'redirects': [for (final r in redirects) r.toJson()],
+    if (allowIps.isNotEmpty) 'allow_ips': allowIps,
+    if (responseHeaders.isNotEmpty) 'response_headers': responseHeaders,
+    if (requestHeaders.isNotEmpty) 'request_headers': requestHeaders,
+    if (corsOrigins.isNotEmpty)
+      'cors': {
+        'origins': corsOrigins,
+        if (corsCredentials) 'credentials': true,
+      },
+    if (compress) 'compress': true,
+    if (hsts > 0) 'hsts': hsts,
+    if (hsts > 0 && hstsSubdomains) 'hsts_subdomains': true,
+  };
 }
 
 /// A row of the domains overview: a domain with its app and project.
@@ -874,11 +992,19 @@ class EnvVar {
   String? value;
   bool secret;
 
-  Map<String, Object?> toJson() => {'key': key, if (value != null) 'value': value, 'secret': secret};
+  Map<String, Object?> toJson() => {
+    'key': key,
+    if (value != null) 'value': value,
+    'secret': secret,
+  };
 
   factory EnvVar.fromJson(Object? j) {
     final m = _map(j);
-    return EnvVar(key: _str(m['key']), value: m['value'] == null ? null : _str(m['value']), secret: _bool(m['secret']));
+    return EnvVar(
+      key: _str(m['key']),
+      value: m['value'] == null ? null : _str(m['value']),
+      secret: _bool(m['secret']),
+    );
   }
 }
 
@@ -886,7 +1012,15 @@ double _dbl(Object? v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
 
 /// One averaged point of resource usage history.
 class MetricPoint {
-  const MetricPoint({required this.t, required this.cpuM, required this.memB, this.diskUsed = 0, this.diskTotal = 0, this.rxBps = 0, this.txBps = 0});
+  const MetricPoint({
+    required this.t,
+    required this.cpuM,
+    required this.memB,
+    this.diskUsed = 0,
+    this.diskTotal = 0,
+    this.rxBps = 0,
+    this.txBps = 0,
+  });
 
   final DateTime t;
   final int cpuM;
@@ -911,7 +1045,12 @@ class MetricPoint {
 }
 
 class NodeHistory {
-  const NodeHistory({required this.name, required this.cpuAllocM, required this.memAllocB, required this.points});
+  const NodeHistory({
+    required this.name,
+    required this.cpuAllocM,
+    required this.memAllocB,
+    required this.points,
+  });
 
   final String name;
   final int cpuAllocM;
@@ -931,7 +1070,12 @@ class NodeHistory {
 
 /// `GET /api/apps/{id}/usage`: usage history plus what the app requests (all replicas).
 class AppUsage {
-  const AppUsage({required this.points, required this.requestCpuM, required this.requestMemB, required this.replicas});
+  const AppUsage({
+    required this.points,
+    required this.requestCpuM,
+    required this.requestMemB,
+    required this.replicas,
+  });
 
   final List<MetricPoint> points;
   final int requestCpuM;
@@ -994,12 +1138,21 @@ class LogLine {
 
   factory LogLine.fromJson(Object? j) {
     final m = _map(j);
-    return LogLine(pod: _str(m['pod']), line: _str(m['line']), t: _time(m['t']));
+    return LogLine(
+      pod: _str(m['pod']),
+      line: _str(m['line']),
+      t: _time(m['t']),
+    );
   }
 }
 
 class PodBrief {
-  const PodBrief({required this.name, required this.phase, required this.restarts, required this.role});
+  const PodBrief({
+    required this.name,
+    required this.phase,
+    required this.restarts,
+    required this.role,
+  });
 
   final String name;
   final String phase;
@@ -1008,7 +1161,12 @@ class PodBrief {
 
   factory PodBrief.fromJson(Object? j) {
     final m = _map(j);
-    return PodBrief(name: _str(m['name']), phase: _str(m['phase']), restarts: _int(m['restarts']), role: _str(m['role']));
+    return PodBrief(
+      name: _str(m['name']),
+      phase: _str(m['phase']),
+      restarts: _int(m['restarts']),
+      role: _str(m['role']),
+    );
   }
 }
 
@@ -1051,7 +1209,12 @@ class TrafficSummary {
       status: {for (final e in _map(m['status']).entries) e.key: _int(e.value)},
       series: _list(m['series']).map((e) {
         final p = _map(e);
-        return (_time(p['time']) ?? DateTime.now(), _int(p['requests']), _int(p['errors']), _int(p['p95_ms']));
+        return (
+          _time(p['time']) ?? DateTime.now(),
+          _int(p['requests']),
+          _int(p['errors']),
+          _int(p['p95_ms']),
+        );
       }).toList(),
     );
   }
@@ -1093,7 +1256,8 @@ class AccessLogEntry {
   }
 }
 
-List<T> listOf<T>(Object? json, T Function(Object?) parse) => _list(json).map(parse).toList();
+List<T> listOf<T>(Object? json, T Function(Object?) parse) =>
+    _list(json).map(parse).toList();
 
 // ------------------------------------------------------------------ alerts --
 
@@ -1125,7 +1289,8 @@ class AlertIncident {
   final DateTime? startedAt;
   final DateTime? resolvedAt;
   final int notified;
-  final bool read; // marked as read by me: hidden from my dashboard and nav badge
+  final bool
+  read; // marked as read by me: hidden from my dashboard and nav badge
 
   bool get firing => state == 'firing';
   bool get critical => severity == 'critical';
@@ -1189,30 +1354,51 @@ class AlertRuleDef {
 }
 
 class AlertRule {
-  const AlertRule({required this.kind, required this.enabled, required this.threshold, required this.forSeconds});
+  const AlertRule({
+    required this.kind,
+    required this.enabled,
+    required this.threshold,
+    required this.forSeconds,
+  });
 
   final String kind;
   final bool enabled;
   final double threshold;
   final int forSeconds;
 
-  AlertRule copyWith({bool? enabled, double? threshold, int? forSeconds}) => AlertRule(
+  AlertRule copyWith({bool? enabled, double? threshold, int? forSeconds}) =>
+      AlertRule(
         kind: kind,
         enabled: enabled ?? this.enabled,
         threshold: threshold ?? this.threshold,
         forSeconds: forSeconds ?? this.forSeconds,
       );
 
-  Map<String, dynamic> toJson() => {'kind': kind, 'enabled': enabled, 'threshold': threshold, 'for': forSeconds};
+  Map<String, dynamic> toJson() => {
+    'kind': kind,
+    'enabled': enabled,
+    'threshold': threshold,
+    'for': forSeconds,
+  };
 
   factory AlertRule.fromJson(Object? j) {
     final m = _map(j);
-    return AlertRule(kind: _str(m['kind']), enabled: _bool(m['enabled']), threshold: _dbl(m['threshold']), forSeconds: _int(m['for']));
+    return AlertRule(
+      kind: _str(m['kind']),
+      enabled: _bool(m['enabled']),
+      threshold: _dbl(m['threshold']),
+      forSeconds: _int(m['for']),
+    );
   }
 }
 
 class AlertConfig {
-  const AlertConfig({required this.catalog, required this.rules, required this.panelUrl, required this.repeatHours});
+  const AlertConfig({
+    required this.catalog,
+    required this.rules,
+    required this.panelUrl,
+    required this.repeatHours,
+  });
 
   final List<AlertRuleDef> catalog;
   final List<AlertRule> rules;
@@ -1240,7 +1426,13 @@ class AlertConfig {
 
 /// A notification channel; secret config values come back as [maskedSecret].
 class AlertChannel {
-  const AlertChannel({required this.id, required this.kind, required this.name, required this.enabled, required this.config});
+  const AlertChannel({
+    required this.id,
+    required this.kind,
+    required this.name,
+    required this.enabled,
+    required this.config,
+  });
 
   final int id;
   final String kind; // ntfy | telegram | email | webhook
@@ -1249,17 +1441,26 @@ class AlertChannel {
   final Map<String, dynamic> config;
 
   String get summary => switch (kind) {
-        'ntfy' => '${_str(config['url'])}/${_str(config['topic'])}',
-        'telegram' => 'chat ${_str(config['chat_id'])}',
-        'email' => _str(config['to']),
-        'webhook' => _str(config['url']),
-        'push' => _str(config['to']).isEmpty ? 'everyone who can see the server' : _str(config['to']),
-        _ => kind,
-      };
+    'ntfy' => '${_str(config['url'])}/${_str(config['topic'])}',
+    'telegram' => 'chat ${_str(config['chat_id'])}',
+    'email' => _str(config['to']),
+    'webhook' => _str(config['url']),
+    'push' =>
+      _str(config['to']).isEmpty
+          ? 'everyone who can see the server'
+          : _str(config['to']),
+    _ => kind,
+  };
 
   factory AlertChannel.fromJson(Object? j) {
     final m = _map(j);
-    return AlertChannel(id: _int(m['id']), kind: _str(m['kind']), name: _str(m['name']), enabled: _bool(m['enabled']), config: _map(m['config']));
+    return AlertChannel(
+      id: _int(m['id']),
+      kind: _str(m['kind']),
+      name: _str(m['name']),
+      enabled: _bool(m['enabled']),
+      config: _map(m['config']),
+    );
   }
 }
 
@@ -1269,7 +1470,14 @@ const maskedSecret = '••••••••';
 // ------------------------------------------------------------ housekeeping --
 
 class NodeDisk {
-  const NodeDisk({required this.name, required this.fsUsed, required this.fsTotal, required this.imagesUsed, required this.imagesTotal, required this.error});
+  const NodeDisk({
+    required this.name,
+    required this.fsUsed,
+    required this.fsTotal,
+    required this.imagesUsed,
+    required this.imagesTotal,
+    required this.error,
+  });
 
   final String name;
   final int fsUsed;
@@ -1292,7 +1500,15 @@ class NodeDisk {
 }
 
 class ImageCleanup {
-  const ImageCleanup({required this.name, required this.node, required this.status, required this.removed, required this.message, this.started, this.finished});
+  const ImageCleanup({
+    required this.name,
+    required this.node,
+    required this.status,
+    required this.removed,
+    required this.message,
+    this.started,
+    this.finished,
+  });
 
   final String name;
   final String node;
@@ -1342,16 +1558,16 @@ class HousekeepingSettings {
   final List<String> prepullImages;
 
   Map<String, dynamic> toJson() => {
-        'keep_artifacts': keepArtifacts,
-        'audit_days': auditDays,
-        'alert_days': alertDays,
-        'k3s_data_dir': k3sDataDir,
-        'prepull': prepull,
-        'prepull_images': prepullImages,
-        'log_history_off': !logHistory,
-        'log_days': logDays,
-        'log_max_mb': logMaxMb,
-      };
+    'keep_artifacts': keepArtifacts,
+    'audit_days': auditDays,
+    'alert_days': alertDays,
+    'k3s_data_dir': k3sDataDir,
+    'prepull': prepull,
+    'prepull_images': prepullImages,
+    'log_history_off': !logHistory,
+    'log_days': logDays,
+    'log_max_mb': logMaxMb,
+  };
 
   factory HousekeepingSettings.fromJson(Object? j) {
     final m = _map(j);
@@ -1415,7 +1631,13 @@ class DiskReport {
 
 /// A persistent volume of an app (settings).
 class AppVolume {
-  AppVolume({required this.name, required this.mountPath, required this.sizeMb, this.storageClass = '', this.shared = false});
+  AppVolume({
+    required this.name,
+    required this.mountPath,
+    required this.sizeMb,
+    this.storageClass = '',
+    this.shared = false,
+  });
 
   String name;
   String mountPath;
@@ -1428,12 +1650,12 @@ class AppVolume {
   bool shared;
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'mount_path': mountPath,
-        'size_mb': sizeMb,
-        if (storageClass.isNotEmpty) 'storage_class': storageClass,
-        if (shared) 'shared': true,
-      };
+    'name': name,
+    'mount_path': mountPath,
+    'size_mb': sizeMb,
+    if (storageClass.isNotEmpty) 'storage_class': storageClass,
+    if (shared) 'shared': true,
+  };
 
   factory AppVolume.fromJson(Object? j) {
     final m = _map(j);
@@ -1449,7 +1671,13 @@ class AppVolume {
 
 /// A Kubernetes storage class volumes can use.
 class StorageClassInfo {
-  const StorageClassInfo({required this.name, required this.isDefault, required this.shared, required this.replicated, required this.nodeLocal});
+  const StorageClassInfo({
+    required this.name,
+    required this.isDefault,
+    required this.shared,
+    required this.replicated,
+    required this.nodeLocal,
+  });
 
   final String name;
   final bool isDefault;
@@ -1458,10 +1686,10 @@ class StorageClassInfo {
   final bool nodeLocal;
 
   String get description => [
-        if (nodeLocal) 'on one node' else if (replicated) 'replicated across nodes',
-        if (shared) 'can be shared',
-        if (isDefault) 'default',
-      ].join(' · ');
+    if (nodeLocal) 'on one node' else if (replicated) 'replicated across nodes',
+    if (shared) 'can be shared',
+    if (isDefault) 'default',
+  ].join(' · ');
 
   factory StorageClassInfo.fromJson(Object? j) {
     final m = _map(j);
@@ -1505,7 +1733,9 @@ class VolumeUse {
   final String storageClass;
   final String node;
 
-  String get label => volume.isNotEmpty ? '$project / $app · $volume' : (addon.isNotEmpty ? '$project / $addon (database)' : claim);
+  String get label => volume.isNotEmpty
+      ? '$project / $app · $volume'
+      : (addon.isNotEmpty ? '$project / $addon (database)' : claim);
 
   factory VolumeUse.fromJson(Object? j) {
     final m = _map(j);
@@ -1518,7 +1748,9 @@ class VolumeUse {
       claim: _str(m['claim']),
       requestedBytes: _int(m['requested_bytes']),
       usedBytes: m['used_bytes'] == null ? -1 : _int(m['used_bytes']),
-      availableBytes: m['available_bytes'] == null ? -1 : _int(m['available_bytes']),
+      availableBytes: m['available_bytes'] == null
+          ? -1
+          : _int(m['available_bytes']),
       storageClass: _str(m['storage_class']),
       node: _str(m['node']),
     );
@@ -1527,7 +1759,14 @@ class VolumeUse {
 
 /// A file or folder on a volume.
 class VolumeEntry {
-  const VolumeEntry({required this.name, required this.type, required this.size, required this.modified, required this.mode, required this.owner});
+  const VolumeEntry({
+    required this.name,
+    required this.type,
+    required this.size,
+    required this.modified,
+    required this.mode,
+    required this.owner,
+  });
 
   final String name;
 
@@ -1598,7 +1837,12 @@ class VolumeInfo {
 
 /// A config file mounted into the app's containers.
 class AppFile {
-  AppFile({required this.path, this.content, this.secret = false, this.size = 0});
+  AppFile({
+    required this.path,
+    this.content,
+    this.secret = false,
+    this.size = 0,
+  });
 
   String path;
 
@@ -1607,18 +1851,33 @@ class AppFile {
   bool secret;
   final int size;
 
-  Map<String, Object?> toJson() => {'path': path, if (content != null) 'content': content, 'secret': secret};
+  Map<String, Object?> toJson() => {
+    'path': path,
+    if (content != null) 'content': content,
+    'secret': secret,
+  };
 
   factory AppFile.fromJson(Object? j) {
     final m = _map(j);
-    return AppFile(path: _str(m['path']), content: m['content'] == null ? null : _str(m['content']), secret: _bool(m['secret']), size: _int(m['size']));
+    return AppFile(
+      path: _str(m['path']),
+      content: m['content'] == null ? null : _str(m['content']),
+      secret: _bool(m['secret']),
+      size: _int(m['size']),
+    );
   }
 }
 
 // ------------------------------------------------------------------ add-ons --
 
 class AddonKindInfo {
-  const AddonKindInfo({required this.id, required this.name, required this.port, required this.versions, required this.minMemoryMb});
+  const AddonKindInfo({
+    required this.id,
+    required this.name,
+    required this.port,
+    required this.versions,
+    required this.minMemoryMb,
+  });
 
   final String id;
   final String name;
@@ -1626,7 +1885,9 @@ class AddonKindInfo {
   final List<(String, bool)> versions; // (id, default)
   final int minMemoryMb;
 
-  String get defaultVersion => versions.where((v) => v.$2).map((v) => v.$1).firstOrNull ?? (versions.isEmpty ? '' : versions.first.$1);
+  String get defaultVersion =>
+      versions.where((v) => v.$2).map((v) => v.$1).firstOrNull ??
+      (versions.isEmpty ? '' : versions.first.$1);
 
   factory AddonKindInfo.fromJson(Object? j) {
     final m = _map(j);
@@ -1635,7 +1896,9 @@ class AddonKindInfo {
       name: _str(m['name']),
       port: _int(m['port']),
       minMemoryMb: _int(m['min_memory_mb']),
-      versions: _list(m['versions']).map((v) => (_str(_map(v)['id']), _bool(_map(v)['default']))).toList(),
+      versions: _list(
+        m['versions'],
+      ).map((v) => (_str(_map(v)['id']), _bool(_map(v)['default']))).toList(),
     );
   }
 }
@@ -1724,7 +1987,9 @@ class Addon {
       statusMessage: _str(m['status_message']),
       host: _str(m['host']),
       port: _int(m['port']),
-      links: _list(m['links']).map((l) => (_int(_map(l)['app_id']), _str(_map(l)['prefix']))).toList(),
+      links: _list(
+        m['links'],
+      ).map((l) => (_int(_map(l)['app_id']), _str(_map(l)['prefix']))).toList(),
       envNames: _list(m['env_names']).map(_str).toList(),
       ready: live == null ? null : _bool(live['ready']),
       problem: live == null ? '' : _str(live['problem']),
@@ -1737,7 +2002,12 @@ class Addon {
 
 /// An add-on an app gets variables from (a link, or a database shared with the project), with the variables.
 class AppAddonLink {
-  const AppAddonLink({required this.addon, required this.prefix, required this.env, this.shared = false});
+  const AppAddonLink({
+    required this.addon,
+    required this.prefix,
+    required this.env,
+    this.shared = false,
+  });
 
   final Addon addon;
   final String prefix;
@@ -1747,14 +2017,25 @@ class AppAddonLink {
   factory AppAddonLink.fromJson(Object? j) {
     final m = _map(j);
     return AppAddonLink(
-        addon: Addon.fromJson(m['addon']), prefix: _str(m['prefix']), env: _list(m['env']).map(_str).toList(), shared: _bool(m['shared']));
+      addon: Addon.fromJson(m['addon']),
+      prefix: _str(m['prefix']),
+      env: _list(m['env']).map(_str).toList(),
+      shared: _bool(m['shared']),
+    );
   }
 }
 
 // ------------------------------------------------------------------ backups --
 
 class BackupTarget {
-  const BackupTarget({required this.id, required this.name, required this.kind, required this.repository, required this.config, required this.plans});
+  const BackupTarget({
+    required this.id,
+    required this.name,
+    required this.kind,
+    required this.repository,
+    required this.config,
+    required this.plans,
+  });
 
   final int id;
   final String name;
@@ -1873,7 +2154,13 @@ class BackupPlan {
 }
 
 class BackupSnapshot {
-  const BackupSnapshot({required this.id, required this.shortId, required this.paths, this.time, this.dataAdded = 0});
+  const BackupSnapshot({
+    required this.id,
+    required this.shortId,
+    required this.paths,
+    this.time,
+    this.dataAdded = 0,
+  });
 
   final String id;
   final String shortId;
@@ -1896,7 +2183,15 @@ class BackupSnapshot {
 // ----------------------------------------------------------------- security --
 
 class UserSession {
-  const UserSession({required this.id, required this.kind, required this.userAgent, required this.ip, required this.current, this.createdAt, this.lastSeenAt});
+  const UserSession({
+    required this.id,
+    required this.kind,
+    required this.userAgent,
+    required this.ip,
+    required this.current,
+    this.createdAt,
+    this.lastSeenAt,
+  });
 
   final int id;
   final String kind; // web | mobile
@@ -1910,21 +2205,36 @@ class UserSession {
   String get device {
     final ua = userAgent;
     String os = '';
-    for (final (needle, name) in const [('iPhone', 'iPhone'), ('iPad', 'iPad'), ('Android', 'Android'), ('Mac OS', 'macOS'), ('Windows', 'Windows'), ('Linux', 'Linux')]) {
+    for (final (needle, name) in const [
+      ('iPhone', 'iPhone'),
+      ('iPad', 'iPad'),
+      ('Android', 'Android'),
+      ('Mac OS', 'macOS'),
+      ('Windows', 'Windows'),
+      ('Linux', 'Linux'),
+    ]) {
       if (ua.contains(needle)) {
         os = name;
         break;
       }
     }
     String app = '';
-    for (final (needle, name) in const [('Dart', 'Nectar app'), ('Edg/', 'Edge'), ('Chrome/', 'Chrome'), ('Firefox/', 'Firefox'), ('Safari/', 'Safari')]) {
+    for (final (needle, name) in const [
+      ('Dart', 'Nectar app'),
+      ('Edg/', 'Edge'),
+      ('Chrome/', 'Chrome'),
+      ('Firefox/', 'Firefox'),
+      ('Safari/', 'Safari'),
+    ]) {
       if (ua.contains(needle)) {
         app = name;
         break;
       }
     }
     final parts = [app, os].where((p) => p.isNotEmpty).toList();
-    return parts.isEmpty ? (kind == 'mobile' ? 'App' : 'Browser') : parts.join(' on ');
+    return parts.isEmpty
+        ? (kind == 'mobile' ? 'App' : 'Browser')
+        : parts.join(' on ');
   }
 
   factory UserSession.fromJson(Object? j) {
@@ -1983,7 +2293,12 @@ class ReleaseInfo {
 }
 
 class K3sNodeVersion {
-  const K3sNodeVersion({required this.name, required this.version, required this.controlPlane, required this.unschedulable});
+  const K3sNodeVersion({
+    required this.name,
+    required this.version,
+    required this.controlPlane,
+    required this.unschedulable,
+  });
 
   final String name;
   final String version;
@@ -2030,7 +2345,13 @@ class ComponentUpdate {
 
   bool get hasUpdate => available.isNotEmpty;
 
-  static const empty = ComponentUpdate(installed: '', available: [], waiting: '', error: '', source: '');
+  static const empty = ComponentUpdate(
+    installed: '',
+    available: [],
+    waiting: '',
+    error: '',
+    source: '',
+  );
 
   factory ComponentUpdate.fromJson(Object? j) {
     final m = _map(j);
@@ -2051,12 +2372,20 @@ class ComponentUpdate {
 }
 
 class UpdateStep {
-  const UpdateStep({required this.component, required this.from, required this.to, required this.state, required this.message, required this.migrations});
+  const UpdateStep({
+    required this.component,
+    required this.from,
+    required this.to,
+    required this.state,
+    required this.message,
+    required this.migrations,
+  });
 
   final String component;
   final String from;
   final String to;
-  final String state; // pending | running | done | skipped | failed | rolled_back
+  final String
+  state; // pending | running | done | skipped | failed | rolled_back
   final String message;
   final bool migrations;
 
@@ -2088,7 +2417,8 @@ class UpdateRunInfo {
 
   final int id;
   final String trigger; // manual | auto | rollback
-  final String state; // pending | running | succeeded | failed | rolled_back | rollback_failed
+  final String
+  state; // pending | running | succeeded | failed | rolled_back | rollback_failed
   final String summary;
   final String error;
   final List<UpdateStep> steps;
@@ -2102,7 +2432,9 @@ class UpdateRunInfo {
     final m = _map(j);
     final status = _map(m['status']);
     var steps = listOf(status['steps'], UpdateStep.fromJson);
-    if (steps.isEmpty) steps = listOf(_map(m['plan'])['steps'], UpdateStep.fromJson);
+    if (steps.isEmpty) {
+      steps = listOf(_map(m['plan'])['steps'], UpdateStep.fromJson);
+    }
     return UpdateRunInfo(
       id: _int(m['id']),
       trigger: _str(m['trigger']),
@@ -2110,7 +2442,10 @@ class UpdateRunInfo {
       summary: _str(m['summary']),
       error: _str(m['error']),
       steps: steps,
-      log: [for (final e in _list(status['log'])) (_time(_map(e)['t']), _str(_map(e)['m']))],
+      log: [
+        for (final e in _list(status['log']))
+          (_time(_map(e)['t']), _str(_map(e)['m'])),
+      ],
       startedAt: _time(m['started_at']),
       finishedAt: _time(m['finished_at']),
     );
@@ -2145,7 +2480,10 @@ class UpdatesOverview {
     final state = _map(m['state']);
     return UpdatesOverview(
       settings: _map(m['settings']),
-      components: {for (final e in _map(state['components']).entries) e.key: ComponentUpdate.fromJson(e.value)},
+      components: {
+        for (final e in _map(state['components']).entries)
+          e.key: ComponentUpdate.fromJson(e.value),
+      },
       bad: {for (final e in _map(m['bad']).entries) e.key: _str(e.value)},
       runs: listOf(m['runs'], UpdateRunInfo.fromJson),
       active: m['active'] == null ? null : UpdateRunInfo.fromJson(m['active']),
@@ -2226,7 +2564,11 @@ class RoleInfo {
 }
 
 class PermissionDef {
-  const PermissionDef({required this.key, required this.description, required this.projectScope});
+  const PermissionDef({
+    required this.key,
+    required this.description,
+    required this.projectScope,
+  });
 
   final String key;
   final String description;
@@ -2245,14 +2587,22 @@ class PermissionGroup {
       name: _str(m['group']),
       permissions: [
         for (final p in _list(m['permissions']))
-          PermissionDef(key: _str(_map(p)['key']), description: _str(_map(p)['description']), projectScope: _map(p)['scope'] == 'project'),
+          PermissionDef(
+            key: _str(_map(p)['key']),
+            description: _str(_map(p)['description']),
+            projectScope: _map(p)['scope'] == 'project',
+          ),
       ],
     );
   }
 }
 
 class RoleBindingInfo {
-  const RoleBindingInfo({required this.roleId, required this.roleName, this.projectId});
+  const RoleBindingInfo({
+    required this.roleId,
+    required this.roleName,
+    this.projectId,
+  });
 
   final int roleId;
   final String roleName;
@@ -2262,7 +2612,11 @@ class RoleBindingInfo {
 
   factory RoleBindingInfo.fromJson(Object? j) {
     final m = _map(j);
-    return RoleBindingInfo(roleId: _int(m['role_id']), roleName: _str(m['role_name']), projectId: m['project_id'] == null ? null : _int(m['project_id']));
+    return RoleBindingInfo(
+      roleId: _int(m['role_id']),
+      roleName: _str(m['role_name']),
+      projectId: m['project_id'] == null ? null : _int(m['project_id']),
+    );
   }
 }
 
@@ -2382,7 +2736,8 @@ class GatewayRoute {
   final String coveredBy;
   final DateTime? coveredUntil;
 
-  String get label => pathPrefix.isEmpty || pathPrefix == '/' ? domain : '$domain$pathPrefix';
+  String get label =>
+      pathPrefix.isEmpty || pathPrefix == '/' ? domain : '$domain$pathPrefix';
 
   factory GatewayRoute.fromJson(Object? j) {
     final m = _map(j);
@@ -2393,7 +2748,9 @@ class GatewayRoute {
       domain: _str(m['domain']),
       pathPrefix: _str(m['path_prefix']),
       mode: _str(m['mode']),
-      target: _str(m['mode']) == 'redirect' ? _str(m['redirect_url']) : '${_str(m['target_ip'])}${port > 0 ? ':$port' : ''}',
+      target: _str(m['mode']) == 'redirect'
+          ? _str(m['redirect_url'])
+          : '${_str(m['target_ip'])}${port > 0 ? ':$port' : ''}',
       rateLimit: _int(m['rate_limit']),
       acme: _bool(m['acme']),
       forceSsl: _bool(m['force_ssl']),
@@ -2401,9 +2758,13 @@ class GatewayRoute {
       managedBy: _str(m['managed_by']),
       maintenance: _bool(m['maintenance']),
       hcEnabled: _bool(m['hc_enabled']),
-      certNotAfter: notAfter > 0 ? DateTime.fromMillisecondsSinceEpoch(notAfter * 1000) : null,
+      certNotAfter: notAfter > 0
+          ? DateTime.fromMillisecondsSinceEpoch(notAfter * 1000)
+          : null,
       coveredBy: _str(m['covered_by']),
-      coveredUntil: _int(m['covered_until']) > 0 ? DateTime.fromMillisecondsSinceEpoch(_int(m['covered_until']) * 1000) : null,
+      coveredUntil: _int(m['covered_until']) > 0
+          ? DateTime.fromMillisecondsSinceEpoch(_int(m['covered_until']) * 1000)
+          : null,
     );
   }
 }
@@ -2467,7 +2828,9 @@ class CertificatesInfo {
   final String baseWildcard; // "*.<base domain>" or ""
   final List<GatewayCertificate> certificates;
 
-  bool get hasBaseWildcard => baseWildcard.isNotEmpty && certificates.any((c) => c.domain == baseWildcard);
+  bool get hasBaseWildcard =>
+      baseWildcard.isNotEmpty &&
+      certificates.any((c) => c.domain == baseWildcard);
 
   factory CertificatesInfo.fromJson(Object? j) {
     final m = _map(j);
@@ -2477,7 +2840,9 @@ class CertificatesInfo {
       dns: _bool(m['dns']),
       dnsProvider: _str(m['dns_provider']),
       baseWildcard: _str(m['base_wildcard']),
-      certificates: _list(m['certificates']).map(GatewayCertificate.fromJson).toList(),
+      certificates: _list(
+        m['certificates'],
+      ).map(GatewayCertificate.fromJson).toList(),
     );
   }
 }
@@ -2491,12 +2856,21 @@ class RouteHealth {
 
   factory RouteHealth.fromJson(Object? j) {
     final m = _map(j);
-    return RouteHealth(up: m['up'] is bool ? m['up'] as bool : null, lastError: _str(m['last_error']), lastCheck: _time(m['last_check']));
+    return RouteHealth(
+      up: m['up'] is bool ? m['up'] as bool : null,
+      lastError: _str(m['last_error']),
+      lastCheck: _time(m['last_check']),
+    );
   }
 }
 
 class BlockedIp {
-  const BlockedIp({required this.ip, required this.reason, this.blockedAt, this.expiresAt});
+  const BlockedIp({
+    required this.ip,
+    required this.reason,
+    this.blockedAt,
+    this.expiresAt,
+  });
 
   final String ip;
   final String reason;
@@ -2505,7 +2879,12 @@ class BlockedIp {
 
   factory BlockedIp.fromJson(Object? j) {
     final m = _map(j);
-    return BlockedIp(ip: _str(m['ip']), reason: _str(m['reason']), blockedAt: _time(m['blocked_at']), expiresAt: _time(m['expires_at']));
+    return BlockedIp(
+      ip: _str(m['ip']),
+      reason: _str(m['reason']),
+      blockedAt: _time(m['blocked_at']),
+      expiresAt: _time(m['expires_at']),
+    );
   }
 }
 
@@ -2562,7 +2941,9 @@ class AppSourceInfo {
       previews: _bool(m['previews']),
       previewDatabases: _bool(m['preview_databases']),
       previewForks: _bool(m['preview_forks']),
-      previewTtlDays: m['preview_ttl_days'] == null ? 14 : _int(m['preview_ttl_days']),
+      previewTtlDays: m['preview_ttl_days'] == null
+          ? 14
+          : _int(m['preview_ttl_days']),
     );
   }
 }
@@ -2645,7 +3026,8 @@ class BuildInfo {
   final DateTime? finishedAt;
 
   bool get running => status == 'running';
-  String get shortSha => commitSha.length > 7 ? commitSha.substring(0, 7) : commitSha;
+  String get shortSha =>
+      commitSha.length > 7 ? commitSha.substring(0, 7) : commitSha;
 
   factory BuildInfo.fromJson(Object? j) {
     final m = _map(j);
@@ -2668,7 +3050,12 @@ class BuildInfo {
 }
 
 class RegistryLogin {
-  const RegistryLogin({required this.id, required this.host, required this.username, this.updatedAt});
+  const RegistryLogin({
+    required this.id,
+    required this.host,
+    required this.username,
+    this.updatedAt,
+  });
 
   final int id;
   final String host;
@@ -2677,12 +3064,21 @@ class RegistryLogin {
 
   factory RegistryLogin.fromJson(Object? j) {
     final m = _map(j);
-    return RegistryLogin(id: _int(m['id']), host: _str(m['host']), username: _str(m['username']), updatedAt: _time(m['updated_at']));
+    return RegistryLogin(
+      id: _int(m['id']),
+      host: _str(m['host']),
+      username: _str(m['username']),
+      updatedAt: _time(m['updated_at']),
+    );
   }
 }
 
 class RegistrySettings {
-  const RegistrySettings({required this.logins, required this.builtinEnabled, required this.builtinHost});
+  const RegistrySettings({
+    required this.logins,
+    required this.builtinEnabled,
+    required this.builtinHost,
+  });
 
   final List<RegistryLogin> logins;
   final bool builtinEnabled;
@@ -2691,6 +3087,10 @@ class RegistrySettings {
   factory RegistrySettings.fromJson(Object? j) {
     final m = _map(j);
     final b = _map(m['builtin']);
-    return RegistrySettings(logins: listOf(m['logins'], RegistryLogin.fromJson), builtinEnabled: _bool(b['enabled']), builtinHost: _str(b['host']));
+    return RegistrySettings(
+      logins: listOf(m['logins'], RegistryLogin.fromJson),
+      builtinEnabled: _bool(b['enabled']),
+      builtinHost: _str(b['host']),
+    );
   }
 }

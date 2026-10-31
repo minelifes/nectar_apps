@@ -14,7 +14,11 @@ const _policies = {
   'patch': 'Auto: patch releases (+ security fixes)',
   'minor': 'Auto: patch + minor releases',
 };
-const _k3sPolicies = {'off': 'Off', 'notify': 'Notify only', 'auto': 'Auto: follow the channel'};
+const _k3sPolicies = {
+  'off': 'Off',
+  'notify': 'Notify only',
+  'auto': 'Auto: follow the channel',
+};
 const _days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 /// Policies per component, the maintenance window and the check interval.
@@ -53,7 +57,8 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
   }
 
   void _reset(Map<String, dynamic> s) {
-    Map<String, dynamic> m(String k) => Map<String, dynamic>.from(s[k] as Map? ?? const {});
+    Map<String, dynamic> m(String k) =>
+        Map<String, dynamic>.from(s[k] as Map? ?? const {});
     _comp = {'panel': m('panel'), 'gateway': m('gateway'), 'k3s': m('k3s')};
     final w = Map<String, dynamic>.from(s['window'] as Map? ?? const {});
     _windowDays = {for (final d in w['days'] as List? ?? const []) '$d'};
@@ -68,26 +73,41 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
 
   @override
   void dispose() {
-    for (final c in [_start, _end, _tz, _panelFeed, _gatewayFeed, _k3sChannel]) {
+    for (final c in [
+      _start,
+      _end,
+      _tz,
+      _panelFeed,
+      _gatewayFeed,
+      _k3sChannel,
+    ]) {
       c.dispose();
     }
     super.dispose();
   }
 
   void _set(String comp, String key, Object value) => setState(() {
-        _comp[comp]![key] = value;
-        _dirty = true;
-      });
+    _comp[comp]![key] = value;
+    _dirty = true;
+  });
 
   Future<void> _save() async {
-        final s = S.of(context);
+    final s = S.of(context);
     setState(() => _saving = true);
     final body = {
       'panel': {..._comp['panel']!, 'feed_url': _panelFeed.text.trim()},
       'gateway': {..._comp['gateway']!, 'feed_url': _gatewayFeed.text.trim()},
-      'k3s': {..._comp['k3s']!, 'channel': _k3sChannel.text.trim().isEmpty ? 'stable' : _k3sChannel.text.trim()},
+      'k3s': {
+        ..._comp['k3s']!,
+        'channel': _k3sChannel.text.trim().isEmpty
+            ? 'stable'
+            : _k3sChannel.text.trim(),
+      },
       'window': {
-        'days': [for (final d in _days) if (_windowDays.contains(d)) d],
+        'days': [
+          for (final d in _days)
+            if (_windowDays.contains(d)) d,
+        ],
         'start': _start.text.trim(),
         'end': _end.text.trim(),
         'timezone': _tz.text.trim(),
@@ -106,10 +126,17 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
     }
   }
 
-  Widget _policyRow(String comp, String label, Map<String, String> policies, {bool beta = true}) {
+  Widget _policyRow(
+    String comp,
+    String label,
+    Map<String, String> policies, {
+    bool beta = true,
+  }) {
     final l = S.of(context);
     final m = _comp[comp]!;
-    final policy = policies.containsKey(m['policy']) ? '${m['policy']}' : policies.keys.first;
+    final policy = policies.containsKey(m['policy'])
+        ? '${m['policy']}'
+        : policies.keys.first;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Wrap(
@@ -117,15 +144,27 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          SizedBox(width: 150, child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
+          SizedBox(
+            width: 150,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
           SizedBox(
             width: 320,
             child: DropdownButtonFormField<String>(
               key: ValueKey('$comp-$policy'),
               initialValue: policy,
               isExpanded: true,
-              decoration: InputDecoration(labelText: l.updatePolicy, isDense: true),
-              items: [for (final e in policies.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+              decoration: InputDecoration(
+                labelText: l.updatePolicy,
+                isDense: true,
+              ),
+              items: [
+                for (final e in policies.entries)
+                  DropdownMenuItem(value: e.key, child: Text(e.value)),
+              ],
               onChanged: (v) {
                 if (v != null) _set(comp, 'policy', v);
               },
@@ -133,7 +172,10 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
           ),
           if (beta)
             SegmentedButton<String>(
-              segments: [ButtonSegment(value: 'stable', label: Text(l.updateStable)), ButtonSegment(value: 'beta', label: Text(l.updateBeta))],
+              segments: [
+                ButtonSegment(value: 'stable', label: Text(l.updateStable)),
+                ButtonSegment(value: 'beta', label: Text(l.updateBeta)),
+              ],
               selected: {m['channel'] == 'beta' ? 'beta' : 'stable'},
               onSelectionChanged: (s) => _set(comp, 'channel', s.first),
             )
@@ -142,7 +184,11 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
               width: 160,
               child: TextField(
                 controller: _k3sChannel,
-                decoration: InputDecoration(labelText: l.updateChannel, hintText: l.updateStableLatestV131, isDense: true),
+                decoration: InputDecoration(
+                  labelText: l.updateChannel,
+                  hintText: l.updateStableLatestV131,
+                  isDense: true,
+                ),
                 onChanged: (_) => _dirty = true,
               ),
             ),
@@ -157,15 +203,20 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
     final c = NectarColors.of(context);
     return NCard(
       title: s.updateAutomaticUpdates,
-      trailing: FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
+      trailing: FilledButton(
+        onPressed: _saving ? null : _save,
+        child: Text(_saving ? 'Saving…' : 'Save'),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _policyRow('panel', 'Panel', _policies),
           _policyRow('gateway', 'Gateway', _policies),
           _policyRow('k3s', 'k3s', _k3sPolicies, beta: false),
-          Text(s.updateMajorAndBreakingReleasesAre,
-              style: TextStyle(color: c.muted, fontSize: 12.5)),
+          Text(
+            s.updateMajorAndBreakingReleasesAre,
+            style: TextStyle(color: c.muted, fontSize: 12.5),
+          ),
           const SizedBox(height: 18),
           const SectionLabel('Maintenance window'),
           Wrap(
@@ -190,23 +241,57 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
             children: [
               SizedBox(
                 width: 110,
-                child: TextField(controller: _start, decoration: InputDecoration(labelText: s.updateFrom, hintText: '03:00', isDense: true), onChanged: (_) => _dirty = true),
+                child: TextField(
+                  controller: _start,
+                  decoration: InputDecoration(
+                    labelText: s.updateFrom,
+                    hintText: '03:00',
+                    isDense: true,
+                  ),
+                  onChanged: (_) => _dirty = true,
+                ),
               ),
               SizedBox(
                 width: 110,
-                child: TextField(controller: _end, decoration: InputDecoration(labelText: s.backupTo, hintText: '05:00', isDense: true), onChanged: (_) => _dirty = true),
+                child: TextField(
+                  controller: _end,
+                  decoration: InputDecoration(
+                    labelText: s.backupTo,
+                    hintText: '05:00',
+                    isDense: true,
+                  ),
+                  onChanged: (_) => _dirty = true,
+                ),
               ),
               SizedBox(
                 width: 220,
                 child: TextField(
-                    controller: _tz, decoration: InputDecoration(labelText: s.updateTimeZone, hintText: s.updateUtcEuropeKyiv, isDense: true), onChanged: (_) => _dirty = true),
+                  controller: _tz,
+                  decoration: InputDecoration(
+                    labelText: s.updateTimeZone,
+                    hintText: s.updateUtcEuropeKyiv,
+                    isDense: true,
+                  ),
+                  onChanged: (_) => _dirty = true,
+                ),
               ),
               SizedBox(
                 width: 180,
                 child: DropdownButtonFormField<int>(
-                  initialValue: const [1, 3, 6, 12, 24].contains(_interval) ? _interval : 6,
-                  decoration: InputDecoration(labelText: s.updateCheckEvery, isDense: true),
-                  items: [for (final h in const [1, 3, 6, 12, 24]) DropdownMenuItem(value: h, child: Text(h == 1 ? '1 hour' : '$h hours'))],
+                  initialValue: const [1, 3, 6, 12, 24].contains(_interval)
+                      ? _interval
+                      : 6,
+                  decoration: InputDecoration(
+                    labelText: s.updateCheckEvery,
+                    isDense: true,
+                  ),
+                  items: [
+                    for (final h in const [1, 3, 6, 12, 24])
+                      DropdownMenuItem(
+                        value: h,
+                        child: Text(h == 1 ? '1 hour' : '$h hours'),
+                      ),
+                  ],
                   onChanged: (v) => setState(() {
                     _interval = v ?? 6;
                     _dirty = true;
@@ -216,8 +301,10 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(s.updateNoDaysAndNoTimes,
-              style: TextStyle(color: c.muted, fontSize: 12.5)),
+          Text(
+            s.updateNoDaysAndNoTimes,
+            style: TextStyle(color: c.muted, fontSize: 12.5),
+          ),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
             title: Text(s.updateUpdateSources, style: TextStyle(fontSize: 14)),
@@ -225,18 +312,30 @@ class _UpdateSettingsCardState extends ConsumerState<UpdateSettingsCard> {
             children: [
               TextField(
                 controller: _panelFeed,
-                decoration: InputDecoration(labelText: s.updatePanelFeedUrl, hintText: 'https://minelifes.github.io/nectar_apps/updates.json', isDense: true),
+                decoration: InputDecoration(
+                  labelText: s.updatePanelFeedUrl,
+                  hintText:
+                      'https://minelifes.github.io/nectar_apps/updates.json',
+                  isDense: true,
+                ),
                 onChanged: (_) => _dirty = true,
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: _gatewayFeed,
-                decoration: InputDecoration(labelText: s.updateGatewayFeedUrl, hintText: 'https://minelifes.github.io/nectar_gateway/updates.json', isDense: true),
+                decoration: InputDecoration(
+                  labelText: s.updateGatewayFeedUrl,
+                  hintText:
+                      'https://minelifes.github.io/nectar_gateway/updates.json',
+                  isDense: true,
+                ),
                 onChanged: (_) => _dirty = true,
               ),
               const SizedBox(height: 6),
-              Text(s.updateEmptyTheOfficialFeedsWhen,
-                  style: TextStyle(color: c.muted, fontSize: 12.5)),
+              Text(
+                s.updateEmptyTheOfficialFeedsWhen,
+                style: TextStyle(color: c.muted, fontSize: 12.5),
+              ),
             ],
           ),
         ],

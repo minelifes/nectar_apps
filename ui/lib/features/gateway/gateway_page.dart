@@ -31,7 +31,15 @@ class _GatewayPageState extends ConsumerState<GatewayPage> {
     if (!session.can('server.view')) {
       return PageScaffold(
         title: s.serverGateway,
-        children: [NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: s.noAccess, message: s.gatewayYourRoleDoesNotInclude))],
+        children: [
+          NCard(
+            child: EmptyState(
+              icon: Icons.lock_outline_rounded,
+              title: s.noAccess,
+              message: s.gatewayYourRoleDoesNotInclude,
+            ),
+          ),
+        ],
       );
     }
     return PageScaffold(
@@ -45,29 +53,41 @@ class _GatewayPageState extends ConsumerState<GatewayPage> {
         ref.invalidate(gatewayAccessLogProvider);
       },
       children: [
-        NTabs(index: _tab, labels: const ['Routes', 'Access log', 'Certificates', 'Blocked IPs'], onChanged: (i) => setState(() => _tab = i)),
+        NTabs(
+          index: _tab,
+          labels: const ['Routes', 'Access log', 'Certificates', 'Blocked IPs'],
+          onChanged: (i) => setState(() => _tab = i),
+        ),
         const SizedBox(height: NectarTokens.gap),
         switch (_tab) {
           0 => const _Routes(),
           1 => _AccessLogView(canBlock: session.can('server.manage')),
           2 => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [_Wildcards(canManage: session.can('settings.manage')), const SizedBox(height: NectarTokens.gap), const _Certificates()],
-            ),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Wildcards(canManage: session.can('settings.manage')),
+              const SizedBox(height: NectarTokens.gap),
+              const _Certificates(),
+            ],
+          ),
           _ => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Blocked(canManage: session.can('server.manage')),
-                if (session.can('settings.manage')) ...[const SizedBox(height: NectarTokens.gap), const _RateLimitBlocking()],
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Blocked(canManage: session.can('server.manage')),
+              if (session.can('settings.manage')) ...[
+                const SizedBox(height: NectarTokens.gap),
+                const _RateLimitBlocking(),
               ],
-            ),
+            ],
+          ),
         },
       ],
     );
   }
 }
 
-String _healthTone(RouteHealth? h) => h == null || h.up == null ? 'stopped' : (h.up! ? 'running' : 'failed');
+String _healthTone(RouteHealth? h) =>
+    h == null || h.up == null ? 'stopped' : (h.up! ? 'running' : 'failed');
 
 class _Routes extends ConsumerWidget {
   const _Routes();
@@ -83,14 +103,23 @@ class _Routes extends ConsumerWidget {
         value: routes,
         onRetry: () => ref.invalidate(gatewayRoutesProvider),
         data: (list) {
-          if (list.isEmpty) return EmptyState(icon: Icons.alt_route_rounded, title: l.gatewayNoRoutes, message: l.gatewayDomainsOfYourAppsAppear);
+          if (list.isEmpty) {
+            return EmptyState(
+              icon: Icons.alt_route_rounded,
+              title: l.gatewayNoRoutes,
+              message: l.gatewayDomainsOfYourAppsAppear,
+            );
+          }
           final down = list.where((r) => health[r.id]?.up == false).length;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
                 '${list.length} routes${down > 0 ? ' · $down failing their health check' : ''}',
-                style: TextStyle(color: down > 0 ? c.failed : c.muted, fontSize: 12.5),
+                style: TextStyle(
+                  color: down > 0 ? c.failed : c.muted,
+                  fontSize: 12.5,
+                ),
               ),
               const SizedBox(height: 6),
               for (final r in list) ...[
@@ -100,37 +129,69 @@ class _Routes extends ConsumerWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(padding: const EdgeInsets.only(top: 4), child: StatusDot(status: r.hcEnabled ? _healthTone(health[r.id]) : 'stopped')),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: StatusDot(
+                          status: r.hcEnabled
+                              ? _healthTone(health[r.id])
+                              : 'stopped',
+                        ),
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(r.label, style: monoStyle(context, size: 13.5)),
+                            Text(
+                              r.label,
+                              style: monoStyle(context, size: 13.5),
+                            ),
                             Text(
                               [
-                                r.mode == 'redirect' ? 'redirect → ${r.target}' : r.target,
+                                r.mode == 'redirect'
+                                    ? 'redirect → ${r.target}'
+                                    : r.target,
                                 if (r.maintenance) 'maintenance page',
-                                if (r.rateLimit > 0) '${r.rateLimit} req/s per IP' else 'no rate limit',
-                                if (r.managedBy == 'nectar-apps') 'managed by the panel' else if (r.managedBy.isNotEmpty) 'managed by ${r.managedBy}',
+                                if (r.rateLimit > 0)
+                                  '${r.rateLimit} req/s per IP'
+                                else
+                                  'no rate limit',
+                                if (r.managedBy == 'nectar-apps')
+                                  'managed by the panel'
+                                else if (r.managedBy.isNotEmpty)
+                                  'managed by ${r.managedBy}',
                                 if (!r.hcEnabled) 'no health check',
-                                if (health[r.id]?.lastError.isNotEmpty ?? false) health[r.id]!.lastError,
+                                if (health[r.id]?.lastError.isNotEmpty ?? false)
+                                  health[r.id]!.lastError,
                               ].join(' · '),
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 12, color: health[r.id]?.up == false ? c.failed : c.muted),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: health[r.id]?.up == false
+                                    ? c.failed
+                                    : c.muted,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      Icon(r.certNotAfter != null ? Icons.lock_rounded : Icons.lock_open_rounded, size: 16, color: r.certNotAfter != null ? c.running : c.muted),
+                      Icon(
+                        r.certNotAfter != null
+                            ? Icons.lock_rounded
+                            : Icons.lock_open_rounded,
+                        size: 16,
+                        color: r.certNotAfter != null ? c.running : c.muted,
+                      ),
                     ],
                   ),
                 ),
               ],
               const SizedBox(height: 8),
-              Text(l.gatewayRateLimitsTimeoutsAndBody,
-                  style: TextStyle(color: c.muted, fontSize: 12.5)),
+              Text(
+                l.gatewayRateLimitsTimeoutsAndBody,
+                style: TextStyle(color: c.muted, fontSize: 12.5),
+              ),
             ],
           );
         },
@@ -152,8 +213,15 @@ class _Certificates extends ConsumerWidget {
         value: routes,
         onRetry: () => ref.invalidate(gatewayRoutesProvider),
         data: (all) {
-          final list = all.where((r) => r.mode != 'redirect' || r.certNotAfter != null).toList()
-            ..sort((a, b) => (a.certNotAfter ?? DateTime(9999)).compareTo(b.certNotAfter ?? DateTime(9999)));
+          final list =
+              all
+                  .where((r) => r.mode != 'redirect' || r.certNotAfter != null)
+                  .toList()
+                ..sort(
+                  (a, b) => (a.certNotAfter ?? DateTime(9999)).compareTo(
+                    b.certNotAfter ?? DateTime(9999),
+                  ),
+                );
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -161,14 +229,25 @@ class _Certificates extends ConsumerWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
-                    r.certNotAfter == null && r.coveredUntil == null ? Icons.lock_open_rounded : Icons.verified_user_outlined,
+                    r.certNotAfter == null && r.coveredUntil == null
+                        ? Icons.lock_open_rounded
+                        : Icons.verified_user_outlined,
                     color: _certColor(context, r),
                   ),
                   title: Text(r.label, style: monoStyle(context, size: 13.5)),
-                  subtitle: Text(_certText(r), style: TextStyle(fontSize: 12.5, color: _certColor(context, r))),
+                  subtitle: Text(
+                    _certText(r),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: _certColor(context, r),
+                    ),
+                  ),
                 ),
               const SizedBox(height: 6),
-              Text(s.gatewayLetSEncryptCertificatesRenew, style: TextStyle(color: c.muted, fontSize: 12.5)),
+              Text(
+                s.gatewayLetSEncryptCertificatesRenew,
+                style: TextStyle(color: c.muted, fontSize: 12.5),
+              ),
             ],
           );
         },
@@ -177,12 +256,21 @@ class _Certificates extends ConsumerWidget {
   }
 
   static String _certText(GatewayRoute r) {
-    final source = switch (r.certSource) { 'acme' => 'Let\'s Encrypt', 'upload' => 'uploaded', 'file' => 'file', _ => '' };
+    final source = switch (r.certSource) {
+      'acme' => 'Let\'s Encrypt',
+      'upload' => 'uploaded',
+      'file' => 'file',
+      _ => '',
+    };
     if (r.certNotAfter == null && r.coveredUntil != null) {
       final days = r.coveredUntil!.difference(DateTime.now()).inDays;
       return 'served by ${r.coveredBy} · valid until ${r.coveredUntil!.toIso8601String().substring(0, 10)} ($days days)${r.forceSsl ? ' · HTTPS forced' : ''}';
     }
-    if (r.certNotAfter == null) return r.acme ? 'waiting for the first certificate (is DNS pointing here?)' : 'HTTP only';
+    if (r.certNotAfter == null) {
+      return r.acme
+          ? 'waiting for the first certificate (is DNS pointing here?)'
+          : 'HTTP only';
+    }
     final days = r.certNotAfter!.difference(DateTime.now()).inDays;
     final when = r.certNotAfter!.toIso8601String().substring(0, 10);
     return '${source.isEmpty ? '' : '$source · '}valid until $when (${days < 0 ? 'expired' : '$days days'})${r.forceSsl ? ' · HTTPS forced' : ''}';
@@ -203,7 +291,12 @@ class _Wildcards extends ConsumerWidget {
 
   final bool canManage;
 
-  Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() f, [String? done]) async {
+  Future<void> _run(
+    BuildContext context,
+    WidgetRef ref,
+    Future<void> Function() f, [
+    String? done,
+  ]) async {
     try {
       await f();
       ref.invalidate(gatewayCertificatesProvider);
@@ -214,7 +307,12 @@ class _Wildcards extends ConsumerWidget {
     }
   }
 
-  static String statusPill(String s) => switch (s) { 'valid' => 'running', 'expiring' => 'warning', 'expired' || 'failed' => 'failed', _ => 'pending' };
+  static String statusPill(String s) => switch (s) {
+    'valid' => 'running',
+    'expiring' => 'warning',
+    'expired' || 'failed' => 'failed',
+    _ => 'pending',
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -229,76 +327,174 @@ class _Wildcards extends ConsumerWidget {
         onRetry: () => ref.invalidate(gatewayCertificatesProvider),
         data: (i) {
           if (!i.supported) {
-            return Text(l.gatewayOneCertificateForYourDomain, style: TextStyle(color: c.muted));
+            return Text(
+              l.gatewayOneCertificateForYourDomain,
+              style: TextStyle(color: c.muted),
+            );
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(l.gatewayAWildcardCertificateExampleCom, style: TextStyle(color: c.muted, fontSize: 13)),
+              Text(
+                l.gatewayAWildcardCertificateExampleCom,
+                style: TextStyle(color: c.muted, fontSize: 13),
+              ),
               const SizedBox(height: 10),
               if (!i.acme)
-                Text(l.gatewayTheGatewaySLetS, style: TextStyle(color: c.warning))
+                Text(
+                  l.gatewayTheGatewaySLetS,
+                  style: TextStyle(color: c.warning),
+                )
               else
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Icon(i.dns ? Icons.dns_rounded : Icons.dns_outlined, size: 18, color: i.dns ? c.running : c.muted),
-                    Text(i.dns ? 'DNS-01 through ${i.dnsProvider.isEmpty ? 'your provider' : i.dnsProvider}' : 'No DNS provider yet'),
+                    Icon(
+                      i.dns ? Icons.dns_rounded : Icons.dns_outlined,
+                      size: 18,
+                      color: i.dns ? c.running : c.muted,
+                    ),
+                    Text(
+                      i.dns
+                          ? 'DNS-01 through ${i.dnsProvider.isEmpty ? 'your provider' : i.dnsProvider}'
+                          : 'No DNS provider yet',
+                    ),
                     if (canManage)
                       TextButton(
-                        onPressed: () => showDialog<void>(context: context, builder: (_) => _DnsDialog(configured: i.dns)),
-                        child: Text(i.dns ? 'Change token' : 'Set up Cloudflare'),
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          builder: (_) => _DnsDialog(configured: i.dns),
+                        ),
+                        child: Text(
+                          i.dns ? 'Change token' : 'Set up Cloudflare',
+                        ),
                       ),
                     if (canManage && i.dns)
                       TextButton(
                         onPressed: () async {
-                          if (!await confirmAction(context, l.gatewayRemoveTheDnsProvider, l.gatewayWildcardCertificatesStopRenewingUntil, l.backupRemove2, danger: true)) return;
+                          if (!await confirmAction(
+                            context,
+                            l.gatewayRemoveTheDnsProvider,
+                            l.gatewayWildcardCertificatesStopRenewingUntil,
+                            l.backupRemove2,
+                            danger: true,
+                          )) {
+                            return;
+                          }
                           if (!context.mounted) return;
-                          await _run(context, ref, () => api.put('/gateway/settings', data: {'dns_provider': ''}));
+                          await _run(
+                            context,
+                            ref,
+                            () => api.put(
+                              '/gateway/settings',
+                              data: {'dns_provider': ''},
+                            ),
+                          );
                         },
                         child: Text(l.backupRemove2),
                       ),
-                    if (canManage && i.dns && i.baseWildcard.isNotEmpty && !i.hasBaseWildcard)
+                    if (canManage &&
+                        i.dns &&
+                        i.baseWildcard.isNotEmpty &&
+                        !i.hasBaseWildcard)
                       FilledButton.icon(
-                        onPressed: () => _run(context, ref, () => api.post('/gateway/certificates', data: {'base_domain': true}),
-                            'Ordering ${i.baseWildcard} — this takes a minute or two'),
-                        icon: const Icon(Icons.add_moderator_outlined, size: 18),
+                        onPressed: () => _run(
+                          context,
+                          ref,
+                          () => api.post(
+                            '/gateway/certificates',
+                            data: {'base_domain': true},
+                          ),
+                          'Ordering ${i.baseWildcard} — this takes a minute or two',
+                        ),
+                        icon: const Icon(
+                          Icons.add_moderator_outlined,
+                          size: 18,
+                        ),
                         label: Text(l.gatewayGet(i.baseWildcard)),
                       ),
                     if (canManage && i.dns)
-                      OutlinedButton(onPressed: () => showDialog<void>(context: context, builder: (_) => const _WildcardDialog()), child: Text(l.gatewayOtherDomain)),
+                      OutlinedButton(
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          builder: (_) => const _WildcardDialog(),
+                        ),
+                        child: Text(l.gatewayOtherDomain),
+                      ),
                   ],
                 ),
               if (i.certificates.isNotEmpty) const SizedBox(height: 8),
               for (final cert in i.certificates)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: StatusPill(status: statusPill(cert.status), label: cert.status.isEmpty ? 'Pending' : cert.status[0].toUpperCase() + cert.status.substring(1)),
-                  title: Text(cert.names.join(' + '), style: monoStyle(context, size: 13.5)),
+                  leading: StatusPill(
+                    status: statusPill(cert.status),
+                    label: cert.status.isEmpty
+                        ? 'Pending'
+                        : cert.status[0].toUpperCase() +
+                              cert.status.substring(1),
+                  ),
+                  title: Text(
+                    cert.names.join(' + '),
+                    style: monoStyle(context, size: 13.5),
+                  ),
                   subtitle: Text(
                     [
-                      if (cert.notAfter != null) 'valid until ${cert.notAfter!.toIso8601String().substring(0, 10)}',
-                      if (cert.status == 'pending' && cert.lastError.isEmpty) 'ordering…',
-                      if (cert.serves.isNotEmpty) 'serves ${cert.serves.length} host${cert.serves.length == 1 ? '' : 's'}',
+                      if (cert.notAfter != null)
+                        'valid until ${cert.notAfter!.toIso8601String().substring(0, 10)}',
+                      if (cert.status == 'pending' && cert.lastError.isEmpty)
+                        'ordering…',
+                      if (cert.serves.isNotEmpty)
+                        'serves ${cert.serves.length} host${cert.serves.length == 1 ? '' : 's'}',
                       if (cert.lastError.isNotEmpty) cert.lastError,
                     ].join(' · '),
-                    style: TextStyle(fontSize: 12.5, color: cert.lastError.isNotEmpty ? c.failed : c.muted),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: cert.lastError.isNotEmpty ? c.failed : c.muted,
+                    ),
                   ),
                   trailing: canManage
                       ? PopupMenuButton<String>(
                           onSelected: (a) async {
                             if (a == 'renew') {
-                              await _run(context, ref, () => api.post('/gateway/certificates/${cert.id}/renew'), 'Renewing ${cert.domain}');
-                            } else if (await confirmAction(context, l.gatewayDelete(cert.domain),
-                                l.gatewayHostsItServesFallBack, l.actionDelete, danger: true)) {
-                              if (context.mounted) await _run(context, ref, () => api.delete('/gateway/certificates/${cert.id}'));
+                              await _run(
+                                context,
+                                ref,
+                                () => api.post(
+                                  '/gateway/certificates/${cert.id}/renew',
+                                ),
+                                'Renewing ${cert.domain}',
+                              );
+                            } else if (await confirmAction(
+                              context,
+                              l.gatewayDelete(cert.domain),
+                              l.gatewayHostsItServesFallBack,
+                              l.actionDelete,
+                              danger: true,
+                            )) {
+                              if (context.mounted) {
+                                await _run(
+                                  context,
+                                  ref,
+                                  () => api.delete(
+                                    '/gateway/certificates/${cert.id}',
+                                  ),
+                                );
+                              }
                             }
                           },
                           itemBuilder: (_) => [
-                            if (cert.acme) PopupMenuItem(value: 'renew', child: Text(l.gatewayRenewNow)),
-                            PopupMenuItem(value: 'delete', child: Text(l.actionDelete)),
+                            if (cert.acme)
+                              PopupMenuItem(
+                                value: 'renew',
+                                child: Text(l.gatewayRenewNow),
+                              ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text(l.actionDelete),
+                            ),
                           ],
                         )
                       : null,
@@ -334,7 +530,15 @@ class _DnsDialogState extends ConsumerState<_DnsDialog> {
     if (_token.text.trim().isEmpty) return;
     setState(() => _busy = true);
     try {
-      await ref.read(apiProvider).put('/gateway/settings', data: {'dns_provider': 'cloudflare', 'dns_api_token': _token.text.trim()});
+      await ref
+          .read(apiProvider)
+          .put(
+            '/gateway/settings',
+            data: {
+              'dns_provider': 'cloudflare',
+              'dns_api_token': _token.text.trim(),
+            },
+          );
       ref.invalidate(gatewayCertificatesProvider);
       if (mounted) Navigator.pop(context);
     } on Object catch (e) {
@@ -349,23 +553,41 @@ class _DnsDialogState extends ConsumerState<_DnsDialog> {
     final s = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
-      title: Text(widget.configured ? 'Change the Cloudflare token' : 'Cloudflare for wildcard certificates'),
+      title: Text(
+        widget.configured
+            ? 'Change the Cloudflare token'
+            : 'Cloudflare for wildcard certificates',
+      ),
       content: SizedBox(
         width: 460,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(s.gatewayInCloudflareMyProfileApi,
-                style: TextStyle(color: c.muted, fontSize: 13)),
+            Text(
+              s.gatewayInCloudflareMyProfileApi,
+              style: TextStyle(color: c.muted, fontSize: 13),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: _token, obscureText: true, autofocus: true, decoration: InputDecoration(labelText: s.gatewayApiToken), onSubmitted: (_) => _save()),
+            TextField(
+              controller: _token,
+              obscureText: true,
+              autofocus: true,
+              decoration: InputDecoration(labelText: s.gatewayApiToken),
+              onSubmitted: (_) => _save(),
+            ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-        FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave)),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _save,
+          child: Text(s.actionSave),
+        ),
       ],
     );
   }
@@ -392,7 +614,12 @@ class _WildcardDialogState extends ConsumerState<_WildcardDialog> {
   Future<void> _create() async {
     setState(() => _busy = true);
     try {
-      await ref.read(apiProvider).post('/gateway/certificates', data: {'domain': _domain.text.trim(), 'include_apex': _apex});
+      await ref
+          .read(apiProvider)
+          .post(
+            '/gateway/certificates',
+            data: {'domain': _domain.text.trim(), 'include_apex': _apex},
+          );
       ref.invalidate(gatewayCertificatesProvider);
       if (mounted) Navigator.pop(context);
     } on Object catch (e) {
@@ -406,27 +633,40 @@ class _WildcardDialogState extends ConsumerState<_WildcardDialog> {
   Widget build(BuildContext context) {
     final s = S.of(context);
     return AlertDialog(
-        title: Text(s.gatewayWildcardCertificate),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: _domain, autofocus: true, decoration: InputDecoration(labelText: s.gatewayDomain, hintText: s.gatewayExampleCom)),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _apex,
-                onChanged: (v) => setState(() => _apex = v ?? true),
-                title: Text(s.gatewayAlsoTheDomainItselfExample),
+      title: Text(s.gatewayWildcardCertificate),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _domain,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: s.gatewayDomain,
+                hintText: s.gatewayExampleCom,
               ),
-            ],
-          ),
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _apex,
+              onChanged: (v) => setState(() => _apex = v ?? true),
+              title: Text(s.gatewayAlsoTheDomainItselfExample),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-          FilledButton(onPressed: _busy ? null : _create, child: Text(s.gatewayOrder)),
-        ],
-      );
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _create,
+          child: Text(s.gatewayOrder),
+        ),
+      ],
+    );
   }
 }
 
@@ -434,7 +674,12 @@ class _WildcardDialogState extends ConsumerState<_WildcardDialog> {
 class _RateLimitBlocking extends ConsumerWidget {
   const _RateLimitBlocking();
 
-  static const _choices = {0: 'Never (only 429)', 10: '10 minutes', 60: '1 hour', 1440: '24 hours'};
+  static const _choices = {
+    0: 'Never (only 429)',
+    10: '10 minutes',
+    60: '1 hour',
+    1440: '24 hours',
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -448,28 +693,43 @@ class _RateLimitBlocking extends ConsumerWidget {
         onRetry: () => ref.invalidate(gatewaySettingsProvider),
         data: (m) {
           if (!m.containsKey('rate_limit_block_minutes')) {
-            return Text(s.gatewayThisNectarGatewayBlocksA,
-                style: TextStyle(color: c.muted));
+            return Text(
+              s.gatewayThisNectarGatewayBlocksA,
+              style: TextStyle(color: c.muted),
+            );
           }
           final cur = (m['rate_limit_block_minutes'] as num?)?.toInt() ?? 10;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(s.gatewayAboveADomainSRate, style: TextStyle(color: c.muted, fontSize: 13)),
+              Text(
+                s.gatewayAboveADomainSRate,
+                style: TextStyle(color: c.muted, fontSize: 13),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 children: [
-                  for (final e in {..._choices, if (!_choices.containsKey(cur)) cur: '$cur minutes'}.entries)
+                  for (final e in {
+                    ..._choices,
+                    if (!_choices.containsKey(cur)) cur: '$cur minutes',
+                  }.entries)
                     ChoiceChip(
                       label: Text(e.value),
                       selected: e.key == cur,
                       onSelected: (_) async {
                         try {
-                          await ref.read(apiProvider).put('/gateway/settings', data: {'rate_limit_block_minutes': e.key});
+                          await ref
+                              .read(apiProvider)
+                              .put(
+                                '/gateway/settings',
+                                data: {'rate_limit_block_minutes': e.key},
+                              );
                           ref.invalidate(gatewaySettingsProvider);
                         } on Object catch (err) {
-                          if (context.mounted) showSnack(context, describeError(err), error: true);
+                          if (context.mounted) {
+                            showSnack(context, describeError(err), error: true);
+                          }
                         }
                       },
                     ),
@@ -488,9 +748,15 @@ class _Blocked extends ConsumerWidget {
 
   final bool canManage;
 
-  Future<void> _unblock(BuildContext context, WidgetRef ref, BlockedIp b) async {
+  Future<void> _unblock(
+    BuildContext context,
+    WidgetRef ref,
+    BlockedIp b,
+  ) async {
     try {
-      await ref.read(apiProvider).delete('/gateway/blocked/${Uri.encodeComponent(b.ip)}');
+      await ref
+          .read(apiProvider)
+          .delete('/gateway/blocked/${Uri.encodeComponent(b.ip)}');
       ref.invalidate(blockedIpsProvider);
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
@@ -506,7 +772,10 @@ class _Blocked extends ConsumerWidget {
       title: s.gatewayBlockedIps,
       trailing: canManage
           ? FilledButton.icon(
-              onPressed: () => showDialog<void>(context: context, builder: (_) => const _BlockDialog()),
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => const _BlockDialog(),
+              ),
               icon: const Icon(Icons.block_rounded, size: 18),
               label: Text(s.gatewayBlockIp),
             )
@@ -515,7 +784,10 @@ class _Blocked extends ConsumerWidget {
         value: blocked,
         onRetry: () => ref.invalidate(blockedIpsProvider),
         data: (list) => list.isEmpty
-            ? Text(s.gatewayNobodyIsBlockedTheGateway, style: TextStyle(color: c.muted))
+            ? Text(
+                s.gatewayNobodyIsBlockedTheGateway,
+                style: TextStyle(color: c.muted),
+              )
             : Column(
                 children: [
                   for (final b in list)
@@ -526,12 +798,20 @@ class _Blocked extends ConsumerWidget {
                       subtitle: Text(
                         [
                           b.reason,
-                          if (b.blockedAt != null) 'since ${timeAgo(b.blockedAt)}',
-                          if (b.expiresAt != null && b.expiresAt!.year < DateTime.now().year + 5) 'until ${b.expiresAt!.toLocal().toString().substring(0, 16)}',
+                          if (b.blockedAt != null)
+                            'since ${timeAgo(b.blockedAt)}',
+                          if (b.expiresAt != null &&
+                              b.expiresAt!.year < DateTime.now().year + 5)
+                            'until ${b.expiresAt!.toLocal().toString().substring(0, 16)}',
                         ].join(' · '),
                         style: TextStyle(fontSize: 12.5, color: c.muted),
                       ),
-                      trailing: canManage ? TextButton(onPressed: () => _unblock(context, ref, b), child: Text(s.gatewayUnblock)) : null,
+                      trailing: canManage
+                          ? TextButton(
+                              onPressed: () => _unblock(context, ref, b),
+                              child: Text(s.gatewayUnblock),
+                            )
+                          : null,
                     ),
                 ],
               ),
@@ -563,7 +843,16 @@ class _BlockDialogState extends ConsumerState<_BlockDialog> {
 
   Future<void> _block() async {
     try {
-      await ref.read(apiProvider).post('/gateway/blocked', data: {'ip': _ip.text.trim(), 'reason': _reason.text.trim(), 'ttl_seconds': _hours * 3600});
+      await ref
+          .read(apiProvider)
+          .post(
+            '/gateway/blocked',
+            data: {
+              'ip': _ip.text.trim(),
+              'reason': _reason.text.trim(),
+              'ttl_seconds': _hours * 3600,
+            },
+          );
       ref.invalidate(blockedIpsProvider);
       if (mounted) Navigator.pop(context);
     } on Object catch (e) {
@@ -575,35 +864,50 @@ class _BlockDialogState extends ConsumerState<_BlockDialog> {
   Widget build(BuildContext context) {
     final s = S.of(context);
     return AlertDialog(
-        title: Text(s.gatewayBlockAnIp),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: _ip, decoration: InputDecoration(labelText: s.gatewayIpAddress, hintText: '203.0.113.9')),
-              const SizedBox(height: 10),
-              TextField(controller: _reason, decoration: InputDecoration(labelText: s.gatewayReasonOptional)),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<int>(
-                initialValue: _hours,
-                decoration: InputDecoration(labelText: s.gatewayFor),
-                items: [
-                  DropdownMenuItem(value: 1, child: Text(s.gateway1Hour)),
-                  DropdownMenuItem(value: 24, child: Text(s.gateway1Day)),
-                  DropdownMenuItem(value: 168, child: Text(s.gateway1Week)),
-                  DropdownMenuItem(value: 0, child: Text(s.gatewayUntilUnblocked)),
-                ],
-                onChanged: (v) => setState(() => _hours = v ?? 24),
+      title: Text(s.gatewayBlockAnIp),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _ip,
+              decoration: InputDecoration(
+                labelText: s.gatewayIpAddress,
+                hintText: '203.0.113.9',
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _reason,
+              decoration: InputDecoration(labelText: s.gatewayReasonOptional),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<int>(
+              initialValue: _hours,
+              decoration: InputDecoration(labelText: s.gatewayFor),
+              items: [
+                DropdownMenuItem(value: 1, child: Text(s.gateway1Hour)),
+                DropdownMenuItem(value: 24, child: Text(s.gateway1Day)),
+                DropdownMenuItem(value: 168, child: Text(s.gateway1Week)),
+                DropdownMenuItem(
+                  value: 0,
+                  child: Text(s.gatewayUntilUnblocked),
+                ),
+              ],
+              onChanged: (v) => setState(() => _hours = v ?? 24),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-          FilledButton(onPressed: _block, child: Text(s.gatewayBlock)),
-        ],
-      );
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(onPressed: _block, child: Text(s.gatewayBlock)),
+      ],
+    );
   }
 }
 
@@ -630,15 +934,22 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
     super.dispose();
   }
 
-  ({String domain, String status, String ip}) get _filter => (domain: _domain, status: _status, ip: _ip);
+  ({String domain, String status, String ip}) get _filter =>
+      (domain: _domain, status: _status, ip: _ip);
 
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
     final c = NectarColors.of(context);
     final log = ref.watch(gatewayAccessLogProvider(_filter));
-    final domains = {for (final r in ref.watch(gatewayRoutesProvider).value ?? const <GatewayRoute>[]) r.domain}.toList()..sort();
-    if (_domain.isNotEmpty && !domains.contains(_domain)) domains.insert(0, _domain);
+    final domains = {
+      for (final r
+          in ref.watch(gatewayRoutesProvider).value ?? const <GatewayRoute>[])
+        r.domain,
+    }.toList()..sort();
+    if (_domain.isNotEmpty && !domains.contains(_domain)) {
+      domains.insert(0, _domain);
+    }
     return NCard(
       title: s.gatewayLatestRequests,
       trailing: IconButton(
@@ -658,10 +969,20 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                 child: DropdownButtonFormField<String>(
                   initialValue: _domain,
                   isExpanded: true,
-                  decoration: InputDecoration(labelText: s.gatewayDomain, isDense: true),
+                  decoration: InputDecoration(
+                    labelText: s.gatewayDomain,
+                    isDense: true,
+                  ),
                   items: [
-                    DropdownMenuItem(value: '', child: Text(s.gatewayAllDomains)),
-                    for (final d in domains) DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)),
+                    DropdownMenuItem(
+                      value: '',
+                      child: Text(s.gatewayAllDomains),
+                    ),
+                    for (final d in domains)
+                      DropdownMenuItem(
+                        value: d,
+                        child: Text(d, overflow: TextOverflow.ellipsis),
+                      ),
                   ],
                   onChanged: (v) => setState(() => _domain = v ?? ''),
                 ),
@@ -670,7 +991,10 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                 width: 150,
                 child: DropdownButtonFormField<String>(
                   initialValue: _status,
-                  decoration: InputDecoration(labelText: s.gatewayStatus, isDense: true),
+                  decoration: InputDecoration(
+                    labelText: s.gatewayStatus,
+                    isDense: true,
+                  ),
                   items: [
                     DropdownMenuItem(value: '', child: Text(s.gatewayAny)),
                     DropdownMenuItem(value: '2xx', child: Text('2xx')),
@@ -710,8 +1034,10 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
             onRetry: () => ref.invalidate(gatewayAccessLogProvider(_filter)),
             data: (entries) {
               if (entries.isEmpty) {
-                return Text(s.gatewayNoRequestsMatchTheGateway,
-                    style: TextStyle(color: c.muted, fontSize: 13));
+                return Text(
+                  s.gatewayNoRequestsMatchTheGateway,
+                  style: TextStyle(color: c.muted, fontSize: 13),
+                );
               }
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -722,19 +1048,49 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                       padding: const EdgeInsets.symmetric(vertical: 5),
                       child: Row(
                         children: [
-                          SizedBox(width: 64, child: Text(e.time == null ? '' : timeAgo(e.time), style: TextStyle(color: c.muted, fontSize: 12))),
+                          SizedBox(
+                            width: 64,
+                            child: Text(
+                              e.time == null ? '' : timeAgo(e.time),
+                              style: TextStyle(color: c.muted, fontSize: 12),
+                            ),
+                          ),
                           SizedBox(
                             width: 40,
                             child: Text(
                               '${e.status}',
-                              style: monoStyle(context, size: 12.5, color: e.status >= 500 ? c.failed : (e.status >= 400 ? c.warning : c.running)),
+                              style: monoStyle(
+                                context,
+                                size: 12.5,
+                                color: e.status >= 500
+                                    ? c.failed
+                                    : (e.status >= 400 ? c.warning : c.running),
+                              ),
                             ),
                           ),
-                          SizedBox(width: 58, child: Text(e.method, style: monoStyle(context, size: 12.5))),
-                          Expanded(
-                            child: Text('${e.host}${e.path}', maxLines: 1, overflow: TextOverflow.ellipsis, style: monoStyle(context, size: 12.5)),
+                          SizedBox(
+                            width: 58,
+                            child: Text(
+                              e.method,
+                              style: monoStyle(context, size: 12.5),
+                            ),
                           ),
-                          SizedBox(width: 64, child: Text(s.gatewayMs(e.ms), textAlign: TextAlign.right, style: TextStyle(color: c.muted, fontSize: 12))),
+                          Expanded(
+                            child: Text(
+                              '${e.host}${e.path}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: monoStyle(context, size: 12.5),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 64,
+                            child: Text(
+                              s.gatewayMs(e.ms),
+                              textAlign: TextAlign.right,
+                              style: TextStyle(color: c.muted, fontSize: 12),
+                            ),
+                          ),
                           SizedBox(
                             width: 128,
                             child: Align(
@@ -744,7 +1100,13 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                                   _ipField.text = e.ip;
                                   _ip = e.ip;
                                 }),
-                                child: Text(e.ip, style: TextStyle(color: c.muted, fontSize: 12)),
+                                child: Text(
+                                  e.ip,
+                                  style: TextStyle(
+                                    color: c.muted,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -752,8 +1114,15 @@ class _AccessLogViewState extends ConsumerState<_AccessLogView> {
                             IconButton(
                               tooltip: s.gatewayBlock2(e.ip),
                               visualDensity: VisualDensity.compact,
-                              icon: Icon(Icons.block_rounded, size: 16, color: c.muted),
-                              onPressed: () => showDialog<void>(context: context, builder: (_) => _BlockDialog(ip: e.ip)),
+                              icon: Icon(
+                                Icons.block_rounded,
+                                size: 16,
+                                color: c.muted,
+                              ),
+                              onPressed: () => showDialog<void>(
+                                context: context,
+                                builder: (_) => _BlockDialog(ip: e.ip),
+                              ),
                             ),
                         ],
                       ),

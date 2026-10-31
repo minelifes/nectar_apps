@@ -34,7 +34,11 @@ class _ResetPageState extends ConsumerState<ResetPage> {
   }
 
   Future<Map<String, dynamic>> _load(Api api) async {
-    final res = await api.get('/auth/token', query: {'token': widget.token}, options: Api.public);
+    final res = await api.get(
+      '/auth/token',
+      query: {'token': widget.token},
+      options: Api.public,
+    );
     return Map<String, dynamic>.from(res as Map);
   }
 
@@ -45,12 +49,20 @@ class _ResetPageState extends ConsumerState<ResetPage> {
       _error = null;
     });
     try {
-      await api.post('/auth/reset', data: {'token': widget.token, 'password': _password.text}, options: Api.public);
+      await api.post(
+        '/auth/reset',
+        data: {'token': widget.token, 'password': _password.text},
+        options: Api.public,
+      );
       final session = ref.read(sessionProvider.notifier);
-      if (ref.read(sessionProvider).status == SessionStatus.signedIn) await session.logout();
+      if (ref.read(sessionProvider).status == SessionStatus.signedIn) {
+        await session.logout();
+      }
       final mfa = await session.login(email, _password.text);
       if (mfa != null && mounted) {
-        setState(() => _done = true); // the second factor is asked on the sign-in page
+        setState(
+          () => _done = true,
+        ); // the second factor is asked on the sign-in page
       } else if (mounted) {
         context.go('/');
       }
@@ -66,7 +78,10 @@ class _ResetPageState extends ConsumerState<ResetPage> {
     final s = S.of(context);
     final api = ref.watch(sessionProvider.notifier).api;
     if (api == null) {
-      return AuthFrame(title: s.authChooseAPassword, children: [Center(child: CircularProgressIndicator())]);
+      return AuthFrame(
+        title: s.authChooseAPassword,
+        children: [Center(child: CircularProgressIndicator())],
+      );
     }
     _info ??= _load(api);
     if (_done) {
@@ -75,7 +90,10 @@ class _ResetPageState extends ConsumerState<ResetPage> {
         children: [
           Text(s.authSignInWithYourNew),
           const SizedBox(height: 16),
-          FilledButton(onPressed: () => context.go('/login'), child: Text(s.loginButton)),
+          FilledButton(
+            onPressed: () => context.go('/login'),
+            child: Text(s.loginButton),
+          ),
         ],
       );
     }
@@ -87,16 +105,26 @@ class _ResetPageState extends ConsumerState<ResetPage> {
             title: s.authLinkExpired,
             children: [
               FormError(describeError(snap.error!)),
-              FilledButton(onPressed: () => context.go('/login'), child: Text(s.authGoToSignIn)),
+              FilledButton(
+                onPressed: () => context.go('/login'),
+                child: Text(s.authGoToSignIn),
+              ),
             ],
           );
         }
-        if (!snap.hasData) return AuthFrame(title: s.authChooseAPassword, children: [Center(child: CircularProgressIndicator())]);
+        if (!snap.hasData) {
+          return AuthFrame(
+            title: s.authChooseAPassword,
+            children: [Center(child: CircularProgressIndicator())],
+          );
+        }
         final info = snap.data!;
         final invite = info['purpose'] == 'invite';
         final email = '${info['email']}';
         return AuthFrame(
-          title: invite ? 'Welcome${'${info['name']}'.isEmpty ? '' : ', ${info['name']}'}' : 'Choose a new password',
+          title: invite
+              ? 'Welcome${'${info['name']}'.isEmpty ? '' : ', ${info['name']}'}'
+              : 'Choose a new password',
           subtitle: email,
           children: [
             Form(
@@ -110,19 +138,30 @@ class _ResetPageState extends ConsumerState<ResetPage> {
                     autofocus: true,
                     obscureText: true,
                     autofillHints: const [AutofillHints.newPassword],
-                    decoration: InputDecoration(labelText: s.loginPassword, helperText: s.authAtLeast10Characters),
-                    validator: (v) => (v ?? '').length < 10 ? 'At least 10 characters' : null,
+                    decoration: InputDecoration(
+                      labelText: s.loginPassword,
+                      helperText: s.authAtLeast10Characters,
+                    ),
+                    validator: (v) =>
+                        (v ?? '').length < 10 ? 'At least 10 characters' : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _repeat,
                     obscureText: true,
-                    decoration: InputDecoration(labelText: s.authRepeatThePassword),
-                    validator: (v) => v == _password.text ? null : 'The passwords differ',
+                    decoration: InputDecoration(
+                      labelText: s.authRepeatThePassword,
+                    ),
+                    validator: (v) =>
+                        v == _password.text ? null : 'The passwords differ',
                     onFieldSubmitted: (_) => _submit(api, email),
                   ),
                   const SizedBox(height: 22),
-                  BusyButton(label: invite ? 'Create my password' : 'Save the password', busy: _busy, onPressed: () => _submit(api, email)),
+                  BusyButton(
+                    label: invite ? 'Create my password' : 'Save the password',
+                    busy: _busy,
+                    onPressed: () => _submit(api, email),
+                  ),
                 ],
               ),
             ),

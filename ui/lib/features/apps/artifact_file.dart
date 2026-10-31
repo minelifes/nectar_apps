@@ -9,9 +9,13 @@ import '../../api/models.dart';
 
 /// A file chosen for upload. Native platforms stream it from disk; the web reads it into memory.
 class PickedArtifact {
-  PickedArtifact({required this.name, required this.size, Uint8List? bytes, Stream<List<int>>? stream})
-      : _bytes = bytes,
-        _stream = stream;
+  PickedArtifact({
+    required this.name,
+    required this.size,
+    Uint8List? bytes,
+    Stream<List<int>>? stream,
+  }) : _bytes = bytes,
+       _stream = stream;
 
   final String name;
   final int size;
@@ -23,7 +27,9 @@ class PickedArtifact {
     final bytes = _bytes;
     if (bytes != null) return _chunks(bytes);
     final s = _stream;
-    if (s == null) throw StateError('the file was already sent — choose it again');
+    if (s == null) {
+      throw StateError('the file was already sent — choose it again');
+    }
     _stream = null;
     return s;
   }
@@ -33,7 +39,10 @@ class PickedArtifact {
   static Stream<List<int>> _chunks(Uint8List bytes) async* {
     const chunk = 256 * 1024;
     for (var i = 0; i < bytes.length; i += chunk) {
-      yield bytes.sublist(i, i + chunk > bytes.length ? bytes.length : i + chunk);
+      yield bytes.sublist(
+        i,
+        i + chunk > bytes.length ? bytes.length : i + chunk,
+      );
     }
   }
 }
@@ -55,7 +64,12 @@ Future<PickedArtifact?> pickArtifact(Runtime rt) async {
   );
   final f = res?.files.single;
   if (f == null) return null;
-  return PickedArtifact(name: f.name, size: f.size, bytes: f.bytes, stream: f.readStream);
+  return PickedArtifact(
+    name: f.name,
+    size: f.size,
+    bytes: f.bytes,
+    stream: f.readStream,
+  );
 }
 
 /// Checks a file name against the runtime's accepted types before uploading.
