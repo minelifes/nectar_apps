@@ -28,7 +28,9 @@ class _AppTileState extends State<AppTile> {
     final rt = runtimeInfo(app.runtime);
     final tone = toneColor(context, toneFor(app.status));
     final theme = Theme.of(context);
-    final version = app.runtime == 'image' ? _shortImage(app.image) : app.runtimeVersion;
+    final version = app.runtime == 'image'
+        ? _shortImage(app.image)
+        : app.runtimeVersion;
     final tile = AnimatedContainer(
       duration: NectarTokens.fast,
       width: widget.width,
@@ -36,7 +38,9 @@ class _AppTileState extends State<AppTile> {
       decoration: BoxDecoration(
         color: _hover ? c.elevated : c.surface,
         borderRadius: BorderRadius.circular(NectarTokens.radius),
-        border: Border.all(color: _hover ? tone.withValues(alpha: 0.45) : c.border),
+        border: Border.all(
+          color: _hover ? tone.withValues(alpha: 0.45) : c.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,7 +52,10 @@ class _AppTileState extends State<AppTile> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [tone.withValues(alpha: 0.28), tone.withValues(alpha: 0.12)],
+                  colors: [
+                    tone.withValues(alpha: 0.28),
+                    tone.withValues(alpha: 0.12),
+                  ],
                 ),
                 child: Icon(rt.icon, size: 17, color: tone),
               ),
@@ -57,7 +64,12 @@ class _AppTileState extends State<AppTile> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(app.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium),
+                    Text(
+                      app.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium,
+                    ),
                     Text(
                       [rt.label, if (version.isNotEmpty) version].join(' · '),
                       maxLines: 1,
@@ -90,7 +102,9 @@ class _AppTileState extends State<AppTile> {
       ),
     );
     return MouseRegion(
-      cursor: widget.onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+      cursor: widget.onTap == null
+          ? MouseCursor.defer
+          : SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(onTap: widget.onTap, child: tile),

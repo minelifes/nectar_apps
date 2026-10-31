@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +39,15 @@ type termMsg struct {
 
 // appExecWS opens a shell in a running container of the app (web terminal).
 func (s *Server) appExecWS(w http.ResponseWriter, r *http.Request, p *principal, app store.App, proj store.Project) {
+	s.workloadExecWS(w, r, p, appWorkload(app, proj))
+}
+
+// addonExecWS opens a shell in the database container (psql, mysql, redis-cli … are on the image).
+func (s *Server) addonExecWS(w http.ResponseWriter, r *http.Request, p *principal, a store.Addon, proj store.Project) {
+	s.workloadExecWS(w, r, p, addonWorkload(a, proj))
+}
+
+func (s *Server) workloadExecWS(w http.ResponseWriter, r *http.Request, p *principal, wl workload) {
 	if s.kube == nil {
 		writeError(w, http.StatusServiceUnavailable, "kubernetes is not configured")
 		return
@@ -50,11 +60,9 @@ func (s *Server) appExecWS(w http.ResponseWriter, r *http.Request, p *principal,
 		writeError(w, http.StatusForbidden, "cross-origin WebSocket refused")
 		return
 	}
-	pod, err := s.execPod(r.Context(), app, proj, r.URL.Query().Get("pod"))
-	if err != nil {
-		writeError(w, http.StatusConflict, err.Error())
-		return
-	}
+	// pick the pod after the upgrade: a browser cannot read the body of a refused WebSocket handshake, so
+	// "no running pod" must arrive as a message, not as a 409
+	pod, container, podErr := s.execPod(r.Context(), wl, r.URL.Query().Get("pod"))
 	conn, err := wsock.Upgrade(w, r)
 	if err != nil {
 		return
@@ -69,17 +77,22 @@ func (s *Server) appExecWS(w http.ResponseWriter, r *http.Request, p *principal,
 		_ = send(termMsg{T: "x", Code: &code, Msg: msg})
 	}
 
+	if podErr != nil {
+		fail(podErr.Error())
+		return
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	dctx, dcancel := context.WithTimeout(ctx, 20*time.Second)
-	ex, err := s.kube.Exec(dctx, proj.Namespace, pod, "app", shellCommand, true)
+	ex, err := s.kube.Exec(dctx, wl.namespace, pod, container, shellCommand, true)
 	dcancel()
 	if err != nil {
+		s.log.Warn("exec", wl.kind, wl.ref, "pod", pod, "container", container, "err", err)
 		fail("could not open a shell: " + err.Error())
 		return
 	}
 	defer ex.Close()
-	s.audit(r, p, "app.exec", proj.Slug+"/"+app.Slug, map[string]string{"pod": pod})
+	s.audit(r, p, wl.kind+".exec", wl.ref, map[string]string{"pod": pod})
 	_ = send(termMsg{T: "s", Pod: pod})
 
 	// browser → container
@@ -179,35 +192,77 @@ func execExit(b []byte) (int, string) {
 }
 
 // execPod picks the pod to open a shell in: the requested one, or the newest running workload pod.
-func (s *Server) execPod(ctx context.Context, app store.App, proj store.Project, want string) (string, error) {
-	pods, err := observe.AppPods(ctx, s.kube, proj.Namespace, app.Slug)
+func (s *Server) execPod(ctx context.Context, wl workload, want string) (string, string, error) {
+	pods, err := wl.pods(ctx, s.kube)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	best := ""
-	for _, p := range pods {
+	var best, fallback *observe.Pod
+	crashing := false
+	for i := range pods {
+		p := &pods[i]
 		if p.Phase != "Running" {
+			continue
+		}
+		if !slices.Contains(p.Running, execContainer(*p)) {
+			crashing = true // phase Running, but the container is restarting (crash loop) or not started yet
+			if p.Name == want {
+				return "", "", errNoPod("the container of " + want + " is not running (restarting after a crash?): check the Logs tab")
+			}
 			continue
 		}
 		if want != "" {
 			if p.Name == want {
-				return p.Name, nil
+				return p.Name, execContainer(*p), nil
 			}
 			continue
 		}
-		if p.Role == "workload" || p.Role == "" {
-			best = p.Name // pods are sorted oldest first: the last one is the newest
+		switch p.Role { // pods are sorted oldest first: the last one is the newest
+		case "workload":
+			best = p
+		case "":
+			fallback = p // apps deployed before roles existed, adopted workloads, databases
 		}
 	}
 	if want != "" {
-		return "", errNoPod("pod " + want + " is not running")
+		return "", "", errNoPod("pod " + want + " is not running")
 	}
-	if best == "" {
-		return "", errNoPod("no running pod: start or deploy the app first")
+	if best == nil {
+		best = fallback
 	}
-	return best, nil
+	if best == nil && crashing {
+		return "", "", errNoPod("the " + wl.noun() + "'s container is not running (restarting after a crash?): check the Logs tab")
+	}
+	if best == nil {
+		if wl.kind == "addon" {
+			return "", "", errNoPod("no running pod: start the database first")
+		}
+		return "", "", errNoPod("no running pod: start or deploy the app first")
+	}
+	return best.Name, execContainer(*best), nil
+}
+
+// execContainer is the container to open the shell in: "app" (every app the panel deploys), otherwise the
+// pod's first container (adopted workloads keep their own names).
+func execContainer(p observe.Pod) string {
+	for _, c := range p.Containers {
+		if c == "app" {
+			return c
+		}
+	}
+	if len(p.Containers) > 0 {
+		return p.Containers[0]
+	}
+	return "app"
 }
 
 type errNoPod string
 
 func (e errNoPod) Error() string { return string(e) }
+
+func (wl workload) noun() string {
+	if wl.kind == "addon" {
+		return "database"
+	}
+	return "app"
+}

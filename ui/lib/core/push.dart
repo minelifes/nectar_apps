@@ -41,7 +41,8 @@ class PushService {
     try {
       final cfg = await api.get('/push/config');
       if (cfg is! Map || cfg['enabled'] != true) return;
-      final app = (platform == 'android' ? cfg['android'] : cfg['apple']) as Map?;
+      final app =
+          (platform == 'android' ? cfg['android'] : cfg['apple']) as Map?;
       final appId = '${app?['app_id'] ?? ''}';
       if (appId.isEmpty) return; // no Firebase app for this platform
       final bundle = '${app?['bundle_id'] ?? ''}'.trim();
@@ -52,23 +53,43 @@ class PushService {
             appId: appId,
             messagingSenderId: '${cfg['sender_id']}',
             projectId: '${cfg['project_id']}',
-            iosBundleId: platform == 'android' || bundle.isEmpty ? null : bundle,
+            iosBundleId: platform == 'android' || bundle.isEmpty
+                ? null
+                : bundle,
           ),
         );
       }
       final fm = FirebaseMessaging.instance;
       final perm = await fm.requestPermission();
       if (perm.authorizationStatus == AuthorizationStatus.denied) return;
-      await fm.setForegroundNotificationPresentationOptions(alert: true, sound: true, badge: true);
+      await fm.setForegroundNotificationPresentationOptions(
+        alert: true,
+        sound: true,
+        badge: true,
+      );
       final token = await fm.getToken();
       if (token == null) return;
       _token = token;
-      await api.put('/me/push-devices', data: {'token': token, 'platform': platform, 'name': _deviceName(platform)});
+      await api.put(
+        '/me/push-devices',
+        data: {
+          'token': token,
+          'platform': platform,
+          'name': _deviceName(platform),
+        },
+      );
       await _refresh?.cancel();
       _refresh = fm.onTokenRefresh.listen((t) async {
         _token = t;
         try {
-          await api.put('/me/push-devices', data: {'token': t, 'platform': platform, 'name': _deviceName(platform)});
+          await api.put(
+            '/me/push-devices',
+            data: {
+              'token': t,
+              'platform': platform,
+              'name': _deviceName(platform),
+            },
+          );
         } on Object {
           // retried at the next sign-in
         }
@@ -104,8 +125,8 @@ class PushService {
   }
 
   static String _deviceName(String platform) => switch (platform) {
-        'android' => 'Android',
-        'ios' => 'iPhone / iPad',
-        _ => 'Mac',
-      };
+    'android' => 'Android',
+    'ios' => 'iPhone / iPad',
+    _ => 'Mac',
+  };
 }

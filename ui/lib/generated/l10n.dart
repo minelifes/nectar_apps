@@ -1,7 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import 'intl/messages_all.dart';
 
 // **************************************************************************
@@ -7400,6 +7399,191 @@ class S {
       desc: '',
       args: [],
     );
+  }
+
+  /// `The server's clock is {amount} behind this device: times in the panel look wrong, and two-factor codes and certificates can fail. On the server run: sudo timedatectl set-ntp true`
+  String shellClockBehind(Object amount) {
+    return Intl.message(
+      'The server\'s clock is $amount behind this device: times in the panel look wrong, and two-factor codes and certificates can fail. On the server run: sudo timedatectl set-ntp true',
+      name: 'shellClockBehind',
+      desc: '',
+      args: [amount],
+    );
+  }
+
+  /// `The server's clock is {amount} ahead of this device: times in the panel look wrong, and two-factor codes and certificates can fail. On the server run: sudo timedatectl set-ntp true`
+  String shellClockAhead(Object amount) {
+    return Intl.message(
+      'The server\'s clock is $amount ahead of this device: times in the panel look wrong, and two-factor codes and certificates can fail. On the server run: sudo timedatectl set-ntp true',
+      name: 'shellClockAhead',
+      desc: '',
+      args: [amount],
+    );
+  }
+
+  /// `Mark as read`
+  String get alertMarkRead {
+    return Intl.message(
+      'Mark as read',
+      name: 'alertMarkRead',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Mark as unread`
+  String get alertMarkUnread {
+    return Intl.message(
+      'Mark as unread',
+      name: 'alertMarkUnread',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Mark all read`
+  String get alertMarkAllRead {
+    return Intl.message(
+      'Mark all read',
+      name: 'alertMarkAllRead',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `read`
+  String get alertReadLabel {
+    return Intl.message('read', name: 'alertReadLabel', desc: '', args: []);
+  }
+
+  /// `Overview`
+  String get addonTabOverview {
+    return Intl.message(
+      'Overview',
+      name: 'addonTabOverview',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Metrics`
+  String get addonTabMetrics {
+    return Intl.message('Metrics', name: 'addonTabMetrics', desc: '', args: []);
+  }
+
+  /// `Logs`
+  String get addonTabLogs {
+    return Intl.message('Logs', name: 'addonTabLogs', desc: '', args: []);
+  }
+
+  /// `Terminal`
+  String get addonTabTerminal {
+    return Intl.message(
+      'Terminal',
+      name: 'addonTabTerminal',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Events`
+  String get addonTabEvents {
+    return Intl.message('Events', name: 'addonTabEvents', desc: '', args: []);
+  }
+
+  /// `Share with the whole project`
+  String get addonShareWithProject {
+    return Intl.message(
+      'Share with the whole project',
+      name: 'addonShareWithProject',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Every app in the project gets the connection variables, including apps you add later. No link needed. Redeploy the apps to apply.`
+  String get addonShareHelp {
+    return Intl.message(
+      'Every app in the project gets the connection variables, including apps you add later. No link needed. Redeploy the apps to apply.',
+      name: 'addonShareHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `All apps get: {vars}`
+  String addonSharedAs(String vars) {
+    return Intl.message(
+      'All apps get: $vars',
+      name: 'addonSharedAs',
+      desc: '',
+      args: [vars],
+    );
+  }
+
+  /// `Saved. Redeploy the apps to apply.`
+  String get addonSharedSaved {
+    return Intl.message(
+      'Saved. Redeploy the apps to apply.',
+      name: 'addonSharedSaved',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Prefix for the shared variables`
+  String get addonSharePrefix {
+    return Intl.message(
+      'Prefix for the shared variables',
+      name: 'addonSharePrefix',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `An app linked here uses its own link (and prefix) instead.`
+  String get addonLinkOverridesShared {
+    return Intl.message(
+      'An app linked here uses its own link (and prefix) instead.',
+      name: 'addonLinkOverridesShared',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `shared with the project`
+  String get appSharedWithProject {
+    return Intl.message(
+      'shared with the project',
+      name: 'appSharedWithProject',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Open the database`
+  String get projectOpenTheDatabase {
+    return Intl.message(
+      'Open the database',
+      name: 'projectOpenTheDatabase',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Search: MQTT, Kafka, Redis, search…`
+  String get projectSearchTemplates {
+    return Intl.message(
+      'Search: MQTT, Kafka, Redis, search…',
+      name: 'projectSearchTemplates',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `All`
+  String get projectAllTemplates {
+    return Intl.message('All', name: 'projectAllTemplates', desc: '', args: []);
   }
 }
 

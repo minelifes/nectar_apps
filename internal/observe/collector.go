@@ -86,11 +86,20 @@ func (c *Collector) Collect(ctx context.Context, now time.Time) error {
 	for i, n := range nodes {
 		names[i] = n.Name
 	}
-	apps, err := c.appUsage(ctx, names)
+	appIDs, addonIDs, err := c.workloadIndex(ctx)
+	if err != nil {
+		c.Log.Debug("metrics: index", "err", err)
+	}
+	apps, err := c.usage(ctx, names, "nectar.dev/app", "app:", appIDs)
 	if err != nil {
 		c.Log.Debug("metrics: pods", "err", err)
 	}
 	samples = append(samples, apps...)
+	addons, err := c.usage(ctx, names, "nectar.dev/addon", "addon:", addonIDs) // databases: same charts as apps
+	if err != nil {
+		c.Log.Debug("metrics: add-on pods", "err", err)
+	}
+	samples = append(samples, addons...)
 	return c.Store.AddMetricSamples(ctx, now, samples)
 }
 
@@ -134,12 +143,12 @@ func (c *Collector) nodeStats(ctx context.Context, node string, now time.Time, m
 	m.TxBps = int64(math.Round(float64(cur.tx-prev.tx) / dt))
 }
 
-// appUsage sums the pod metrics of every app (pods labelled nectar.dev/app in a project namespace).
+// usage sums the pod metrics of every workload whose pods carry the label (nectar.dev/app for apps,
+// nectar.dev/addon for databases) into series prefix+id. ids maps "namespace/slug" to the workload id.
 // Without metrics-server it falls back to the kubelet summaries of the given nodes.
-func (c *Collector) appUsage(ctx context.Context, nodes []string) ([]store.MetricSample, error) {
-	ids, err := c.appIndex(ctx)
-	if err != nil || len(ids) == 0 {
-		return nil, err
+func (c *Collector) usage(ctx context.Context, nodes []string, label, prefix string, ids map[string]int64) ([]store.MetricSample, error) {
+	if len(ids) == 0 {
+		return nil, nil
 	}
 	var pm struct {
 		Items []struct {
@@ -160,13 +169,13 @@ func (c *Collector) appUsage(ctx context.Context, nodes []string) ([]store.Metri
 		}
 		s := sums[id]
 		if s == nil {
-			s = &store.MetricSample{Series: "app:" + strconv.FormatInt(id, 10)}
+			s = &store.MetricSample{Series: prefix + strconv.FormatInt(id, 10)}
 			sums[id] = s
 		}
 		s.CPUm += cpuM
 		s.MemB += memB
 	}
-	err = c.Kube.Get(ctx, "/apis/metrics.k8s.io/v1beta1/pods?labelSelector="+url.QueryEscape("nectar.dev/app"), &pm)
+	err := c.Kube.Get(ctx, "/apis/metrics.k8s.io/v1beta1/pods?labelSelector="+url.QueryEscape(label), &pm)
 	var se *kube.StatusError
 	switch {
 	case err == nil:
@@ -180,29 +189,29 @@ func (c *Collector) appUsage(ctx context.Context, nodes []string) ([]store.Metri
 					memB += int64(q)
 				}
 			}
-			add(it.Metadata.Namespace, it.Metadata.Labels["nectar.dev/app"], cpuM, memB)
+			add(it.Metadata.Namespace, it.Metadata.Labels[label], cpuM, memB)
 		}
 	case errors.As(err, &se): // no metrics-server
-		if err := c.summaryUsage(ctx, nodes, add); err != nil {
+		if err := c.summaryUsage(ctx, nodes, label, add); err != nil {
 			return nil, err
 		}
 	default:
 		return nil, err
 	}
-	// apps without running pods get an explicit zero, so charts show the gap as 0 instead of nothing
+	// workloads without running pods get an explicit zero, so charts show the gap as 0 instead of nothing
 	out := make([]store.MetricSample, 0, len(ids))
 	for _, id := range ids {
 		if s := sums[id]; s != nil {
 			out = append(out, *s)
 		} else {
-			out = append(out, store.MetricSample{Series: "app:" + strconv.FormatInt(id, 10)})
+			out = append(out, store.MetricSample{Series: prefix + strconv.FormatInt(id, 10)})
 		}
 	}
 	return out, nil
 }
 
-// summaryUsage reads pod usage from each node's kubelet summary and maps pods to apps by their label.
-func (c *Collector) summaryUsage(ctx context.Context, nodes []string, add func(ns, slug string, cpuM, memB int64)) error {
+// summaryUsage reads pod usage from each node's kubelet summary and maps pods to workloads by their label.
+func (c *Collector) summaryUsage(ctx context.Context, nodes []string, label string, add func(ns, slug string, cpuM, memB int64)) error {
 	var pods struct {
 		Items []struct {
 			Metadata struct {
@@ -212,12 +221,12 @@ func (c *Collector) summaryUsage(ctx context.Context, nodes []string, add func(n
 			} `json:"metadata"`
 		} `json:"items"`
 	}
-	if err := c.Kube.Get(ctx, "/api/v1/pods?labelSelector="+url.QueryEscape("nectar.dev/app"), &pods); err != nil {
+	if err := c.Kube.Get(ctx, "/api/v1/pods?labelSelector="+url.QueryEscape(label), &pods); err != nil {
 		return err
 	}
 	slug := map[string]string{}
 	for _, p := range pods.Items {
-		slug[p.Metadata.Namespace+"/"+p.Metadata.Name] = p.Metadata.Labels["nectar.dev/app"]
+		slug[p.Metadata.Namespace+"/"+p.Metadata.Name] = p.Metadata.Labels[label]
 	}
 	for _, n := range nodes {
 		var sum kube.Summary
@@ -233,23 +242,30 @@ func (c *Collector) summaryUsage(ctx context.Context, nodes []string, add func(n
 	return nil
 }
 
-// appIndex maps "namespace/slug" to app id.
-func (c *Collector) appIndex(ctx context.Context) (map[string]int64, error) {
+// workloadIndex maps "namespace/slug" to app ids and to add-on (database) ids.
+func (c *Collector) workloadIndex(ctx context.Context) (apps, addons map[string]int64, err error) {
 	projects, err := c.Store.ListProjects(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	out := map[string]int64{}
+	apps, addons = map[string]int64{}, map[string]int64{}
 	for _, p := range projects {
-		apps, err := c.Store.ListApps(ctx, p.ID)
+		list, err := c.Store.ListApps(ctx, p.ID)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		for _, a := range apps {
-			out[p.Namespace+"/"+a.Slug] = a.ID
+		for _, a := range list {
+			apps[p.Namespace+"/"+a.Slug] = a.ID
+		}
+		dbs, err := c.Store.ListAddons(ctx, p.ID)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, a := range dbs {
+			addons[p.Namespace+"/"+a.Slug] = a.ID
 		}
 	}
-	return out, nil
+	return apps, addons, nil
 }
 
 func clampInt(v uint64) int64 {

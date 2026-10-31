@@ -11,8 +11,14 @@ import '../../widgets/common.dart';
 import 'web_options_editor.dart';
 
 /// Add a domain to an app, or change its gateway options (HTTPS, rate limit, body size, timeout).
-Future<void> showDomainDialog(BuildContext context, {required int appId, Domain? domain}) =>
-    showDialog<void>(context: context, builder: (_) => _DomainDialog(appId: appId, domain: domain));
+Future<void> showDomainDialog(
+  BuildContext context, {
+  required int appId,
+  Domain? domain,
+}) => showDialog<void>(
+  context: context,
+  builder: (_) => _DomainDialog(appId: appId, domain: domain),
+);
 
 class _DomainDialog extends ConsumerStatefulWidget {
   const _DomainDialog({required this.appId, this.domain});
@@ -26,9 +32,15 @@ class _DomainDialog extends ConsumerStatefulWidget {
 
 class _DomainDialogState extends ConsumerState<_DomainDialog> {
   late final _host = TextEditingController(text: widget.domain?.host ?? '');
-  late final _rate = TextEditingController(text: '${widget.domain?.rateLimit ?? 0}');
-  late final _body = TextEditingController(text: '${widget.domain?.maxBodyMb ?? 0}');
-  late final _timeout = TextEditingController(text: '${widget.domain?.timeoutSeconds ?? 0}');
+  late final _rate = TextEditingController(
+    text: '${widget.domain?.rateLimit ?? 0}',
+  );
+  late final _body = TextEditingController(
+    text: '${widget.domain?.maxBodyMb ?? 0}',
+  );
+  late final _timeout = TextEditingController(
+    text: '${widget.domain?.timeoutSeconds ?? 0}',
+  );
   late bool _tls = widget.domain?.tls ?? true;
   late bool _force = widget.domain?.forceHttps ?? true;
   late final _web = WebOptionsForm(widget.domain?.web);
@@ -54,8 +66,13 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
       if (d == null && _www) 'with_www': true,
       'tls': _tls,
       'force_https': _tls && _force,
-      if (d == null || d.kind == 'app') ...{'rate_limit': _num(_rate), 'max_body_mb': _num(_body), 'timeout_seconds': _num(_timeout)},
-      if ((d == null && !_web.value.isEmpty) || (d != null && _web.changed)) 'web': _web.value.toJson(),
+      if (d == null || d.kind == 'app') ...{
+        'rate_limit': _num(_rate),
+        'max_body_mb': _num(_body),
+        'timeout_seconds': _num(_timeout),
+      },
+      if ((d == null && !_web.value.isEmpty) || (d != null && _web.changed))
+        'web': _web.value.toJson(),
     };
     try {
       final api = ref.read(apiProvider);
@@ -76,9 +93,19 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
   Future<void> _delete() async {
     final s = S.of(context);
     final d = widget.domain!;
-    if (!await confirmAction(context, s.appRemove(d.host), s.appTheGatewayStopsServingIt, s.backupRemove2, danger: true)) return;
+    if (!await confirmAction(
+      context,
+      s.appRemove(d.host),
+      s.appTheGatewayStopsServingIt,
+      s.backupRemove2,
+      danger: true,
+    )) {
+      return;
+    }
     try {
-      await ref.read(apiProvider).delete('/apps/${widget.appId}/domains/${d.id}');
+      await ref
+          .read(apiProvider)
+          .delete('/apps/${widget.appId}/domains/${d.id}');
       ref.invalidate(domainsProvider(widget.appId));
       if (mounted) Navigator.pop(context);
     } on Object catch (e) {
@@ -102,9 +129,18 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (d == null) ...[
-                TextField(controller: _host, decoration: InputDecoration(labelText: s.gatewayDomain, hintText: 'shop.example.com')),
+                TextField(
+                  controller: _host,
+                  decoration: InputDecoration(
+                    labelText: s.gatewayDomain,
+                    hintText: 'shop.example.com',
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(s.appPointItsDnsARecord, style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text(
+                  s.appPointItsDnsARecord,
+                  style: TextStyle(color: c.muted, fontSize: 12.5),
+                ),
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,
@@ -135,33 +171,66 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
                   children: [
                     SizedBox(
                       width: 140,
-                      child: TextField(controller: _rate, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: s.appRequestsSPerIp, isDense: true)),
+                      child: TextField(
+                        controller: _rate,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: s.appRequestsSPerIp,
+                          isDense: true,
+                        ),
+                      ),
                     ),
                     SizedBox(
                       width: 140,
-                      child: TextField(controller: _body, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: s.appMaxUploadMb, isDense: true)),
+                      child: TextField(
+                        controller: _body,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: s.appMaxUploadMb,
+                          isDense: true,
+                        ),
+                      ),
                     ),
                     SizedBox(
                       width: 140,
-                      child: TextField(controller: _timeout, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: s.appTimeoutS, isDense: true)),
+                      child: TextField(
+                        controller: _timeout,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: s.appTimeoutS,
+                          isDense: true,
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(s.app0NoLimitTimeout60, style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text(
+                  s.app0NoLimitTimeout60,
+                  style: TextStyle(color: c.muted, fontSize: 12.5),
+                ),
                 const SizedBox(height: 6),
                 Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  data: Theme.of(
+                    context,
+                  ).copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
                     tilePadding: EdgeInsets.zero,
                     childrenPadding: EdgeInsets.zero,
                     initiallyExpanded: !(d?.web?.isEmpty ?? true),
                     title: Text(s.appRedirectsAccessHeaders),
                     subtitle: Text(
-                      _web.value.isEmpty ? 'Redirect rules, IP allowlist, headers, CORS, gzip, HSTS' : _web.value.summary,
+                      _web.value.isEmpty
+                          ? 'Redirect rules, IP allowlist, headers, CORS, gzip, HSTS'
+                          : _web.value.summary,
                       style: TextStyle(color: c.muted, fontSize: 12.5),
                     ),
-                    children: [WebOptionsFields(form: _web, onChanged: () => setState(() {}))],
+                    children: [
+                      WebOptionsFields(
+                        form: _web,
+                        onChanged: () => setState(() {}),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -170,9 +239,20 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
         ),
       ),
       actions: [
-        if (d != null && !d.isDefault) TextButton(onPressed: _delete, style: TextButton.styleFrom(foregroundColor: c.failed), child: Text(s.backupRemove2)),
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-        FilledButton(onPressed: _busy ? null : _save, child: Text(d == null ? 'Add' : 'Save')),
+        if (d != null && !d.isDefault)
+          TextButton(
+            onPressed: _delete,
+            style: TextButton.styleFrom(foregroundColor: c.failed),
+            child: Text(s.backupRemove2),
+          ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _save,
+          child: Text(d == null ? 'Add' : 'Save'),
+        ),
       ],
     );
   }

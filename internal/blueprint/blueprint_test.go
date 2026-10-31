@@ -10,7 +10,7 @@ func TestTemplatesRender(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ts) < 6 {
+	if len(ts) < 25 {
 		t.Fatalf("only %d templates", len(ts))
 	}
 	ids := map[string]bool{}
@@ -23,8 +23,14 @@ func TestTemplatesRender(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", tpl.ID, err)
 		}
-		if len(b.Apps) == 0 || b.Apps[0].Slug != "myapp" {
+		switch {
+		case len(b.Apps) > 0 && b.Apps[0].Slug != "myapp":
 			t.Fatalf("%s: main app slug %+v", tpl.ID, b.Apps)
+		case len(b.Apps) == 0 && (len(b.Addons) != 1 || b.Addons[0].Slug != "myapp"): // a managed database
+			t.Fatalf("%s: database-only template %+v", tpl.ID, b.Addons)
+		}
+		if tpl.Category == "" || tpl.Description == "" || tpl.Notes == "" || tpl.Docs == "" {
+			t.Fatalf("%s: category, description, notes and docs are required", tpl.ID)
 		}
 		for _, a := range b.Apps {
 			for k, v := range a.Secrets {

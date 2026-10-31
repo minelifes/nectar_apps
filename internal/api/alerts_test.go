@@ -7,6 +7,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"nectar_apps/internal/store"
 )
 
 func TestAlertChannelsRulesAndDisk(t *testing.T) {
@@ -72,6 +75,41 @@ func TestAlertChannelsRulesAndDisk(t *testing.T) {
 	if code, _, list := e.do(plain, "GET", "/api/alerts?state=firing", nil, auth...); code != 200 || list == nil {
 		t.Fatalf("alerts: %d %v", code, list)
 	}
+
+	// read marks: per user, "all" covers firing incidents, unread brings one back
+	a1, err := e.api.store.OpenAlert(t.Context(), store.Alert{Rule: "app_down", Key: "app_down:1", Subject: "web", Severity: "critical", StartedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a2, _ := e.api.store.OpenAlert(t.Context(), store.Alert{Rule: "node_disk", Key: "node_disk:n1", Subject: "n1", Severity: "warning", StartedAt: time.Now()})
+	readOf := func() map[float64]bool {
+		_, _, list := e.do(plain, "GET", "/api/alerts?state=firing", nil, auth...)
+		out := map[float64]bool{}
+		for _, x := range list {
+			m := x.(map[string]any)
+			out[m["id"].(float64)] = m["read"].(bool)
+		}
+		return out
+	}
+	if code, _, _ := e.do(plain, "POST", "/api/alerts/read", map[string]any{"ids": []int64{a1.ID, 999}}, auth...); code != 204 {
+		t.Fatalf("read one: %d", code)
+	}
+	if r := readOf(); !r[float64(a1.ID)] || r[float64(a2.ID)] {
+		t.Fatalf("after read one: %v", r)
+	}
+	if code, _, _ := e.do(plain, "POST", "/api/alerts/read", nil, auth...); code != 204 {
+		t.Fatalf("read all: %d", code)
+	}
+	if r := readOf(); !r[float64(a1.ID)] || !r[float64(a2.ID)] {
+		t.Fatalf("after read all: %v", r)
+	}
+	if code, _, _ := e.do(plain, "DELETE", "/api/alerts/read/"+itoa(float64(a2.ID)), nil, auth...); code != 204 {
+		t.Fatalf("unread: %d", code)
+	}
+	if r := readOf(); !r[float64(a1.ID)] || r[float64(a2.ID)] {
+		t.Fatalf("after unread: %v", r)
+	}
+
 	if code, _, _ := e.do(plain, "DELETE", "/api/alerts/channels/"+id, nil, auth...); code != 204 {
 		t.Fatalf("delete: %d", code)
 	}

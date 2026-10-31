@@ -57,7 +57,10 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
         TextField(
           controller: _url,
           style: monoStyle(context, size: 14),
-          decoration: InputDecoration(labelText: s.authPanelAddress, hintText: 'panel.apps.example.com'),
+          decoration: InputDecoration(
+            labelText: s.authPanelAddress,
+            hintText: 'panel.apps.example.com',
+          ),
           keyboardType: TextInputType.url,
           autocorrect: false,
           autofocus: true,

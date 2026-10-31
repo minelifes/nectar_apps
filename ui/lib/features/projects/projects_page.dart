@@ -27,7 +27,9 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
   Widget build(BuildContext context) {
     final l = S.of(context);
     final projects = ref.watch(projectsProvider);
-    final canCreate = ref.watch(sessionProvider.select((s) => s.can('project.create')));
+    final canCreate = ref.watch(
+      sessionProvider.select((s) => s.can('project.create')),
+    );
     return PageScaffold(
       title: l.navProjects,
       subtitle: l.projectEachProjectHasItsOwn,
@@ -50,14 +52,22 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                 child: EmptyState(
                   icon: Icons.folder_open_rounded,
                   title: l.projectNoProjectsYet,
-                  message: canCreate ? 'Create a project to start deploying apps.' : 'Ask an Owner to give you access to a project.',
+                  message: canCreate
+                      ? 'Create a project to start deploying apps.'
+                      : 'Ask an Owner to give you access to a project.',
                 ),
               );
             }
             final q = _query.toLowerCase();
             final shown = q.isEmpty
                 ? list
-                : list.where((p) => p.name.toLowerCase().contains(q) || p.slug.contains(q)).toList();
+                : list
+                      .where(
+                        (p) =>
+                            p.name.toLowerCase().contains(q) ||
+                            p.slug.contains(q),
+                      )
+                      .toList();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -67,7 +77,10 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                     child: SizedBox(
                       width: 360,
                       child: TextField(
-                        decoration: InputDecoration(prefixIcon: Icon(Icons.search_rounded, size: 20), hintText: l.projectSearchProjects),
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.search_rounded, size: 20),
+                          hintText: l.projectSearchProjects,
+                        ),
                         onChanged: (v) => setState(() => _query = v.trim()),
                       ),
                     ),
@@ -110,8 +123,14 @@ class _ProjectCard extends StatelessWidget {
                   size: 40,
                   color: NectarTokens.amber.withValues(alpha: 0.16),
                   child: Text(
-                    project.name.isEmpty ? '?' : project.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(color: NectarTokens.amber, fontWeight: FontWeight.w700, fontSize: 15),
+                    project.name.isEmpty
+                        ? '?'
+                        : project.name.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: NectarTokens.amber,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -119,15 +138,26 @@ class _ProjectCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(project.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium),
-                      Text(project.namespace, style: monoStyle(context, size: 12, color: c.muted)),
+                      Text(
+                        project.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      Text(
+                        project.namespace,
+                        style: monoStyle(context, size: 12, color: c.muted),
+                      ),
                     ],
                   ),
                 ),
                 if (project.adopted)
                   Tooltip(
                     message: s.projectAdoptedFromAnExistingNamespace,
-                    child: Chip(label: Text(s.projectAdopted), visualDensity: VisualDensity.compact),
+                    child: Chip(
+                      label: Text(s.projectAdopted),
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
               ],
             ),
@@ -136,7 +166,10 @@ class _ProjectCard extends StatelessWidget {
               children: [
                 Icon(Icons.apps_rounded, size: 16, color: c.muted),
                 const SizedBox(width: 6),
-                Text('${project.apps} ${project.apps == 1 ? 'app' : 'apps'}', style: const TextStyle(fontSize: 13.5)),
+                Text(
+                  '${project.apps} ${project.apps == 1 ? 'app' : 'apps'}',
+                  style: const TextStyle(fontSize: 13.5),
+                ),
                 const SizedBox(width: 16),
                 Icon(Icons.speed_rounded, size: 16, color: c.muted),
                 const SizedBox(width: 6),
@@ -157,8 +190,8 @@ class _ProjectCard extends StatelessWidget {
   }
 
   static String _quotaSummary(Quota q) => [
-        if (q.cpuMillicores > 0) formatCpu(q.cpuMillicores),
-        if (q.memoryMb > 0) formatMb(q.memoryMb),
-        if (q.apps > 0) '${q.apps} apps max',
-      ].join(' · ');
+    if (q.cpuMillicores > 0) formatCpu(q.cpuMillicores),
+    if (q.memoryMb > 0) formatMb(q.memoryMb),
+    if (q.apps > 0) '${q.apps} apps max',
+  ].join(' · ');
 }

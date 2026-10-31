@@ -23,59 +23,12 @@ class AppMetrics extends ConsumerStatefulWidget {
 }
 
 class _AppMetricsState extends ConsumerState<AppMetrics> {
-  String _range = '1h';
-
   @override
   Widget build(BuildContext context) {
-    final s = S.of(context);
-    final id = widget.app.id;
-    final usage = ref.watch(appUsageProvider((id, _range)));
-    final c = NectarColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        NCard(
-          title: s.projectResources,
-          trailing: RangePicker(value: _range, options: usageRanges, onChanged: (r) => setState(() => _range = r)),
-          child: AsyncBlock(
-            value: usage,
-            onRetry: () => ref.invalidate(appUsageProvider((id, _range))),
-            data: (u) {
-              final pts = u.points;
-              List<(DateTime, double)> flat(double v) => pts.isEmpty ? const [] : [(pts.first.t, v), (pts.last.t, v)];
-              final cpu = TimeSeriesChart(
-                formatY: (v) => formatCpu(v.round()),
-                series: [
-                  ChartSeries(label: s.serverCpu, color: NectarTokens.amber, fill: true, points: [for (final p in pts) (p.t, p.cpuM.toDouble())]),
-                  if (u.requestCpuM > 0)
-                    ChartSeries(label: s.observeRequested, color: c.muted, dashed: true, points: flat(u.requestCpuM.toDouble())),
-                ],
-              );
-              final mem = TimeSeriesChart(
-                formatY: (v) => formatBytes(v.round()),
-                series: [
-                  ChartSeries(label: s.serverMemory, color: c.deploying, fill: true, points: [for (final p in pts) (p.t, p.memB.toDouble())]),
-                  if (u.requestMemB > 0)
-                    ChartSeries(label: s.observeRequested, color: c.muted, dashed: true, points: flat(u.requestMemB.toDouble())),
-                ],
-              );
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Grid(children: [('CPU', cpu), ('Memory', mem)]),
-                  if (u.replicas > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Text(
-                        s.observeTotalsAcrossReplicasTheDashed(u.replicas),
-                        style: TextStyle(color: c.muted, fontSize: 12.5),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ),
+        UsageCard(path: '/apps/${widget.app.id}'),
         if (widget.app.isWeb) ...[
           const SizedBox(height: NectarTokens.gap),
           _Traffic(app: widget.app),
@@ -96,25 +49,29 @@ class _Grid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, box) {
-          final cols = box.maxWidth >= 760 ? 2 : 1;
-          final w = (box.maxWidth - (cols - 1) * 20) / cols;
-          return Wrap(
-            spacing: 20,
-            runSpacing: 20,
-            children: [
-              for (final (title, chart) in children)
-                SizedBox(
-                  width: w,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [Text(title, style: Theme.of(context).textTheme.titleSmall), const SizedBox(height: 8), chart],
-                  ),
-                ),
-            ],
-          );
-        },
+    builder: (context, box) {
+      final cols = box.maxWidth >= 760 ? 2 : 1;
+      final w = (box.maxWidth - (cols - 1) * 20) / cols;
+      return Wrap(
+        spacing: 20,
+        runSpacing: 20,
+        children: [
+          for (final (title, chart) in children)
+            SizedBox(
+              width: w,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  chart,
+                ],
+              ),
+            ),
+        ],
       );
+    },
+  );
 }
 
 class _Traffic extends ConsumerWidget {
@@ -150,17 +107,25 @@ class _Traffic extends ConsumerWidget {
             children: [
               for (final d in domains) ...[
                 if (domains.length > 1)
-                  Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(d.domain, style: monoStyle(context, size: 13))),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(d.domain, style: monoStyle(context, size: 13)),
+                  ),
                 Wrap(
                   spacing: 28,
                   runSpacing: 10,
                   children: [
                     _Stat(label: s.observeRequests, value: '${d.requests}'),
-                    _Stat(label: s.observePerSecond, value: d.rps.toStringAsFixed(d.rps < 10 ? 2 : 1)),
+                    _Stat(
+                      label: s.observePerSecond,
+                      value: d.rps.toStringAsFixed(d.rps < 10 ? 2 : 1),
+                    ),
                     _Stat(
                       label: s.observeErrors5xx,
                       value: '${(d.errorRate * 100).toStringAsFixed(1)}%',
-                      color: d.errorRate >= 0.05 ? c.failed : (d.errorRate > 0 ? c.warning : null),
+                      color: d.errorRate >= 0.05
+                          ? c.failed
+                          : (d.errorRate > 0 ? c.warning : null),
                     ),
                     _Stat(label: 'p50', value: '${d.p50} ms'),
                     _Stat(label: 'p95', value: '${d.p95} ms'),
@@ -170,35 +135,62 @@ class _Traffic extends ConsumerWidget {
                 if (d.status.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Text(
-                    (d.status.entries.toList()..sort((a, b) => a.key.compareTo(b.key))).map((e) => '${e.key}: ${e.value}').join('   '),
+                    (d.status.entries.toList()
+                          ..sort((a, b) => a.key.compareTo(b.key)))
+                        .map((e) => '${e.key}: ${e.value}')
+                        .join('   '),
                     style: TextStyle(color: c.muted, fontSize: 12.5),
                   ),
                 ],
                 if (d.series.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  _Grid(children: [
-                    (
-                      'Requests per minute',
-                      TimeSeriesChart(
-                        height: 130,
-                        formatY: (v) => v.round().toString(),
-                        series: [
-                          ChartSeries(label: s.observeRequests, color: NectarTokens.amber, fill: true, points: [for (final p in d.series) (p.$1, p.$2.toDouble())]),
-                          ChartSeries(label: '5xx', color: c.failed, points: [for (final p in d.series) (p.$1, p.$3.toDouble())]),
-                        ],
+                  _Grid(
+                    children: [
+                      (
+                        'Requests per minute',
+                        TimeSeriesChart(
+                          height: 130,
+                          formatY: (v) => v.round().toString(),
+                          series: [
+                            ChartSeries(
+                              label: s.observeRequests,
+                              color: NectarTokens.amber,
+                              fill: true,
+                              points: [
+                                for (final p in d.series)
+                                  (p.$1, p.$2.toDouble()),
+                              ],
+                            ),
+                            ChartSeries(
+                              label: '5xx',
+                              color: c.failed,
+                              points: [
+                                for (final p in d.series)
+                                  (p.$1, p.$3.toDouble()),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    (
-                      'Latency p95',
-                      TimeSeriesChart(
-                        height: 130,
-                        formatY: (v) => '${v.round()} ms',
-                        series: [
-                          ChartSeries(label: 'p95', color: c.deploying, points: [for (final p in d.series) (p.$1, p.$4.toDouble())]),
-                        ],
+                      (
+                        'Latency p95',
+                        TimeSeriesChart(
+                          height: 130,
+                          formatY: (v) => '${v.round()} ms',
+                          series: [
+                            ChartSeries(
+                              label: 'p95',
+                              color: c.deploying,
+                              points: [
+                                for (final p in d.series)
+                                  (p.$1, p.$4.toDouble()),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ]),
+                    ],
+                  ),
                 ],
                 if (d != domains.last) const Divider(height: 32),
               ],
@@ -226,7 +218,14 @@ class _Stat extends StatelessWidget {
       children: [
         Text(label, style: TextStyle(color: c.muted, fontSize: 12)),
         const SizedBox(height: 2),
-        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: color ?? c.text)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: color ?? c.text,
+          ),
+        ),
       ],
     );
   }
@@ -253,7 +252,12 @@ class _AccessLog extends ConsumerWidget {
         value: log,
         loadingHeight: 100,
         data: (entries) {
-          if (entries.isEmpty) return Text(s.observeNoRequestsYet, style: TextStyle(color: c.muted, fontSize: 13.5));
+          if (entries.isEmpty) {
+            return Text(
+              s.observeNoRequestsYet,
+              style: TextStyle(color: c.muted, fontSize: 13.5),
+            );
+          }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -264,7 +268,10 @@ class _AccessLog extends ConsumerWidget {
                     children: [
                       SizedBox(
                         width: 64,
-                        child: Text(e.time == null ? '' : timeAgo(e.time), style: TextStyle(color: c.muted, fontSize: 12)),
+                        child: Text(
+                          e.time == null ? '' : timeAgo(e.time),
+                          style: TextStyle(color: c.muted, fontSize: 12),
+                        ),
                       ),
                       SizedBox(
                         width: 40,
@@ -273,23 +280,133 @@ class _AccessLog extends ConsumerWidget {
                           style: monoStyle(
                             context,
                             size: 12.5,
-                            color: e.status >= 500 ? c.failed : (e.status >= 400 ? c.warning : c.running),
+                            color: e.status >= 500
+                                ? c.failed
+                                : (e.status >= 400 ? c.warning : c.running),
                           ),
                         ),
                       ),
-                      SizedBox(width: 58, child: Text(e.method, style: monoStyle(context, size: 12.5))),
+                      SizedBox(
+                        width: 58,
+                        child: Text(
+                          e.method,
+                          style: monoStyle(context, size: 12.5),
+                        ),
+                      ),
                       Expanded(
-                        child: Text(e.path, maxLines: 1, overflow: TextOverflow.ellipsis, style: monoStyle(context, size: 12.5)),
+                        child: Text(
+                          e.path,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: monoStyle(context, size: 12.5),
+                        ),
                       ),
                       SizedBox(
                         width: 70,
-                        child: Text(s.gatewayMs(e.ms), textAlign: TextAlign.right, style: TextStyle(color: c.muted, fontSize: 12)),
+                        child: Text(
+                          s.gatewayMs(e.ms),
+                          textAlign: TextAlign.right,
+                          style: TextStyle(color: c.muted, fontSize: 12),
+                        ),
                       ),
                       SizedBox(
                         width: 120,
-                        child: Text(e.ip, textAlign: TextAlign.right, style: TextStyle(color: c.muted, fontSize: 12)),
+                        child: Text(
+                          e.ip,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(color: c.muted, fontSize: 12),
+                        ),
                       ),
                     ],
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// CPU and memory of an app or a database over time, with the requested resources as dashed lines.
+class UsageCard extends ConsumerStatefulWidget {
+  const UsageCard({super.key, required this.path});
+
+  /// API path of the workload: `/apps/5` or `/addons/3`.
+  final String path;
+
+  @override
+  ConsumerState<UsageCard> createState() => _UsageCardState();
+}
+
+class _UsageCardState extends ConsumerState<UsageCard> {
+  String _range = '1h';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final c = NectarColors.of(context);
+    final usage = ref.watch(usageProvider((widget.path, _range)));
+    return NCard(
+      title: s.projectResources,
+      trailing: RangePicker(
+        value: _range,
+        options: usageRanges,
+        onChanged: (r) => setState(() => _range = r),
+      ),
+      child: AsyncBlock(
+        value: usage,
+        onRetry: () => ref.invalidate(usageProvider((widget.path, _range))),
+        data: (u) {
+          final pts = u.points;
+          List<(DateTime, double)> flat(double v) =>
+              pts.isEmpty ? const [] : [(pts.first.t, v), (pts.last.t, v)];
+          final cpu = TimeSeriesChart(
+            formatY: (v) => formatCpu(v.round()),
+            series: [
+              ChartSeries(
+                label: s.serverCpu,
+                color: NectarTokens.amber,
+                fill: true,
+                points: [for (final p in pts) (p.t, p.cpuM.toDouble())],
+              ),
+              if (u.requestCpuM > 0)
+                ChartSeries(
+                  label: s.observeRequested,
+                  color: c.muted,
+                  dashed: true,
+                  points: flat(u.requestCpuM.toDouble()),
+                ),
+            ],
+          );
+          final mem = TimeSeriesChart(
+            formatY: (v) => formatBytes(v.round()),
+            series: [
+              ChartSeries(
+                label: s.serverMemory,
+                color: c.deploying,
+                fill: true,
+                points: [for (final p in pts) (p.t, p.memB.toDouble())],
+              ),
+              if (u.requestMemB > 0)
+                ChartSeries(
+                  label: s.observeRequested,
+                  color: c.muted,
+                  dashed: true,
+                  points: flat(u.requestMemB.toDouble()),
+                ),
+            ],
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Grid(children: [('CPU', cpu), ('Memory', mem)]),
+              if (u.replicas > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    s.observeTotalsAcrossReplicasTheDashed(u.replicas),
+                    style: TextStyle(color: c.muted, fontSize: 12.5),
                   ),
                 ),
             ],

@@ -38,10 +38,14 @@ List<(String, String)> parseDotEnv(String text) {
     final key = line.substring(0, eq).trim();
     if (!envKeyRe.hasMatch(key)) continue;
     var value = line.substring(eq + 1).trim();
-    if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))) {
+    if (value.length >= 2 &&
+        ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'")))) {
       final quote = value[0];
       value = value.substring(1, value.length - 1);
-      if (quote == '"') value = value.replaceAll(r'\n', '\n').replaceAll(r'\"', '"');
+      if (quote == '"') {
+        value = value.replaceAll(r'\n', '\n').replaceAll(r'\"', '"');
+      }
     } else {
       final hash = value.indexOf(' #');
       if (hash >= 0) value = value.substring(0, hash).trimRight();
@@ -53,5 +57,7 @@ List<(String, String)> parseDotEnv(String text) {
 }
 
 /// Heuristic: values of keys like these are stored as secrets by default.
-bool looksSecret(String key) =>
-    RegExp(r'(PASS|SECRET|TOKEN|KEY|PRIVATE|CREDENTIAL|DSN|DATABASE_URL)', caseSensitive: false).hasMatch(key);
+bool looksSecret(String key) => RegExp(
+  r'(PASS|SECRET|TOKEN|KEY|PRIVATE|CREDENTIAL|DSN|DATABASE_URL)',
+  caseSensitive: false,
+).hasMatch(key);

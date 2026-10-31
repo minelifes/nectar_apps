@@ -40,7 +40,13 @@ class SettingsPage extends ConsumerWidget {
               children: [
                 HexBadge(
                   size: 48,
-                  child: Text(user.initials, style: const TextStyle(fontWeight: FontWeight.w700, color: NectarTokens.onAmber)),
+                  child: Text(
+                    user.initials,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: NectarTokens.onAmber,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -52,7 +58,14 @@ class SettingsPage extends ConsumerWidget {
                       if (user.isOwner)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text(l.settingOwner, style: TextStyle(color: NectarTokens.amber, fontSize: 12, fontWeight: FontWeight.w600)),
+                          child: Text(
+                            l.settingOwner,
+                            style: TextStyle(
+                              color: NectarTokens.amber,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -145,16 +158,32 @@ class SettingsPage extends ConsumerWidget {
             children: [
               SegmentedButton<ThemeMode>(
                 segments: [
-                  ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_outlined, size: 18), label: Text(l.themeDark)),
-                  ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_outlined, size: 18), label: Text(l.themeLight)),
-                  ButtonSegment(value: ThemeMode.system, icon: const Icon(Icons.brightness_auto_outlined, size: 18), label: Text(l.themeSystem)),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    icon: const Icon(Icons.dark_mode_outlined, size: 18),
+                    label: Text(l.themeDark),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    icon: const Icon(Icons.light_mode_outlined, size: 18),
+                    label: Text(l.themeLight),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    icon: const Icon(Icons.brightness_auto_outlined, size: 18),
+                    label: Text(l.themeSystem),
+                  ),
                 ],
                 selected: {mode},
                 showSelectedIcon: false,
-                onSelectionChanged: (s) => ref.read(themeModeProvider.notifier).set(s.first),
+                onSelectionChanged: (s) =>
+                    ref.read(themeModeProvider.notifier).set(s.first),
               ),
               const SizedBox(height: 14),
-              Text(l.settingsLanguage, style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                l.settingsLanguage,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 6),
               SegmentedButton<String>(
                 segments: [
@@ -164,10 +193,18 @@ class SettingsPage extends ConsumerWidget {
                 ],
                 selected: {ref.watch(localeProvider)?.languageCode ?? ''},
                 showSelectedIcon: false,
-                onSelectionChanged: (s) => ref.read(localeProvider.notifier).set(s.first.isEmpty ? null : Locale(s.first)),
+                onSelectionChanged: (s) => ref
+                    .read(localeProvider.notifier)
+                    .set(s.first.isEmpty ? null : Locale(s.first)),
               ),
               const SizedBox(height: 6),
-              Text(l.settingsLanguageHint, style: TextStyle(color: NectarColors.of(context).muted, fontSize: 12.5)),
+              Text(
+                l.settingsLanguageHint,
+                style: TextStyle(
+                  color: NectarColors.of(context).muted,
+                  fontSize: 12.5,
+                ),
+              ),
             ],
           ),
         ),
@@ -176,7 +213,8 @@ class SettingsPage extends ConsumerWidget {
           title: l.navServer,
           trailing: session.canChangeServer
               ? TextButton(
-                  onPressed: () => ref.read(sessionProvider.notifier).disconnect(),
+                  onPressed: () =>
+                      ref.read(sessionProvider.notifier).disconnect(),
                   child: Text(l.authUseAnotherServer),
                 )
               : null,
@@ -184,17 +222,29 @@ class SettingsPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _Row('Address', session.serverUrl ?? '', mono: true),
-              if (session.version != null) _Row('Version', '${session.version!.version} (API v${session.version!.apiVersion})'),
+              if (session.version != null)
+                _Row(
+                  'Version',
+                  '${session.version!.version} (API v${session.version!.apiVersion})',
+                ),
               settings.when(
                 skipLoadingOnRefresh: true,
                 data: (s) => Column(
                   children: [
-                    _Row('Base domain', s.baseDomain.isEmpty ? 'not set' : s.baseDomain, mono: s.baseDomain.isNotEmpty),
+                    _Row(
+                      'Base domain',
+                      s.baseDomain.isEmpty ? 'not set' : s.baseDomain,
+                      mono: s.baseDomain.isNotEmpty,
+                    ),
                     _Row(
                       'Domains via',
                       s.routing == 'ingress'
                           ? 'Kubernetes Ingress'
-                          : (!s.gatewayConfigured ? 'nectar-gateway (not configured)' : (s.gatewayReachable ? 'nectar-gateway' : 'nectar-gateway (unreachable)')),
+                          : (!s.gatewayConfigured
+                                ? 'nectar-gateway (not configured)'
+                                : (s.gatewayReachable
+                                      ? 'nectar-gateway'
+                                      : 'nectar-gateway (unreachable)')),
                     ),
                   ],
                 ),
@@ -238,7 +288,10 @@ class SettingsPage extends ConsumerWidget {
                   context: context,
                   applicationName: 'Nectar Apps',
                   applicationVersion: session.version?.version,
-                  applicationIcon: const Padding(padding: EdgeInsets.all(12), child: NectarMark(size: 48)),
+                  applicationIcon: const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: NectarMark(size: 48),
+                  ),
                 ),
                 child: Text(l.settingLicenses),
               ),
@@ -265,8 +318,21 @@ class _Row extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 130, child: Text(label, style: TextStyle(color: c.muted, fontSize: 13.5))),
-          Expanded(child: SelectableText(value, style: mono ? monoStyle(context, size: 13) : const TextStyle(fontSize: 13.5))),
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: TextStyle(color: c.muted, fontSize: 13.5),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(
+              value,
+              style: mono
+                  ? monoStyle(context, size: 13)
+                  : const TextStyle(fontSize: 13.5),
+            ),
+          ),
         ],
       ),
     );

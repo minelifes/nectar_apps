@@ -21,11 +21,19 @@ class ApiException implements Exception {
       return switch (e.type) {
         DioExceptionType.connectionTimeout ||
         DioExceptionType.receiveTimeout ||
-        DioExceptionType.sendTimeout =>
-          const ApiException(null, 'The server did not answer in time.'),
-        DioExceptionType.badCertificate => const ApiException(null, 'The server certificate is not trusted.'),
+        DioExceptionType.sendTimeout => const ApiException(
+          null,
+          'The server did not answer in time.',
+        ),
+        DioExceptionType.badCertificate => const ApiException(
+          null,
+          'The server certificate is not trusted.',
+        ),
         DioExceptionType.cancel => const ApiException(null, 'Cancelled.'),
-        _ => const ApiException(null, 'Cannot reach the server. Check the address and your connection.'),
+        _ => const ApiException(
+          null,
+          'Cannot reach the server. Check the address and your connection.',
+        ),
       };
     }
     final data = res.data;
@@ -61,7 +69,12 @@ String describeError(Object error) {
 /// server (`--dart-define=NECTAR_API=…`) use bearer tokens: a 15-minute access token, renewed with the
 /// refresh token on the first 401.
 class Api {
-  Api({required this.baseUrl, required this.tokens, required this.useTokens, this.onSessionExpired}) {
+  Api({
+    required this.baseUrl,
+    required this.tokens,
+    required this.useTokens,
+    this.onSessionExpired,
+  }) {
     _dio = Dio(
       BaseOptions(
         baseUrl: '$baseUrl/api',
@@ -71,7 +84,9 @@ class Api {
         responseType: ResponseType.json,
       ),
     );
-    _dio.interceptors.add(InterceptorsWrapper(onRequest: _onRequest, onError: _onError));
+    _dio.interceptors.add(
+      InterceptorsWrapper(onRequest: _onRequest, onError: _onError),
+    );
   }
 
   final String baseUrl;
@@ -120,12 +135,20 @@ class Api {
     final running = _refreshing;
     if (running != null) return running.future;
     final done = Completer<void>();
-    done.future.ignore(); // only parallel callers listen; the first one gets the error directly
+    done.future
+        .ignore(); // only parallel callers listen; the first one gets the error directly
     _refreshing = done;
     try {
-      final res = await _dio.post<dynamic>('/auth/refresh', data: {'refresh_token': tokens.refresh}, options: public);
+      final res = await _dio.post<dynamic>(
+        '/auth/refresh',
+        data: {'refresh_token': tokens.refresh},
+        options: public,
+      );
       final data = res.data as Map<String, dynamic>;
-      await tokens.save(data['access_token'] as String?, (data['refresh_token'] as String?) ?? tokens.refresh);
+      await tokens.save(
+        data['access_token'] as String?,
+        (data['refresh_token'] as String?) ?? tokens.refresh,
+      );
       done.complete();
     } catch (e) {
       await tokens.clear();
@@ -141,7 +164,10 @@ class Api {
   Uri wsUri(String path, [Map<String, String> query = const {}]) {
     final base = Uri.parse(baseUrl);
     final access = tokens.access;
-    final q = {...query, if (useTokens && access != null) 'access_token': access};
+    final q = {
+      ...query,
+      if (useTokens && access != null) 'access_token': access,
+    };
     return base.replace(
       scheme: base.scheme == 'https' ? 'wss' : 'ws',
       path: '${base.path}/api$path',
@@ -149,17 +175,25 @@ class Api {
     );
   }
 
-  Future<dynamic> get(String path, {Map<String, dynamic>? query, Options? options}) =>
-      _send(() => _dio.get<dynamic>(path, queryParameters: query, options: options));
+  Future<dynamic> get(
+    String path, {
+    Map<String, dynamic>? query,
+    Options? options,
+  }) => _send(
+    () => _dio.get<dynamic>(path, queryParameters: query, options: options),
+  );
 
   Future<dynamic> post(String path, {Object? data, Options? options}) =>
       _send(() => _dio.post<dynamic>(path, data: data, options: options));
 
-  Future<dynamic> put(String path, {Object? data}) => _send(() => _dio.put<dynamic>(path, data: data));
+  Future<dynamic> put(String path, {Object? data}) =>
+      _send(() => _dio.put<dynamic>(path, data: data));
 
-  Future<dynamic> patch(String path, {Object? data}) => _send(() => _dio.patch<dynamic>(path, data: data));
+  Future<dynamic> patch(String path, {Object? data}) =>
+      _send(() => _dio.patch<dynamic>(path, data: data));
 
-  Future<dynamic> delete(String path) => _send(() => _dio.delete<dynamic>(path));
+  Future<dynamic> delete(String path) =>
+      _send(() => _dio.delete<dynamic>(path));
 
   /// Streams a file as the raw request body (artifact upload) and reports progress.
   Future<dynamic> upload(
@@ -169,23 +203,22 @@ class Api {
     Map<String, dynamic>? query,
     void Function(int sent, int total)? onProgress,
     CancelToken? cancel,
-  }) =>
-      _send(
-        () => _dio.post<dynamic>(
-          path,
-          data: data,
-          queryParameters: query,
-          cancelToken: cancel,
-          onSendProgress: onProgress,
-          options: Options(
-            contentType: 'application/octet-stream',
-            headers: {Headers.contentLengthHeader: length},
-            // no send timeout (none in BaseOptions): a slow uplink must not fail a big JAR;
-            // the server answers after inspecting the file
-            receiveTimeout: const Duration(minutes: 5),
-          ),
-        ),
-      );
+  }) => _send(
+    () => _dio.post<dynamic>(
+      path,
+      data: data,
+      queryParameters: query,
+      cancelToken: cancel,
+      onSendProgress: onProgress,
+      options: Options(
+        contentType: 'application/octet-stream',
+        headers: {Headers.contentLengthHeader: length},
+        // no send timeout (none in BaseOptions): a slow uplink must not fail a big JAR;
+        // the server answers after inspecting the file
+        receiveTimeout: const Duration(minutes: 5),
+      ),
+    ),
+  );
 
   Future<dynamic> _send(Future<Response<dynamic>> Function() call) async {
     try {

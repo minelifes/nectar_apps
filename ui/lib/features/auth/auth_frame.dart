@@ -7,7 +7,13 @@ import '../../widgets/hex.dart';
 
 /// Centered card on a faint honeycomb background, used by the sign-in pages.
 class AuthFrame extends StatelessWidget {
-  const AuthFrame({super.key, required this.title, this.subtitle, required this.children, this.footer});
+  const AuthFrame({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.children,
+    this.footer,
+  });
 
   final String title;
   final String? subtitle;
@@ -21,7 +27,11 @@ class AuthFrame extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(child: CustomPaint(painter: _HoneycombPainter(c.border.withValues(alpha: 0.5)))),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _HoneycombPainter(c.border.withValues(alpha: 0.5)),
+            ),
+          ),
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -43,19 +53,35 @@ class AuthFrame extends StatelessWidget {
                     children: [
                       const Center(child: NectarMark(size: 56)),
                       const SizedBox(height: 18),
-                      Text(title, textAlign: TextAlign.center, style: theme.textTheme.headlineSmall),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineSmall,
+                      ),
                       if (subtitle != null) ...[
                         const SizedBox(height: 6),
-                        Text(subtitle!, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: c.muted)),
+                        Text(
+                          subtitle!,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: c.muted,
+                          ),
+                        ),
                       ],
                       const SizedBox(height: 24),
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(24),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: children,
+                          ),
                         ),
                       ),
-                      if (footer != null) ...[const SizedBox(height: 16), footer!],
+                      if (footer != null) ...[
+                        const SizedBox(height: 16),
+                        footer!,
+                      ],
                     ],
                   ),
                 ),
@@ -85,7 +111,12 @@ class _HoneycombPainter extends CustomPainter {
     for (var y = -r; y < size.height + r; y += r * 1.5, row++) {
       final offset = row.isOdd ? w / 2 : 0.0;
       for (var x = -w + offset; x < size.width + w; x += w) {
-        canvas.drawPath(hexagonPath(Rect.fromCenter(center: Offset(x, y), width: w, height: 2 * r)), paint);
+        canvas.drawPath(
+          hexagonPath(
+            Rect.fromCenter(center: Offset(x, y), width: w, height: 2 * r),
+          ),
+          paint,
+        );
       }
     }
   }
@@ -116,7 +147,12 @@ class FormError extends StatelessWidget {
         children: [
           Icon(Icons.error_outline_rounded, size: 18, color: c.failed),
           const SizedBox(width: 10),
-          Expanded(child: Text(message, style: TextStyle(color: c.text, fontSize: 13.5))),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: c.text, fontSize: 13.5),
+            ),
+          ),
         ],
       ),
     );
@@ -125,7 +161,12 @@ class FormError extends StatelessWidget {
 
 /// Primary button that shows a loader while [busy].
 class BusyButton extends StatelessWidget {
-  const BusyButton({super.key, required this.label, required this.busy, required this.onPressed});
+  const BusyButton({
+    super.key,
+    required this.label,
+    required this.busy,
+    required this.onPressed,
+  });
 
   final String label;
   final bool busy;
@@ -133,12 +174,15 @@ class BusyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FilledButton(
-        onPressed: busy ? null : onPressed,
-        child: busy
-            ? const SizedBox.square(
-                dimension: 18,
-                child: CircularProgressIndicator(strokeWidth: 2.2, color: NectarTokens.onAmber),
-              )
-            : Text(label),
-      );
+    onPressed: busy ? null : onPressed,
+    child: busy
+        ? const SizedBox.square(
+            dimension: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: NectarTokens.onAmber,
+            ),
+          )
+        : Text(label),
+  );
 }

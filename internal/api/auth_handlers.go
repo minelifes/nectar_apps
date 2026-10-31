@@ -39,6 +39,8 @@ func (s *Server) version(w http.ResponseWriter, r *http.Request) {
 		"commit":             version.Commit,
 		"api_version":        version.APIVersion,
 		"min_client_version": version.MinClientVersion,
+		// lets clients notice a wrong server clock (times shown hours off, certificates, 2FA codes)
+		"server_time": time.Now().UTC(),
 	})
 }
 

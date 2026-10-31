@@ -26,7 +26,9 @@ class _NectarAppState extends ConsumerState<NectarApp> {
   void initState() {
     super.initState();
     // a tapped push notification opens its page
-    _taps = PushService.instance.taps.listen((path) => ref.read(routerProvider).go(path));
+    _taps = PushService.instance.taps.listen(
+      (path) => ref.read(routerProvider).go(path),
+    );
   }
 
   @override

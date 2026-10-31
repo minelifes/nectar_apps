@@ -9,7 +9,9 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   _registerFontLicenses();
   // Errors are shown where they happen (pages show a retry); do not retry failed requests automatically.
-  runApp(ProviderScope(retry: (retryCount, error) => null, child: const NectarApp()));
+  runApp(
+    ProviderScope(retry: (retryCount, error) => null, child: const NectarApp()),
+  );
 }
 
 void _registerFontLicenses() {
@@ -19,7 +21,9 @@ void _registerFontLicenses() {
       ('Space Grotesk', 'LICENSE-SpaceGrotesk.txt'),
       ('JetBrains Mono', 'LICENSE-JetBrainsMono.txt'),
     ]) {
-      yield LicenseEntryWithLineBreaks([family], await rootBundle.loadString('assets/fonts/$file'));
+      yield LicenseEntryWithLineBreaks([
+        family,
+      ], await rootBundle.loadString('assets/fonts/$file'));
     }
   });
 }

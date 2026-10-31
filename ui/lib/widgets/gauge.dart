@@ -35,7 +35,8 @@ class RingGauge extends StatelessWidget {
     final v = unavailable ? 0.0 : value.clamp(0.0, 1.0);
     final theme = Theme.of(context);
     return Semantics(
-      label: '$label ${unavailable ? 'unavailable' : '${(v * 100).round()} percent'}',
+      label:
+          '$label ${unavailable ? 'unavailable' : '${(v * 100).round()} percent'}',
       child: SizedBox.square(
         dimension: size,
         child: TweenAnimationBuilder<double>(
@@ -50,13 +51,20 @@ class RingGauge extends StatelessWidget {
                 children: [
                   Text(
                     unavailable ? '—' : '${(animated * 100).round()}%',
-                    style: theme.textTheme.headlineSmall?.copyWith(fontSize: size * 0.2),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontSize: size * 0.2,
+                    ),
                   ),
                   Text(label, style: theme.textTheme.labelMedium),
                   if (caption != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(caption!, style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
+                      child: Text(
+                        caption!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -92,12 +100,19 @@ class _RingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RingPainter old) => old.value != value || old.color != color || old.track != track;
+  bool shouldRepaint(_RingPainter old) =>
+      old.value != value || old.color != color || old.track != track;
 }
 
 /// Thin horizontal usage bar with a label row ("CPU  0.5 / 2 cores").
 class UsageBar extends StatelessWidget {
-  const UsageBar({super.key, required this.label, required this.value, this.trailing, this.unlimited = false});
+  const UsageBar({
+    super.key,
+    required this.label,
+    required this.value,
+    this.trailing,
+    this.unlimited = false,
+  });
 
   final String label;
   final double value;
@@ -108,14 +123,22 @@ class UsageBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = NectarColors.of(context);
     final v = value.clamp(0.0, 1.0);
-    final color = unlimited ? c.stopped : (v >= 0.9 ? c.failed : (v >= 0.75 ? c.warning : NectarTokens.amber));
+    final color = unlimited
+        ? c.stopped
+        : (v >= 0.9 ? c.failed : (v >= 0.75 ? c.warning : NectarTokens.amber));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Expanded(child: Text(label, style: Theme.of(context).textTheme.labelMedium)),
-            if (trailing != null) Text(trailing!, style: Theme.of(context).textTheme.bodySmall),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ),
+            if (trailing != null)
+              Text(trailing!, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
         const SizedBox(height: 6),

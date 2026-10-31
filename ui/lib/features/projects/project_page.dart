@@ -36,7 +36,9 @@ class ProjectPage extends ConsumerWidget {
       ref.invalidate(projectAddonsProvider(id));
     }
 
-    final canCreate = ref.watch(sessionProvider.select((s) => s.can('app.create', projectId: id)));
+    final canCreate = ref.watch(
+      sessionProvider.select((s) => s.can('app.create', projectId: id)),
+    );
     final back = IconButton(
       tooltip: l.projectAllProjects,
       icon: const Icon(Icons.arrow_back_rounded),
@@ -46,10 +48,16 @@ class ProjectPage extends ConsumerWidget {
     return project.when(
       skipLoadingOnRefresh: true,
       loading: () => const LoadingBlock(height: 320),
-      error: (e, _) => PageScaffold(title: l.projectProject, leading: back, children: [ErrorBlock(error: e, onRetry: refresh)]),
+      error: (e, _) => PageScaffold(
+        title: l.projectProject,
+        leading: back,
+        children: [ErrorBlock(error: e, onRetry: refresh)],
+      ),
       data: (p) => PageScaffold(
         title: p.name,
-        subtitle: p.adopted ? '${p.namespace} · adopted namespace' : p.namespace,
+        subtitle: p.adopted
+            ? '${p.namespace} · adopted namespace'
+            : p.namespace,
         leading: back,
         onRefresh: refresh,
         actions: [
@@ -76,10 +84,24 @@ class ProjectPage extends ConsumerWidget {
               _ => null,
             },
             itemBuilder: (_) => [
-              if (canCreate) PopupMenuItem(value: 'compose', child: Text(l.projectImportDockerComposeYml)),
-              if (canCreate) PopupMenuItem(value: 'yaml', child: Text(l.projectApplyNectarYaml)),
-              PopupMenuItem(value: 'export', child: Text(l.projectExportNectarYaml)),
-              PopupMenuItem(value: 'env', child: Text(l.projectNewEnvironmentCopy)),
+              if (canCreate)
+                PopupMenuItem(
+                  value: 'compose',
+                  child: Text(l.projectImportDockerComposeYml),
+                ),
+              if (canCreate)
+                PopupMenuItem(
+                  value: 'yaml',
+                  child: Text(l.projectApplyNectarYaml),
+                ),
+              PopupMenuItem(
+                value: 'export',
+                child: Text(l.projectExportNectarYaml),
+              ),
+              PopupMenuItem(
+                value: 'env',
+                child: Text(l.projectNewEnvironmentCopy),
+              ),
             ],
           ),
         ],
@@ -88,27 +110,44 @@ class ProjectPage extends ConsumerWidget {
             builder: (context, box) {
               final quota = Column(
                 children: [
-                  _QuotaCard(project: p, apps: apps.hasValue ? apps.value! : const []),
+                  _QuotaCard(
+                    project: p,
+                    apps: apps.hasValue ? apps.value! : const [],
+                  ),
                   const SizedBox(height: NectarTokens.gap),
                   MembersCard(projectId: id),
                   const SizedBox(height: NectarTokens.gap),
                   EnvGroupsCard(projectId: id),
                   if (activity.hasValue) ...[
                     const SizedBox(height: NectarTokens.gap),
-                    ActivityCard(entries: activity.value!, title: l.projectActivity),
+                    ActivityCard(
+                      entries: activity.value!,
+                      title: l.projectActivity,
+                    ),
                   ],
                 ],
               );
               final appsSection = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _AppsSection(projectId: id, canCreate: canCreate, apps: apps, onRetry: refresh),
+                  _AppsSection(
+                    projectId: id,
+                    canCreate: canCreate,
+                    apps: apps,
+                    onRetry: refresh,
+                  ),
                   const SizedBox(height: NectarTokens.gapLarge),
                   AddonsSection(projectId: id, canCreate: canCreate),
                 ],
               );
               if (box.maxWidth < 1000) {
-                return Column(children: [quota, const SizedBox(height: NectarTokens.gapLarge), appsSection]);
+                return Column(
+                  children: [
+                    quota,
+                    const SizedBox(height: NectarTokens.gapLarge),
+                    appsSection,
+                  ],
+                );
               }
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,7 +166,12 @@ class ProjectPage extends ConsumerWidget {
 }
 
 class _AppsSection extends StatelessWidget {
-  const _AppsSection({required this.projectId, required this.canCreate, required this.apps, required this.onRetry});
+  const _AppsSection({
+    required this.projectId,
+    required this.canCreate,
+    required this.apps,
+    required this.onRetry,
+  });
 
   final int projectId;
   final bool canCreate;
@@ -152,7 +196,8 @@ class _AppsSection extends StatelessWidget {
                     message: s.projectDeployAJarABinary,
                     action: canCreate
                         ? FilledButton.icon(
-                            onPressed: () => context.go('/apps/new?project=$projectId'),
+                            onPressed: () =>
+                                context.go('/apps/new?project=$projectId'),
                             icon: const Icon(Icons.add_rounded, size: 18),
                             label: Text(s.newApp),
                           )
@@ -162,7 +207,10 @@ class _AppsSection extends StatelessWidget {
               : Wrap(
                   spacing: 12,
                   runSpacing: 12,
-                  children: [for (final a in list) AppTile(app: a, onTap: () => context.go('/apps/${a.id}'))],
+                  children: [
+                    for (final a in list)
+                      AppTile(app: a, onTap: () => context.go('/apps/${a.id}')),
+                  ],
                 ),
         ),
       ],
@@ -185,11 +233,15 @@ class _QuotaCard extends StatelessWidget {
     final cpu = apps.fold<int>(0, (s, a) => s + a.requestedCpu);
     final mem = apps.fold<int>(0, (s, a) => s + a.requestedMemoryMb);
     double ratio(int used, int limit) => limit <= 0 ? 0 : used / limit;
-    String of(String used, int limit, String Function(int) fmt) => limit <= 0 ? '$used · no limit' : '$used / ${fmt(limit)}';
+    String of(String used, int limit, String Function(int) fmt) =>
+        limit <= 0 ? '$used · no limit' : '$used / ${fmt(limit)}';
 
     return NCard(
       title: l.projectResources,
-      trailing: Text(q == null ? 'Unlimited' : 'Quota', style: TextStyle(color: c.muted, fontSize: 12.5)),
+      trailing: Text(
+        q == null ? 'Unlimited' : 'Quota',
+        style: TextStyle(color: c.muted, fontSize: 12.5),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -19,7 +19,11 @@ import '../../widgets/common.dart';
 class TwoFactorCard extends ConsumerWidget {
   const TwoFactorCard({super.key});
 
-  Future<String?> _password(BuildContext context, String title, String action) async {
+  Future<String?> _password(
+    BuildContext context,
+    String title,
+    String action,
+  ) async {
     final s = S.of(context);
     final ctl = TextEditingController();
     final ok = await showDialog<bool>(
@@ -28,11 +32,22 @@ class TwoFactorCard extends ConsumerWidget {
         title: Text(title),
         content: SizedBox(
           width: 380,
-          child: TextField(controller: ctl, autofocus: true, obscureText: true, decoration: InputDecoration(labelText: s.settingYourPassword)),
+          child: TextField(
+            controller: ctl,
+            autofocus: true,
+            obscureText: true,
+            decoration: InputDecoration(labelText: s.settingYourPassword),
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.actionCancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(action)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.actionCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(action),
+          ),
         ],
       ),
     );
@@ -43,12 +58,20 @@ class TwoFactorCard extends ConsumerWidget {
 
   Future<void> _disable(BuildContext context, WidgetRef ref) async {
     final s = S.of(context);
-    final pw = await _password(context, 'Turn off two-factor authentication?', 'Turn off');
+    final pw = await _password(
+      context,
+      'Turn off two-factor authentication?',
+      'Turn off',
+    );
     if (pw == null || !context.mounted) return;
     try {
-      await ref.read(apiProvider).post('/me/mfa/disable', data: {'password': pw});
+      await ref
+          .read(apiProvider)
+          .post('/me/mfa/disable', data: {'password': pw});
       ref.invalidate(mfaStatusProvider);
-      if (context.mounted) showSnack(context, s.settingTwoFactorAuthenticationIsOff);
+      if (context.mounted) {
+        showSnack(context, s.settingTwoFactorAuthenticationIsOff);
+      }
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
@@ -58,9 +81,16 @@ class TwoFactorCard extends ConsumerWidget {
     final pw = await _password(context, 'New recovery codes', 'Create');
     if (pw == null || !context.mounted) return;
     try {
-      final res = await ref.read(apiProvider).post('/me/mfa/recovery-codes', data: {'password': pw});
+      final res = await ref
+          .read(apiProvider)
+          .post('/me/mfa/recovery-codes', data: {'password': pw});
       ref.invalidate(mfaStatusProvider);
-      if (context.mounted) await showRecoveryCodes(context, ((res as Map)['recovery_codes'] as List).cast<String>());
+      if (context.mounted) {
+        await showRecoveryCodes(
+          context,
+          ((res as Map)['recovery_codes'] as List).cast<String>(),
+        );
+      }
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
@@ -83,19 +113,29 @@ class TwoFactorCard extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  Icon(enabled ? Icons.verified_user_rounded : Icons.shield_outlined, color: enabled ? c.running : c.muted),
+                  Icon(
+                    enabled
+                        ? Icons.verified_user_rounded
+                        : Icons.shield_outlined,
+                    color: enabled ? c.running : c.muted,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(enabled
-                        ? 'On. Signing in asks for a code from your authenticator app. $left recovery codes left.'
-                        : 'Off. Add a code from an authenticator app (1Password, Google Authenticator, Aegis…) to your password.'),
+                    child: Text(
+                      enabled
+                          ? 'On. Signing in asks for a code from your authenticator app. $left recovery codes left.'
+                          : 'Off. Add a code from an authenticator app (1Password, Google Authenticator, Aegis…) to your password.',
+                    ),
                   ),
                 ],
               ),
               if (enabled && left <= 3)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(l.settingOnlyRecoveryCodesLeftCreate(left), style: TextStyle(color: c.warning, fontSize: 12.5)),
+                  child: Text(
+                    l.settingOnlyRecoveryCodesLeftCreate(left),
+                    style: TextStyle(color: c.warning, fontSize: 12.5),
+                  ),
                 ),
               const SizedBox(height: 12),
               Wrap(
@@ -103,16 +143,24 @@ class TwoFactorCard extends ConsumerWidget {
                 runSpacing: 8,
                 children: enabled
                     ? [
-                        OutlinedButton(onPressed: () => _newCodes(context, ref), child: Text(l.settingNewRecoveryCodes)),
+                        OutlinedButton(
+                          onPressed: () => _newCodes(context, ref),
+                          child: Text(l.settingNewRecoveryCodes),
+                        ),
                         TextButton(
-                          style: TextButton.styleFrom(foregroundColor: c.failed),
+                          style: TextButton.styleFrom(
+                            foregroundColor: c.failed,
+                          ),
                           onPressed: () => _disable(context, ref),
                           child: Text(l.settingTurnOff),
                         ),
                       ]
                     : [
                         FilledButton.icon(
-                          onPressed: () => showDialog<void>(context: context, builder: (_) => const _SetupDialog()),
+                          onPressed: () => showDialog<void>(
+                            context: context,
+                            builder: (_) => const _SetupDialog(),
+                          ),
                           icon: const Icon(Icons.qr_code_2_rounded, size: 18),
                           label: Text(l.settingSetUp),
                         ),
@@ -126,7 +174,8 @@ class TwoFactorCard extends ConsumerWidget {
   }
 }
 
-Future<void> showRecoveryCodes(BuildContext context, List<String> codes) => showDialog<void>(
+Future<void> showRecoveryCodes(BuildContext context, List<String> codes) =>
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
@@ -141,8 +190,14 @@ Future<void> showRecoveryCodes(BuildContext context, List<String> codes) => show
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: NectarColors.of(ctx).elevated, borderRadius: BorderRadius.circular(NectarTokens.radiusSmall)),
-                child: SelectableText(codes.join('\n'), style: monoStyle(ctx, size: 15)),
+                decoration: BoxDecoration(
+                  color: NectarColors.of(ctx).elevated,
+                  borderRadius: BorderRadius.circular(NectarTokens.radiusSmall),
+                ),
+                child: SelectableText(
+                  codes.join('\n'),
+                  style: monoStyle(ctx, size: 15),
+                ),
               ),
             ],
           ),
@@ -155,7 +210,10 @@ Future<void> showRecoveryCodes(BuildContext context, List<String> codes) => show
             },
             child: Text(S.of(context).backupCopy),
           ),
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: Text(S.of(context).settingISavedThem)),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(S.of(context).settingISavedThem),
+          ),
         ],
       ),
     );
@@ -168,7 +226,10 @@ class _SetupDialog extends ConsumerStatefulWidget {
 }
 
 class _SetupDialogState extends ConsumerState<_SetupDialog> {
-  late final Future<Map<String, dynamic>> _setup = ref.read(apiProvider).post('/me/mfa/setup').then((v) => Map<String, dynamic>.from(v as Map));
+  late final Future<Map<String, dynamic>> _setup = ref
+      .read(apiProvider)
+      .post('/me/mfa/setup')
+      .then((v) => Map<String, dynamic>.from(v as Map));
   final _code = TextEditingController();
   bool _busy = false;
   String? _error;
@@ -185,11 +246,16 @@ class _SetupDialogState extends ConsumerState<_SetupDialog> {
       _error = null;
     });
     try {
-      final res = await ref.read(apiProvider).post('/me/mfa/enable', data: {'code': _code.text.trim()});
+      final res = await ref
+          .read(apiProvider)
+          .post('/me/mfa/enable', data: {'code': _code.text.trim()});
       ref.invalidate(mfaStatusProvider);
       if (!mounted) return;
       Navigator.pop(context);
-      await showRecoveryCodes(context, ((res as Map)['recovery_codes'] as List).cast<String>());
+      await showRecoveryCodes(
+        context,
+        ((res as Map)['recovery_codes'] as List).cast<String>(),
+      );
     } on Object catch (e) {
       if (mounted) setState(() => _error = describeError(e));
     } finally {
@@ -222,12 +288,24 @@ class _SetupDialogState extends ConsumerState<_SetupDialog> {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     color: Colors.white,
-                    child: QrImageView(data: url, size: 190, backgroundColor: Colors.white),
+                    child: QrImageView(
+                      data: url,
+                      size: 190,
+                      backgroundColor: Colors.white,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(s.settingOrEnterTheKeyBy, style: TextStyle(color: c.muted, fontSize: 12.5)),
-                SelectableText(secret.replaceAllMapped(RegExp(r'.{4}'), (m) => '${m[0]} ').trim(), style: monoStyle(context, size: 13)),
+                Text(
+                  s.settingOrEnterTheKeyBy,
+                  style: TextStyle(color: c.muted, fontSize: 12.5),
+                ),
+                SelectableText(
+                  secret
+                      .replaceAllMapped(RegExp(r'.{4}'), (m) => '${m[0]} ')
+                      .trim(),
+                  style: monoStyle(context, size: 13),
+                ),
                 const SizedBox(height: 16),
                 Text(s.setting2EnterThe6Digit),
                 const SizedBox(height: 8),
@@ -235,19 +313,32 @@ class _SetupDialogState extends ConsumerState<_SetupDialog> {
                   controller: _code,
                   autofocus: true,
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(6),
+                  ],
                   decoration: InputDecoration(labelText: s.authCode),
                   onSubmitted: (_) => _enable(),
                 ),
-                if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: TextStyle(color: c.failed))),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(_error!, style: TextStyle(color: c.failed)),
+                  ),
               ],
             );
           },
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-        FilledButton(onPressed: _busy ? null : _enable, child: Text(_busy ? 'Checking…' : 'Turn on')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _enable,
+          child: Text(_busy ? 'Checking…' : 'Turn on'),
+        ),
       ],
     );
   }
@@ -259,7 +350,11 @@ class _SetupDialogState extends ConsumerState<_SetupDialog> {
 class SessionsCard extends ConsumerWidget {
   const SessionsCard({super.key});
 
-  Future<void> _revoke(BuildContext context, WidgetRef ref, UserSession s) async {
+  Future<void> _revoke(
+    BuildContext context,
+    WidgetRef ref,
+    UserSession s,
+  ) async {
     try {
       await ref.read(apiProvider).delete('/me/sessions/${s.id}');
       ref.invalidate(mySessionsProvider);
@@ -283,10 +378,26 @@ class SessionsCard extends ConsumerWidget {
             for (final s in list)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(s.kind == 'mobile' ? Icons.phone_iphone_rounded : Icons.laptop_rounded),
+                leading: Icon(
+                  s.kind == 'mobile'
+                      ? Icons.phone_iphone_rounded
+                      : Icons.laptop_rounded,
+                ),
                 title: Text(s.current ? '${s.device} · this device' : s.device),
-                subtitle: Text(l.settingActiveSince(s.ip, timeAgo(s.lastSeenAt), timeAgo(s.createdAt)), style: TextStyle(color: c.muted, fontSize: 12.5)),
-                trailing: s.current ? null : TextButton(onPressed: () => _revoke(context, ref, s), child: Text(l.logout)),
+                subtitle: Text(
+                  l.settingActiveSince(
+                    s.ip,
+                    timeAgo(s.lastSeenAt),
+                    timeAgo(s.createdAt),
+                  ),
+                  style: TextStyle(color: c.muted, fontSize: 12.5),
+                ),
+                trailing: s.current
+                    ? null
+                    : TextButton(
+                        onPressed: () => _revoke(context, ref, s),
+                        child: Text(l.logout),
+                      ),
               ),
           ],
         ),
@@ -327,10 +438,23 @@ class _SmtpForm extends ConsumerStatefulWidget {
 
 class _SmtpFormState extends ConsumerState<_SmtpForm> {
   late final Map<String, TextEditingController> _c = {
-    for (final k in ['host', 'port', 'username', 'password', 'from', 'panel_url'])
-      k: TextEditingController(text: widget.initial[k] == null || widget.initial[k] == 0 ? '' : '${widget.initial[k]}'),
+    for (final k in [
+      'host',
+      'port',
+      'username',
+      'password',
+      'from',
+      'panel_url',
+    ])
+      k: TextEditingController(
+        text: widget.initial[k] == null || widget.initial[k] == 0
+            ? ''
+            : '${widget.initial[k]}',
+      ),
   };
-  late String _security = '${widget.initial['security'] ?? 'starttls'}'.isEmpty ? 'starttls' : '${widget.initial['security']}';
+  late String _security = '${widget.initial['security'] ?? 'starttls'}'.isEmpty
+      ? 'starttls'
+      : '${widget.initial['security']}';
   bool _busy = false;
 
   @override
@@ -342,17 +466,17 @@ class _SmtpFormState extends ConsumerState<_SmtpForm> {
   }
 
   Map<String, dynamic> get _body => {
-        'host': _c['host']!.text.trim(),
-        'port': int.tryParse(_c['port']!.text.trim()) ?? 0,
-        'security': _security,
-        'username': _c['username']!.text.trim(),
-        'password': _c['password']!.text,
-        'from': _c['from']!.text.trim(),
-        'panel_url': _c['panel_url']!.text.trim(),
-      };
+    'host': _c['host']!.text.trim(),
+    'port': int.tryParse(_c['port']!.text.trim()) ?? 0,
+    'security': _security,
+    'username': _c['username']!.text.trim(),
+    'password': _c['password']!.text,
+    'from': _c['from']!.text.trim(),
+    'panel_url': _c['panel_url']!.text.trim(),
+  };
 
   Future<void> _save({bool test = false}) async {
-        final s = S.of(context);
+    final s = S.of(context);
     setState(() => _busy = true);
     final api = ref.read(apiProvider);
     try {
@@ -375,18 +499,31 @@ class _SmtpFormState extends ConsumerState<_SmtpForm> {
   Widget build(BuildContext context) {
     final s = S.of(context);
     final c = NectarColors.of(context);
-    Widget f(String k, String label, {String? hint, double width = 260, bool secret = false}) => SizedBox(
-          width: width,
-          child: TextField(
-            controller: _c[k],
-            obscureText: secret && _c[k]!.text != '••••••••',
-            decoration: InputDecoration(labelText: label, hintText: hint, isDense: true),
-          ),
-        );
+    Widget f(
+      String k,
+      String label, {
+      String? hint,
+      double width = 260,
+      bool secret = false,
+    }) => SizedBox(
+      width: width,
+      child: TextField(
+        controller: _c[k],
+        obscureText: secret && _c[k]!.text != '••••••••',
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          isDense: true,
+        ),
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(s.settingUsedForPasswordResetsInvitations, style: TextStyle(color: c.muted, fontSize: 12.5)),
+        Text(
+          s.settingUsedForPasswordResetsInvitations,
+          style: TextStyle(color: c.muted, fontSize: 12.5),
+        ),
         const SizedBox(height: 12),
         Wrap(
           spacing: 12,
@@ -398,24 +535,46 @@ class _SmtpFormState extends ConsumerState<_SmtpForm> {
             DropdownButton<String>(
               value: _security,
               items: [
-                DropdownMenuItem(value: 'starttls', child: Text(s.settingStarttls)),
+                DropdownMenuItem(
+                  value: 'starttls',
+                  child: Text(s.settingStarttls),
+                ),
                 DropdownMenuItem(value: 'tls', child: Text(s.settingTls)),
-                DropdownMenuItem(value: 'none', child: Text(s.settingNoEncryption)),
+                DropdownMenuItem(
+                  value: 'none',
+                  child: Text(s.settingNoEncryption),
+                ),
               ],
               onChanged: (v) => setState(() => _security = v ?? 'starttls'),
             ),
             f('username', 'User name'),
             f('password', 'Password', secret: true),
-            f('from', 'From', hint: s.settingNectarAppsPanelExampleCom, width: 360),
-            f('panel_url', 'Panel address for links', hint: 'https://panel.example.com', width: 360),
+            f(
+              'from',
+              'From',
+              hint: s.settingNectarAppsPanelExampleCom,
+              width: 360,
+            ),
+            f(
+              'panel_url',
+              'Panel address for links',
+              hint: 'https://panel.example.com',
+              width: 360,
+            ),
           ],
         ),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           children: [
-            FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave)),
-            OutlinedButton(onPressed: _busy ? null : () => _save(test: true), child: Text(s.settingSaveAndSendATest)),
+            FilledButton(
+              onPressed: _busy ? null : _save,
+              child: Text(s.actionSave),
+            ),
+            OutlinedButton(
+              onPressed: _busy ? null : () => _save(test: true),
+              child: Text(s.settingSaveAndSendATest),
+            ),
           ],
         ),
       ],
@@ -454,7 +613,9 @@ class _AccessForm extends ConsumerStatefulWidget {
 }
 
 class _AccessFormState extends ConsumerState<_AccessForm> {
-  late final _list = TextEditingController(text: ((widget.initial['ip_allowlist'] as List?) ?? const []).join('\n'));
+  late final _list = TextEditingController(
+    text: ((widget.initial['ip_allowlist'] as List?) ?? const []).join('\n'),
+  );
   bool _busy = false;
 
   @override
@@ -467,10 +628,22 @@ class _AccessFormState extends ConsumerState<_AccessForm> {
     final l = S.of(context);
     setState(() => _busy = true);
     try {
-      final entries = _list.text.split(RegExp(r'[\s,]+')).where((e) => e.isNotEmpty).toList();
-      await ref.read(apiProvider).put('/settings/access', data: {'ip_allowlist': entries});
+      final entries = _list.text
+          .split(RegExp(r'[\s,]+'))
+          .where((e) => e.isNotEmpty)
+          .toList();
+      await ref
+          .read(apiProvider)
+          .put('/settings/access', data: {'ip_allowlist': entries});
       ref.invalidate(accessSettingsProvider);
-      if (mounted) showSnack(context, entries.isEmpty ? 'Every address may use the panel' : l.settingOnlyTheListedAddressesMay);
+      if (mounted) {
+        showSnack(
+          context,
+          entries.isEmpty
+              ? 'Every address may use the panel'
+              : l.settingOnlyTheListedAddressesMay,
+        );
+      }
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     } finally {
@@ -491,9 +664,21 @@ class _AccessFormState extends ConsumerState<_AccessForm> {
           style: TextStyle(color: c.muted, fontSize: 12.5),
         ),
         const SizedBox(height: 10),
-        TextField(controller: _list, minLines: 3, maxLines: 8, style: monoStyle(context, size: 13), decoration: InputDecoration(hintText: ip)),
+        TextField(
+          controller: _list,
+          minLines: 3,
+          maxLines: 8,
+          style: monoStyle(context, size: 13),
+          decoration: InputDecoration(hintText: ip),
+        ),
         const SizedBox(height: 10),
-        Align(alignment: Alignment.centerLeft, child: FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave))),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton(
+            onPressed: _busy ? null : _save,
+            child: Text(s.actionSave),
+          ),
+        ),
       ],
     );
   }

@@ -8,7 +8,11 @@ import 'common.dart';
 
 /// Who did what, newest first (audit log entries).
 class ActivityCard extends StatelessWidget {
-  const ActivityCard({super.key, required this.entries, this.title = 'Recent activity'});
+  const ActivityCard({
+    super.key,
+    required this.entries,
+    this.title = 'Recent activity',
+  });
 
   final List<AuditEntry> entries;
   final String title;
@@ -34,7 +38,10 @@ class ActivityCard extends StatelessWidget {
                           child: Container(
                             width: 6,
                             height: 6,
-                            decoration: const BoxDecoration(color: NectarTokens.amber, shape: BoxShape.circle),
+                            decoration: const BoxDecoration(
+                              color: NectarTokens.amber,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -42,16 +49,32 @@ class ActivityCard extends StatelessWidget {
                           child: Text.rich(
                             TextSpan(
                               children: [
-                                TextSpan(text: e.userEmail.isEmpty ? 'System' : e.userEmail, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                TextSpan(
+                                  text: e.userEmail.isEmpty
+                                      ? 'System'
+                                      : e.userEmail,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                                 TextSpan(text: ' ${describeAction(e.action)} '),
-                                if (e.target.isNotEmpty) TextSpan(text: e.target, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                if (e.target.isNotEmpty)
+                                  TextSpan(
+                                    text: e.target,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                               ],
                             ),
                             style: const TextStyle(fontSize: 13.5, height: 1.4),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(timeAgo(e.createdAt), style: TextStyle(color: c.muted, fontSize: 12)),
+                        Text(
+                          timeAgo(e.createdAt),
+                          style: TextStyle(color: c.muted, fontSize: 12),
+                        ),
                       ],
                     ),
                   ),

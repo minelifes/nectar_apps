@@ -37,7 +37,13 @@ class EnvTab extends ConsumerWidget {
           child: AsyncBlock(
             value: env,
             onRetry: () => ref.invalidate(appEnvProvider(app.id)),
-            data: (vars) => _EnvCard(key: ValueKey(vars), app: app, initial: vars, canEdit: canEdit, canReveal: canReveal),
+            data: (vars) => _EnvCard(
+              key: ValueKey(vars),
+              app: app,
+              initial: vars,
+              canEdit: canEdit,
+              canReveal: canReveal,
+            ),
           ),
         ),
         const SizedBox(height: NectarTokens.gap),
@@ -50,7 +56,13 @@ class EnvTab extends ConsumerWidget {
           child: AsyncBlock(
             value: files,
             onRetry: () => ref.invalidate(appFilesProvider(app.id)),
-            data: (list) => _FilesCard(key: ValueKey(list), app: app, initial: list, canEdit: canEdit, canReveal: canReveal),
+            data: (list) => _FilesCard(
+              key: ValueKey(list),
+              app: app,
+              initial: list,
+              canEdit: canEdit,
+              canReveal: canReveal,
+            ),
           ),
         ),
       ],
@@ -65,7 +77,13 @@ void _savedHint(BuildContext context, WidgetRef ref, App app) {
 }
 
 class _EnvCard extends ConsumerStatefulWidget {
-  const _EnvCard({super.key, required this.app, required this.initial, required this.canEdit, required this.canReveal});
+  const _EnvCard({
+    super.key,
+    required this.app,
+    required this.initial,
+    required this.canEdit,
+    required this.canReveal,
+  });
 
   final App app;
   final List<EnvVar> initial;
@@ -77,14 +95,22 @@ class _EnvCard extends ConsumerStatefulWidget {
 }
 
 class _EnvCardState extends ConsumerState<_EnvCard> {
-  late List<EnvVar> _vars = [for (final v in widget.initial) EnvVar(key: v.key, value: v.value, secret: v.secret)];
+  late List<EnvVar> _vars = [
+    for (final v in widget.initial)
+      EnvVar(key: v.key, value: v.value, secret: v.secret),
+  ];
   bool _dirty = false;
   bool _saving = false;
   int _gen = 0; // rebuilds the editor rows after a reveal
 
   Future<void> _reveal() async {
     try {
-      final all = listOf(await ref.read(apiProvider).get('/apps/${widget.app.id}/env', query: {'reveal': '1'}), EnvVar.fromJson);
+      final all = listOf(
+        await ref
+            .read(apiProvider)
+            .get('/apps/${widget.app.id}/env', query: {'reveal': '1'}),
+        EnvVar.fromJson,
+      );
       final byKey = {for (final v in all) v.key: v.value};
       setState(() {
         for (final v in _vars) {
@@ -99,16 +125,27 @@ class _EnvCardState extends ConsumerState<_EnvCard> {
 
   Future<void> _save() async {
     final s = S.of(context);
-    final vars = _vars.where((v) => v.key.isNotEmpty || (v.value ?? '').isNotEmpty).toList();
+    final vars = _vars
+        .where((v) => v.key.isNotEmpty || (v.value ?? '').isNotEmpty)
+        .toList();
     for (final v in vars) {
       if (!envKeyRe.hasMatch(v.key)) {
-        showSnack(context, s.projectInvalidVariableNameUseLetters(v.key), error: true);
+        showSnack(
+          context,
+          s.projectInvalidVariableNameUseLetters(v.key),
+          error: true,
+        );
         return;
       }
     }
     setState(() => _saving = true);
     try {
-      await ref.read(apiProvider).put('/apps/${widget.app.id}/env', data: [for (final v in vars) v.toJson()]);
+      await ref
+          .read(apiProvider)
+          .put(
+            '/apps/${widget.app.id}/env',
+            data: [for (final v in vars) v.toJson()],
+          );
       if (!mounted) return;
       _savedHint(context, ref, widget.app);
       ref.invalidate(appEnvProvider(widget.app.id));
@@ -127,11 +164,15 @@ class _EnvCardState extends ConsumerState<_EnvCard> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_vars.isEmpty) Text(s.appNoVariables, style: TextStyle(color: c.muted)),
+          if (_vars.isEmpty)
+            Text(s.appNoVariables, style: TextStyle(color: c.muted)),
           for (final v in _vars)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Text('${v.key}=${v.secret ? '••••••' : v.value ?? ''}', style: monoStyle(context, size: 13)),
+              child: Text(
+                '${v.key}=${v.secret ? '••••••' : v.value ?? ''}',
+                style: monoStyle(context, size: 13),
+              ),
             ),
         ],
       );
@@ -140,24 +181,38 @@ class _EnvCardState extends ConsumerState<_EnvCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        EnvEditor(key: ValueKey(_gen), vars: _vars, onChanged: () => setState(() => _dirty = true)),
+        EnvEditor(
+          key: ValueKey(_gen),
+          vars: _vars,
+          onChanged: () => setState(() => _dirty = true),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
             if (hidden && widget.canReveal)
-              TextButton.icon(onPressed: _reveal, icon: const Icon(Icons.visibility_outlined, size: 18), label: Text(s.appRevealSecrets)),
+              TextButton.icon(
+                onPressed: _reveal,
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+                label: Text(s.appRevealSecrets),
+              ),
             const Spacer(),
             if (_dirty)
               TextButton(
                 onPressed: () => setState(() {
-                  _vars = [for (final v in widget.initial) EnvVar(key: v.key, value: v.value, secret: v.secret)];
+                  _vars = [
+                    for (final v in widget.initial)
+                      EnvVar(key: v.key, value: v.value, secret: v.secret),
+                  ];
                   _dirty = false;
                   _gen++;
                 }),
                 child: Text(s.appDiscard),
               ),
             const SizedBox(width: 8),
-            FilledButton(onPressed: !_dirty || _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save variables')),
+            FilledButton(
+              onPressed: !_dirty || _saving ? null : _save,
+              child: Text(_saving ? 'Saving…' : 'Save variables'),
+            ),
           ],
         ),
       ],
@@ -166,7 +221,13 @@ class _EnvCardState extends ConsumerState<_EnvCard> {
 }
 
 class _FilesCard extends ConsumerStatefulWidget {
-  const _FilesCard({super.key, required this.app, required this.initial, required this.canEdit, required this.canReveal});
+  const _FilesCard({
+    super.key,
+    required this.app,
+    required this.initial,
+    required this.canEdit,
+    required this.canReveal,
+  });
 
   final App app;
   final List<AppFile> initial;
@@ -184,7 +245,12 @@ class _FilesCardState extends ConsumerState<_FilesCard> {
   Future<void> _save(List<AppFile> files) async {
     setState(() => _saving = true);
     try {
-      await ref.read(apiProvider).put('/apps/${widget.app.id}/files', data: [for (final f in files) f.toJson()]);
+      await ref
+          .read(apiProvider)
+          .put(
+            '/apps/${widget.app.id}/files',
+            data: [for (final f in files) f.toJson()],
+          );
       if (!mounted) return;
       _savedHint(context, ref, widget.app);
       ref.invalidate(appFilesProvider(widget.app.id));
@@ -199,7 +265,12 @@ class _FilesCardState extends ConsumerState<_FilesCard> {
     var f = file;
     if (f != null && f.secret && f.content == null && widget.canReveal) {
       try {
-        final all = listOf(await ref.read(apiProvider).get('/apps/${widget.app.id}/files', query: {'reveal': '1'}), AppFile.fromJson);
+        final all = listOf(
+          await ref
+              .read(apiProvider)
+              .get('/apps/${widget.app.id}/files', query: {'reveal': '1'}),
+          AppFile.fromJson,
+        );
         f = all.firstWhere((x) => x.path == file!.path, orElse: () => file!);
       } on Object catch (e) {
         if (mounted) showSnack(context, describeError(e), error: true);
@@ -207,7 +278,10 @@ class _FilesCardState extends ConsumerState<_FilesCard> {
       }
     }
     if (!mounted) return;
-    final result = await showDialog<AppFile>(context: context, builder: (_) => _FileDialog(file: f, canEdit: widget.canEdit));
+    final result = await showDialog<AppFile>(
+      context: context,
+      builder: (_) => _FileDialog(file: f, canEdit: widget.canEdit),
+    );
     if (result == null) return;
     final list = List.of(_files);
     final i = file == null ? -1 : list.indexOf(file);
@@ -221,7 +295,15 @@ class _FilesCardState extends ConsumerState<_FilesCard> {
 
   Future<void> _remove(AppFile f) async {
     final s = S.of(context);
-    if (!await confirmAction(context, s.appRemove2(f.path), s.appTheFileDisappearsFromThe, s.backupRemove2, danger: true)) return;
+    if (!await confirmAction(
+      context,
+      s.appRemove2(f.path),
+      s.appTheFileDisappearsFromThe,
+      s.backupRemove2,
+      danger: true,
+    )) {
+      return;
+    }
     await _save(List.of(_files)..remove(f));
   }
 
@@ -240,12 +322,22 @@ class _FilesCardState extends ConsumerState<_FilesCard> {
         for (final f in _files)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(f.secret ? Icons.lock_rounded : Icons.description_outlined, color: f.secret ? NectarTokens.amber : c.muted),
+            leading: Icon(
+              f.secret ? Icons.lock_rounded : Icons.description_outlined,
+              color: f.secret ? NectarTokens.amber : c.muted,
+            ),
             title: Text(f.path, style: monoStyle(context, size: 13.5)),
-            subtitle: Text('${formatBytes(f.content?.length ?? f.size)}${f.secret ? ' · secret' : ''}', style: TextStyle(color: c.muted, fontSize: 12)),
+            subtitle: Text(
+              '${formatBytes(f.content?.length ?? f.size)}${f.secret ? ' · secret' : ''}',
+              style: TextStyle(color: c.muted, fontSize: 12),
+            ),
             onTap: () => _edit(f),
             trailing: widget.canEdit
-                ? IconButton(tooltip: s.backupRemove2, icon: const Icon(Icons.delete_outline_rounded, size: 18), onPressed: _saving ? null : () => _remove(f))
+                ? IconButton(
+                    tooltip: s.backupRemove2,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    onPressed: _saving ? null : () => _remove(f),
+                  )
                 : null,
           ),
         if (widget.canEdit)
@@ -276,7 +368,9 @@ class _FileDialogState extends State<_FileDialog> {
   late final _path = TextEditingController(text: widget.file?.path ?? '');
   late final _content = TextEditingController(text: widget.file?.content ?? '');
   late bool _secret = widget.file?.secret ?? false;
-  late final bool _kept = widget.file != null && widget.file!.content == null; // secret not revealed
+  late final bool _kept =
+      widget.file != null &&
+      widget.file!.content == null; // secret not revealed
   String? _error;
 
   @override
@@ -288,12 +382,21 @@ class _FileDialogState extends State<_FileDialog> {
 
   void _ok() {
     final p = _path.text.trim();
-    if (!p.startsWith('/') || p.endsWith('/') || p.contains('/../') || p.contains('//')) {
-      setState(() => _error = 'Enter an absolute file path, e.g. /app/config/application.yml');
+    if (!p.startsWith('/') ||
+        p.endsWith('/') ||
+        p.contains('/../') ||
+        p.contains('//')) {
+      setState(
+        () => _error =
+            'Enter an absolute file path, e.g. /app/config/application.yml',
+      );
       return;
     }
     final keep = _kept && _content.text.isEmpty;
-    Navigator.pop(context, AppFile(path: p, content: keep ? null : _content.text, secret: _secret));
+    Navigator.pop(
+      context,
+      AppFile(path: p, content: keep ? null : _content.text, secret: _secret),
+    );
   }
 
   @override
@@ -301,7 +404,9 @@ class _FileDialogState extends State<_FileDialog> {
     final s = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
-      title: Text(widget.file == null ? 'Add a config file' : widget.file!.path),
+      title: Text(
+        widget.file == null ? 'Add a config file' : widget.file!.path,
+      ),
       content: SizedBox(
         width: 640,
         child: Column(
@@ -312,7 +417,10 @@ class _FileDialogState extends State<_FileDialog> {
               controller: _path,
               enabled: widget.canEdit,
               style: monoStyle(context, size: 13.5),
-              decoration: InputDecoration(labelText: s.appPathInTheContainer, hintText: '/app/config/application.yml'),
+              decoration: InputDecoration(
+                labelText: s.appPathInTheContainer,
+                hintText: '/app/config/application.yml',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -324,24 +432,36 @@ class _FileDialogState extends State<_FileDialog> {
               decoration: InputDecoration(
                 labelText: s.appContent,
                 alignLabelWithHint: true,
-                hintText: _kept ? 'Secret content is kept. Type here to replace it.' : null,
+                hintText: _kept
+                    ? 'Secret content is kept. Type here to replace it.'
+                    : null,
               ),
             ),
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: _secret,
-              onChanged: widget.canEdit ? (v) => setState(() => _secret = v) : null,
+              onChanged: widget.canEdit
+                  ? (v) => setState(() => _secret = v)
+                  : null,
               title: Text(s.appSecret),
-              subtitle: Text(s.appHiddenInThePanelUnless, style: TextStyle(color: c.muted, fontSize: 12)),
+              subtitle: Text(
+                s.appHiddenInThePanelUnless,
+                style: TextStyle(color: c.muted, fontSize: 12),
+              ),
             ),
-            if (_error != null) Text(_error!, style: TextStyle(color: c.failed)),
+            if (_error != null)
+              Text(_error!, style: TextStyle(color: c.failed)),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(widget.canEdit ? 'Cancel' : 'Close')),
-        if (widget.canEdit) FilledButton(onPressed: _ok, child: Text(s.appSaveFile)),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(widget.canEdit ? 'Cancel' : 'Close'),
+        ),
+        if (widget.canEdit)
+          FilledButton(onPressed: _ok, child: Text(s.appSaveFile)),
       ],
     );
   }
@@ -360,24 +480,43 @@ class _LinkedDatabases extends ConsumerWidget {
     final c = NectarColors.of(context);
     return NCard(
       title: s.appDatabases,
-      trailing: TextButton(onPressed: () => context.go('/projects/${app.projectId}'), child: Text(s.appProjectDatabases)),
+      trailing: TextButton(
+        onPressed: () => context.go('/projects/${app.projectId}'),
+        child: Text(s.appProjectDatabases),
+      ),
       child: AsyncBlock(
         value: links,
         loadingHeight: 60,
         data: (list) => list.isEmpty
-            ? Text(s.appNoDatabaseLinkedAddOne, style: TextStyle(color: c.muted, fontSize: 13))
+            ? Text(
+                s.appNoDatabaseLinkedAddOne,
+                style: TextStyle(color: c.muted, fontSize: 13),
+              )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final l in list)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(l.addon.kind == 'redis' ? Icons.bolt_rounded : Icons.storage_rounded, color: NectarTokens.amber),
-                      title: Text('${l.addon.name} · ${l.addon.kindName} ${l.addon.version}'),
-                      subtitle: Text(l.env.join(', '), style: monoStyle(context, size: 11.5, color: c.muted)),
+                      leading: Icon(
+                        l.addon.kind == 'redis'
+                            ? Icons.bolt_rounded
+                            : Icons.storage_rounded,
+                        color: NectarTokens.amber,
+                      ),
+                      title: Text(
+                        '${l.addon.name} · ${l.addon.kindName} ${l.addon.version}${l.shared ? ' · ${s.appSharedWithProject}' : ''}',
+                      ),
+                      subtitle: Text(
+                        l.env.join(', '),
+                        style: monoStyle(context, size: 11.5, color: c.muted),
+                      ),
                       onTap: () => context.go('/addons/${l.addon.id}'),
                     ),
-                  Text(s.appYourOwnVariablesWithThe, style: TextStyle(color: c.muted, fontSize: 12)),
+                  Text(
+                    s.appYourOwnVariablesWithThe,
+                    style: TextStyle(color: c.muted, fontSize: 12),
+                  ),
                 ],
               ),
       ),

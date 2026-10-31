@@ -16,9 +16,21 @@ import '../../widgets/common.dart';
 class RegistriesCard extends ConsumerWidget {
   const RegistriesCard({super.key});
 
-  Future<void> _remove(BuildContext context, WidgetRef ref, RegistryLogin l) async {
+  Future<void> _remove(
+    BuildContext context,
+    WidgetRef ref,
+    RegistryLogin l,
+  ) async {
     final s = S.of(context);
-    if (!await confirmAction(context, s.settingRemoveTheLoginFor(l.host), s.settingAppsCanNoLongerPull, s.backupRemove2, danger: true)) return;
+    if (!await confirmAction(
+      context,
+      s.settingRemoveTheLoginFor(l.host),
+      s.settingAppsCanNoLongerPull,
+      s.backupRemove2,
+      danger: true,
+    )) {
+      return;
+    }
     try {
       await ref.read(apiProvider).delete('/settings/registries/${l.id}');
       ref.invalidate(registriesProvider);
@@ -35,7 +47,10 @@ class RegistriesCard extends ConsumerWidget {
     return NCard(
       title: s.settingRegistries,
       trailing: TextButton.icon(
-        onPressed: () => showDialog<void>(context: context, builder: (_) => const _LoginDialog()),
+        onPressed: () => showDialog<void>(
+          context: context,
+          builder: (_) => const _LoginDialog(),
+        ),
         icon: const Icon(Icons.add_rounded, size: 18),
         label: Text(s.settingAddLogin),
       ),
@@ -48,21 +63,33 @@ class RegistriesCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(r.builtinEnabled ? Icons.check_circle_rounded : Icons.info_outline_rounded, size: 18, color: r.builtinEnabled ? c.running : c.muted),
+                Icon(
+                  r.builtinEnabled
+                      ? Icons.check_circle_rounded
+                      : Icons.info_outline_rounded,
+                  size: 18,
+                  color: r.builtinEnabled ? c.running : c.muted,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     r.builtinEnabled
                         ? 'Built-in registry: ${r.builtinHost} (Git builds push here; nodes pull through a k3s mirror)'
                         : 'No built-in registry: Git builds need it. Re-run install.sh with --registry on the server.',
-                    style: TextStyle(fontSize: 13, color: r.builtinEnabled ? c.text : c.muted),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: r.builtinEnabled ? c.text : c.muted,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             if (r.logins.isEmpty)
-              Text(s.settingNoPrivateRegistryLoginsPublic, style: TextStyle(color: c.muted, fontSize: 12.5))
+              Text(
+                s.settingNoPrivateRegistryLoginsPublic,
+                style: TextStyle(color: c.muted, fontSize: 12.5),
+              )
             else
               for (final l in r.logins)
                 ListTile(
@@ -70,12 +97,21 @@ class RegistriesCard extends ConsumerWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.vpn_key_outlined, size: 20),
                   title: Text(l.host, style: monoStyle(context, size: 13)),
-                  subtitle: Text(s.settingChanged(l.username, timeAgo(l.updatedAt)), style: TextStyle(color: c.muted, fontSize: 12)),
-                  trailing: IconButton(tooltip: s.backupRemove2, icon: const Icon(Icons.delete_outline_rounded, size: 18), onPressed: () => _remove(context, ref, l)),
+                  subtitle: Text(
+                    s.settingChanged(l.username, timeAgo(l.updatedAt)),
+                    style: TextStyle(color: c.muted, fontSize: 12),
+                  ),
+                  trailing: IconButton(
+                    tooltip: s.backupRemove2,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    onPressed: () => _remove(context, ref, l),
+                  ),
                 ),
             const SizedBox(height: 4),
-            Text(s.settingLoginsAreStoredEncryptedAnd,
-                style: TextStyle(color: c.muted, fontSize: 12)),
+            Text(
+              s.settingLoginsAreStoredEncryptedAnd,
+              style: TextStyle(color: c.muted, fontSize: 12),
+            ),
           ],
         ),
       ),
@@ -107,7 +143,16 @@ class _LoginDialogState extends ConsumerState<_LoginDialog> {
   Future<void> _save() async {
     setState(() => _busy = true);
     try {
-      await ref.read(apiProvider).put('/settings/registries', data: {'host': _host.text.trim(), 'username': _user.text.trim(), 'password': _password.text});
+      await ref
+          .read(apiProvider)
+          .put(
+            '/settings/registries',
+            data: {
+              'host': _host.text.trim(),
+              'username': _user.text.trim(),
+              'password': _password.text,
+            },
+          );
       ref.invalidate(registriesProvider);
       if (mounted) Navigator.pop(context);
     } on Object catch (e) {
@@ -121,28 +166,46 @@ class _LoginDialogState extends ConsumerState<_LoginDialog> {
   Widget build(BuildContext context) {
     final s = S.of(context);
     return AlertDialog(
-        title: Text(s.settingRegistryLogin),
-        content: SizedBox(
-          width: 440,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: _host, decoration: InputDecoration(labelText: s.settingRegistry, hintText: s.settingGhcrIoDockerIoRegistry)),
-              const SizedBox(height: 10),
-              TextField(controller: _user, decoration: InputDecoration(labelText: s.settingUserName)),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _password,
-                obscureText: true,
-                decoration: InputDecoration(labelText: s.settingPasswordOrAccessToken, helperText: s.settingGhcrATokenWithRead),
+      title: Text(s.settingRegistryLogin),
+      content: SizedBox(
+        width: 440,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _host,
+              decoration: InputDecoration(
+                labelText: s.settingRegistry,
+                hintText: s.settingGhcrIoDockerIoRegistry,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _user,
+              decoration: InputDecoration(labelText: s.settingUserName),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _password,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: s.settingPasswordOrAccessToken,
+                helperText: s.settingGhcrATokenWithRead,
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-          FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave)),
-        ],
-      );
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _save,
+          child: Text(s.actionSave),
+        ),
+      ],
+    );
   }
 }

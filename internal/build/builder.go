@@ -210,7 +210,9 @@ func (b *Builder) createJob(ctx context.Context, bl store.Build, req Request, sr
 		"--destination=" + b.Registry.PushRef(repo, tag),
 		"--insecure-registry=" + push, // the built-in registry speaks plain HTTP inside the cluster
 		"--cache=true", "--cache-repo=" + push + "/" + repo + "/cache",
-		"--snapshot-mode=redo", "--use-new-run", "--push-retry=2",
+		// no --use-new-run: Kaniko's experimental run mode fails multi-stage builds ("failed to execute
+		// command: permission denied" in the first RUN of a later stage)
+		"--snapshot-mode=redo", "--push-retry=2",
 		"--label=org.opencontainers.image.revision=" + bl.CommitSHA,
 		"--label=org.opencontainers.image.source=" + src.RepoURL,
 	}
@@ -247,8 +249,8 @@ func (b *Builder) createJob(ctx context.Context, bl store.Build, req Request, sr
 					"containers": []any{map[string]any{
 						"name": "kaniko", "image": b.image(), "args": args, "env": env,
 						"volumeMounts": []any{map[string]any{"name": "docker", "mountPath": "/kaniko/.docker", "readOnly": true}},
-						"resources": map[string]any{
-							"requests": map[string]any{"cpu": "250m", "memory": "512Mi"},
+						"resources": map[string]any{ // small request: a build must fit next to the apps; the limit lets it use what is free
+							"requests": map[string]any{"cpu": "100m", "memory": "512Mi"},
 							"limits":   map[string]any{"cpu": fmt.Sprintf("%dm", cpu), "memory": fmt.Sprintf("%dMi", mem)},
 						},
 					}},
@@ -340,12 +342,53 @@ func (b *Builder) stuck(ctx context.Context, id int64) string {
 		return ""
 	}
 	for _, p := range pods {
+		for _, c := range kube.Slice(p, "status", "conditions") {
+			if kube.Str(c, "type") == "PodScheduled" && kube.Str(c, "status") == "False" {
+				if t, err := time.Parse(time.RFC3339, kube.Str(c, "lastTransitionTime")); err == nil && time.Since(t) > 15*time.Minute {
+					return "the build could not be scheduled for 15 minutes: " + kube.Str(c, "message")
+				}
+			}
+		}
 		for _, cs := range kube.Slice(p, "status", "containerStatuses") {
 			switch reason := kube.Str(cs, "state", "waiting", "reason"); reason {
 			case "ImagePullBackOff", "ErrImagePull", "CreateContainerConfigError", "InvalidImageName":
 				return reason + ": " + kube.Str(cs, "state", "waiting", "message")
 			}
 		}
+	}
+	return ""
+}
+
+// PodStatus explains a running build that has no output yet: why its pod is not running (not scheduled
+// for lack of CPU or memory, pulling the Kaniko image, …). "" once the build runs.
+func (b *Builder) PodStatus(ctx context.Context, bl store.Build) string {
+	if bl.Status != store.BuildRunning {
+		return ""
+	}
+	pods, err := b.Kube.List(ctx, "Pod", b.ns(), "job-name="+JobName(bl.ID))
+	if err != nil {
+		return "cannot read the build pod: " + err.Error()
+	}
+	if len(pods) == 0 {
+		return "waiting for the build pod (Job " + JobName(bl.ID) + " in namespace " + b.ns() + ")"
+	}
+	p := pods[0]
+	for _, c := range kube.Slice(p, "status", "conditions") {
+		if kube.Str(c, "type") == "PodScheduled" && kube.Str(c, "status") == "False" {
+			return "not scheduled yet: " + kube.Str(c, "message") + " (the build asks for 100m CPU and 512 MiB; lower other apps' requests or add a node)"
+		}
+	}
+	for _, cs := range kube.Slice(p, "status", "containerStatuses") {
+		if r := kube.Str(cs, "state", "waiting", "reason"); r != "" {
+			msg := kube.Str(cs, "state", "waiting", "message")
+			if r == "ContainerCreating" || r == "PodInitializing" {
+				return "starting the build container (the first build downloads the Kaniko image " + b.image() + ")"
+			}
+			return r + ": " + msg
+		}
+	}
+	if kube.Str(p, "status", "phase") == "Pending" {
+		return "starting the build pod (downloading the Kaniko image " + b.image() + ")"
 	}
 	return ""
 }

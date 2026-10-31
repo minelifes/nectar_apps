@@ -12,17 +12,25 @@ import '../../widgets/common.dart';
 
 /// A configured sign-in provider as GET /settings/sso returns it.
 class SsoProvider {
-  SsoProvider(Map<String, dynamic> j, {this.hasSecret = false, this.callbackUrl = ''})
-      : id = '${j['id'] ?? ''}',
-        kind = '${j['kind'] ?? 'oidc'}',
-        name = '${j['name'] ?? ''}',
-        clientId = '${j['client_id'] ?? ''}',
-        issuer = '${j['issuer'] ?? ''}',
-        allowedDomains = [for (final d in (j['allowed_domains'] as List?) ?? const []) '$d'],
-        autoCreate = j['auto_create'] == true,
-        defaultRole = '${j['default_role'] ?? ''}',
-        groupRoles = {for (final e in ((j['group_roles'] as Map?) ?? const {}).entries) '${e.key}': '${e.value}'},
-        enabled = j['enabled'] != false;
+  SsoProvider(
+    Map<String, dynamic> j, {
+    this.hasSecret = false,
+    this.callbackUrl = '',
+  }) : id = '${j['id'] ?? ''}',
+       kind = '${j['kind'] ?? 'oidc'}',
+       name = '${j['name'] ?? ''}',
+       clientId = '${j['client_id'] ?? ''}',
+       issuer = '${j['issuer'] ?? ''}',
+       allowedDomains = [
+         for (final d in (j['allowed_domains'] as List?) ?? const []) '$d',
+       ],
+       autoCreate = j['auto_create'] == true,
+       defaultRole = '${j['default_role'] ?? ''}',
+       groupRoles = {
+         for (final e in ((j['group_roles'] as Map?) ?? const {}).entries)
+           '${e.key}': '${e.value}',
+       },
+       enabled = j['enabled'] != false;
 
   String id, kind, name, clientId, issuer, defaultRole;
   List<String> allowedDomains;
@@ -32,18 +40,18 @@ class SsoProvider {
   String secret = ''; // new client secret ('' keeps the stored one)
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'kind': kind,
-        'name': name,
-        'client_id': clientId,
-        if (kind == 'oidc') 'issuer': issuer,
-        'allowed_domains': allowedDomains,
-        'auto_create': autoCreate,
-        'default_role': defaultRole,
-        'group_roles': groupRoles,
-        'enabled': enabled,
-        if (secret.isNotEmpty) 'client_secret': secret,
-      };
+    'id': id,
+    'kind': kind,
+    'name': name,
+    'client_id': clientId,
+    if (kind == 'oidc') 'issuer': issuer,
+    'allowed_domains': allowedDomains,
+    'auto_create': autoCreate,
+    'default_role': defaultRole,
+    'group_roles': groupRoles,
+    'enabled': enabled,
+    if (secret.isNotEmpty) 'client_secret': secret,
+  };
 }
 
 class SsoSettings {
@@ -56,11 +64,17 @@ SsoSettings _parse(Object? v) {
   final m = v is Map ? v : const {};
   return SsoSettings([
     for (final p in ((m['providers'] as List?) ?? const []).whereType<Map>())
-      SsoProvider(Map<String, dynamic>.from(p['provider'] as Map? ?? const {}), hasSecret: p['has_secret'] == true, callbackUrl: '${p['callback_url'] ?? ''}'),
+      SsoProvider(
+        Map<String, dynamic>.from(p['provider'] as Map? ?? const {}),
+        hasSecret: p['has_secret'] == true,
+        callbackUrl: '${p['callback_url'] ?? ''}',
+      ),
   ], '${m['callback_base'] ?? ''}');
 }
 
-final ssoSettingsProvider = FutureProvider.autoDispose<SsoSettings>((ref) async => _parse(await ref.watch(apiProvider).get('/settings/sso')));
+final ssoSettingsProvider = FutureProvider.autoDispose<SsoSettings>(
+  (ref) async => _parse(await ref.watch(apiProvider).get('/settings/sso')),
+);
 
 /// Settings → Sign-in providers: GitHub, Google or any OpenID Connect provider as buttons on the login page.
 class SsoCard extends ConsumerWidget {
@@ -96,11 +110,17 @@ class SsoCard extends ConsumerWidget {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       dense: true,
-                      leading: Icon(p.enabled ? Icons.login_rounded : Icons.block_rounded, color: p.enabled ? c.running : c.muted, size: 20),
+                      leading: Icon(
+                        p.enabled ? Icons.login_rounded : Icons.block_rounded,
+                        color: p.enabled ? c.running : c.muted,
+                        size: 20,
+                      ),
                       title: Text('${p.name} · ${p.kind}'),
                       subtitle: Text(
                         [
-                          p.allowedDomains.isEmpty ? 'existing users' : p.allowedDomains.map((d) => '@$d').join(', '),
+                          p.allowedDomains.isEmpty
+                              ? 'existing users'
+                              : p.allowedDomains.map((d) => '@$d').join(', '),
                           if (p.autoCreate) 'creates users',
                           if (!p.hasSecret) 'no client secret',
                         ].join(' · '),
@@ -115,7 +135,10 @@ class SsoCard extends ConsumerWidget {
   }
 
   void _edit(BuildContext context, SsoSettings s, SsoProvider? p) =>
-      showDialog<void>(context: context, builder: (_) => _SsoDialog(settings: s, provider: p));
+      showDialog<void>(
+        context: context,
+        builder: (_) => _SsoDialog(settings: s, provider: p),
+      );
 }
 
 class _SsoDialog extends ConsumerStatefulWidget {
@@ -129,21 +152,36 @@ class _SsoDialog extends ConsumerStatefulWidget {
 }
 
 class _SsoDialogState extends ConsumerState<_SsoDialog> {
-  late final SsoProvider _p = SsoProvider(widget.provider?.toJson() ?? {'kind': 'oidc'}, hasSecret: widget.provider?.hasSecret ?? false);
+  late final SsoProvider _p = SsoProvider(
+    widget.provider?.toJson() ?? {'kind': 'oidc'},
+    hasSecret: widget.provider?.hasSecret ?? false,
+  );
   late final _id = TextEditingController(text: _p.id);
   late final _name = TextEditingController(text: _p.name);
   late final _clientId = TextEditingController(text: _p.clientId);
   final _secret = TextEditingController();
   late final _issuer = TextEditingController(text: _p.issuer);
-  late final _domains = TextEditingController(text: _p.allowedDomains.join(', '));
-  late final _groups = TextEditingController(text: _p.groupRoles.entries.map((e) => '${e.key}=${e.value}').join('\n'));
+  late final _domains = TextEditingController(
+    text: _p.allowedDomains.join(', '),
+  );
+  late final _groups = TextEditingController(
+    text: _p.groupRoles.entries.map((e) => '${e.key}=${e.value}').join('\n'),
+  );
   bool _busy = false;
 
   bool get _isNew => widget.provider == null;
 
   @override
   void dispose() {
-    for (final t in [_id, _name, _clientId, _secret, _issuer, _domains, _groups]) {
+    for (final t in [
+      _id,
+      _name,
+      _clientId,
+      _secret,
+      _issuer,
+      _domains,
+      _groups,
+    ]) {
       t.dispose();
     }
     super.dispose();
@@ -151,23 +189,43 @@ class _SsoDialogState extends ConsumerState<_SsoDialog> {
 
   Future<void> _save({bool delete = false}) async {
     final l = S.of(context);
-    if (delete && !await confirmAction(context, l.settingRemove(_p.name), l.settingItsButtonDisappearsFromThe, l.backupRemove2, danger: true)) return;
+    if (delete &&
+        !await confirmAction(
+          context,
+          l.settingRemove(_p.name),
+          l.settingItsButtonDisappearsFromThe,
+          l.backupRemove2,
+          danger: true,
+        )) {
+      return;
+    }
     _p
       ..id = _id.text.trim()
       ..name = _name.text.trim()
       ..clientId = _clientId.text.trim()
       ..secret = _secret.text.trim()
       ..issuer = _issuer.text.trim()
-      ..allowedDomains = [for (final d in _domains.text.split(RegExp(r'[,\s]+'))) if (d.trim().isNotEmpty) d.trim()]
+      ..allowedDomains = [
+        for (final d in _domains.text.split(RegExp(r'[,\s]+')))
+          if (d.trim().isNotEmpty) d.trim(),
+      ]
       ..groupRoles = {
         for (final line in _groups.text.split('\n'))
-          if (line.contains('=')) line.substring(0, line.indexOf('=')).trim(): line.substring(line.indexOf('=') + 1).trim(),
+          if (line.contains('='))
+            line.substring(0, line.indexOf('=')).trim(): line
+                .substring(line.indexOf('=') + 1)
+                .trim(),
       };
-    final others = [for (final o in widget.settings.providers) if (o.id != widget.provider?.id) o];
+    final others = [
+      for (final o in widget.settings.providers)
+        if (o.id != widget.provider?.id) o,
+    ];
     final list = [...others, if (!delete) _p];
     setState(() => _busy = true);
     try {
-      await ref.read(apiProvider).put('/settings/sso', data: [for (final o in list) o.toJson()]);
+      await ref
+          .read(apiProvider)
+          .put('/settings/sso', data: [for (final o in list) o.toJson()]);
       ref.invalidate(ssoSettingsProvider);
       if (mounted) {
         Navigator.pop(context);
@@ -185,7 +243,9 @@ class _SsoDialogState extends ConsumerState<_SsoDialog> {
     final s = S.of(context);
     final c = NectarColors.of(context);
     final roles = ref.watch(rolesProvider).value ?? const [];
-    final callback = _isNew ? '${widget.settings.callbackBase}${_id.text.isEmpty ? '<id>' : _id.text}/callback' : widget.provider!.callbackUrl;
+    final callback = _isNew
+        ? '${widget.settings.callbackBase}${_id.text.isEmpty ? '<id>' : _id.text}/callback'
+        : widget.provider!.callbackUrl;
     return AlertDialog(
       title: Text(_isNew ? 'Add sign-in provider' : _p.name),
       content: SizedBox(
@@ -205,39 +265,78 @@ class _SsoDialogState extends ConsumerState<_SsoDialog> {
                 onSelectionChanged: (v) => setState(() => _p.kind = v.first),
               ),
               const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: _id,
-                    enabled: _isNew,
-                    decoration: InputDecoration(labelText: s.settingId, hintText: 'corp'),
-                    onChanged: (_) => setState(() {}),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _id,
+                      enabled: _isNew,
+                      decoration: InputDecoration(
+                        labelText: s.settingId,
+                        hintText: 'corp',
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(flex: 2, child: TextField(controller: _name, decoration: InputDecoration(labelText: s.settingButtonLabel, hintText: s.settingCompanySso))),
-              ]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _name,
+                      decoration: InputDecoration(
+                        labelText: s.settingButtonLabel,
+                        hintText: s.settingCompanySso,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 10),
-              Text(s.settingCallbackRedirectUrlToRegister, style: TextStyle(color: c.muted, fontSize: 12.5)),
-              Row(children: [
-                Expanded(child: SelectableText(callback, style: monoStyle(context, size: 12.5))),
-                IconButton(
-                  tooltip: s.backupCopy,
-                  icon: const Icon(Icons.copy_rounded, size: 18),
-                  onPressed: () => Clipboard.setData(ClipboardData(text: callback)),
-                ),
-              ]),
+              Text(
+                s.settingCallbackRedirectUrlToRegister,
+                style: TextStyle(color: c.muted, fontSize: 12.5),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: SelectableText(
+                      callback,
+                      style: monoStyle(context, size: 12.5),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: s.backupCopy,
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    onPressed: () =>
+                        Clipboard.setData(ClipboardData(text: callback)),
+                  ),
+                ],
+              ),
               if (_p.kind == 'oidc') ...[
                 const SizedBox(height: 6),
-                TextField(controller: _issuer, decoration: InputDecoration(labelText: s.settingIssuerUrl, hintText: 'https://auth.example.com/application/o/nectar/')),
+                TextField(
+                  controller: _issuer,
+                  decoration: InputDecoration(
+                    labelText: s.settingIssuerUrl,
+                    hintText: 'https://auth.example.com/application/o/nectar/',
+                  ),
+                ),
               ],
               const SizedBox(height: 10),
-              TextField(controller: _clientId, decoration: InputDecoration(labelText: s.settingClientId)),
+              TextField(
+                controller: _clientId,
+                decoration: InputDecoration(labelText: s.settingClientId),
+              ),
               const SizedBox(height: 10),
               TextField(
                 controller: _secret,
                 obscureText: true,
-                decoration: InputDecoration(labelText: s.settingClientSecret, hintText: _p.hasSecret ? 'Stored — leave empty to keep it' : null),
+                decoration: InputDecoration(
+                  labelText: s.settingClientSecret,
+                  hintText: _p.hasSecret
+                      ? 'Stored — leave empty to keep it'
+                      : null,
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -257,11 +356,27 @@ class _SsoDialogState extends ConsumerState<_SsoDialog> {
               ),
               if (_p.autoCreate) ...[
                 DropdownButtonFormField<String>(
-                  initialValue: roles.any((r) => '${r.id}' == _p.defaultRole || r.builtinKey == _p.defaultRole) ? _p.defaultRole : '',
-                  decoration: InputDecoration(labelText: s.settingRoleOfNewUsersEverywhere),
+                  initialValue:
+                      roles.any(
+                        (r) =>
+                            '${r.id}' == _p.defaultRole ||
+                            r.builtinKey == _p.defaultRole,
+                      )
+                      ? _p.defaultRole
+                      : '',
+                  decoration: InputDecoration(
+                    labelText: s.settingRoleOfNewUsersEverywhere,
+                  ),
                   items: [
-                    DropdownMenuItem(value: '', child: Text(s.settingNoneAnAdminAssignsRoles)),
-                    for (final r in roles) DropdownMenuItem(value: r.builtin ? r.builtinKey : '${r.id}', child: Text(r.name)),
+                    DropdownMenuItem(
+                      value: '',
+                      child: Text(s.settingNoneAnAdminAssignsRoles),
+                    ),
+                    for (final r in roles)
+                      DropdownMenuItem(
+                        value: r.builtin ? r.builtinKey : '${r.id}',
+                        child: Text(r.name),
+                      ),
                   ],
                   onChanged: (v) => setState(() => _p.defaultRole = v ?? ''),
                 ),
@@ -291,9 +406,20 @@ class _SsoDialogState extends ConsumerState<_SsoDialog> {
         ),
       ),
       actions: [
-        if (!_isNew) TextButton(onPressed: _busy ? null : () => _save(delete: true), style: TextButton.styleFrom(foregroundColor: c.failed), child: Text(s.backupRemove2)),
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-        FilledButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Saving…' : 'Save')),
+        if (!_isNew)
+          TextButton(
+            onPressed: _busy ? null : () => _save(delete: true),
+            style: TextButton.styleFrom(foregroundColor: c.failed),
+            child: Text(s.backupRemove2),
+          ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _save,
+          child: Text(_busy ? 'Saving…' : 'Save'),
+        ),
       ],
     );
   }

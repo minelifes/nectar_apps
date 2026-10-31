@@ -11,7 +11,14 @@ import '../../widgets/common.dart';
 
 /// A passkey of the signed-in user (GET /me/passkeys).
 class PasskeyInfo {
-  const PasskeyInfo({required this.id, required this.name, required this.host, required this.synced, this.createdAt, this.lastUsedAt});
+  const PasskeyInfo({
+    required this.id,
+    required this.name,
+    required this.host,
+    required this.synced,
+    this.createdAt,
+    this.lastUsedAt,
+  });
 
   final int id;
   final String name;
@@ -33,7 +40,9 @@ class PasskeyInfo {
   }
 }
 
-final passkeysProvider = FutureProvider.autoDispose<List<PasskeyInfo>>((ref) async {
+final passkeysProvider = FutureProvider.autoDispose<List<PasskeyInfo>>((
+  ref,
+) async {
   final v = await ref.watch(apiProvider).get('/me/passkeys');
   return [for (final p in v is List ? v : const []) PasskeyInfo.fromJson(p)];
 });
@@ -44,13 +53,22 @@ class PasskeysCard extends ConsumerWidget {
 
   Future<void> _add(BuildContext context, WidgetRef ref) async {
     final s = S.of(context);
-    final name = await promptText(context, s.settingPasskeyName, s.settingPasskeyNameHint);
+    final name = await promptText(
+      context,
+      s.settingPasskeyName,
+      s.settingPasskeyNameHint,
+    );
     if (name == null || !context.mounted) return;
     final api = ref.read(apiProvider);
     try {
       final start = await api.post('/me/passkeys/options') as Map;
-      final credential = await createPasskey(Map<String, dynamic>.from(start['options'] as Map));
-      await api.post('/me/passkeys', data: {'flow': start['flow'], 'name': name, 'credential': credential});
+      final credential = await createPasskey(
+        Map<String, dynamic>.from(start['options'] as Map),
+      );
+      await api.post(
+        '/me/passkeys',
+        data: {'flow': start['flow'], 'name': name, 'credential': credential},
+      );
       ref.invalidate(passkeysProvider);
       if (context.mounted) showSnack(context, s.settingPasskeyAdded);
     } on PasskeyCancelled {
@@ -60,9 +78,21 @@ class PasskeysCard extends ConsumerWidget {
     }
   }
 
-  Future<void> _delete(BuildContext context, WidgetRef ref, PasskeyInfo p) async {
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    PasskeyInfo p,
+  ) async {
     final s = S.of(context);
-    if (!await confirmAction(context, s.settingPasskeyDelete(p.name), s.settingPasskeyDeleteHelp, s.actionDelete, danger: true)) return;
+    if (!await confirmAction(
+      context,
+      s.settingPasskeyDelete(p.name),
+      s.settingPasskeyDeleteHelp,
+      s.actionDelete,
+      danger: true,
+    )) {
+      return;
+    }
     try {
       await ref.read(apiProvider).delete('/me/passkeys/${p.id}');
       ref.invalidate(passkeysProvider);
@@ -76,11 +106,16 @@ class PasskeysCard extends ConsumerWidget {
     final s = S.of(context);
     final c = NectarColors.of(context);
     final list = ref.watch(passkeysProvider);
-    final canAdd = passkeysSupported && ref.read(sessionProvider.notifier).cookieAuth;
+    final canAdd =
+        passkeysSupported && ref.read(sessionProvider.notifier).cookieAuth;
     return NCard(
       title: s.settingPasskeys,
       trailing: canAdd
-          ? TextButton.icon(onPressed: () => _add(context, ref), icon: const Icon(Icons.add_rounded, size: 18), label: Text(s.settingAddPasskey))
+          ? TextButton.icon(
+              onPressed: () => _add(context, ref),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(s.settingAddPasskey),
+            )
           : null,
       child: AsyncBlock(
         value: list,
@@ -90,31 +125,47 @@ class PasskeysCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (keys.isEmpty)
-              Text(s.settingPasskeysHelp, style: TextStyle(color: c.muted, fontSize: 12.5))
+              Text(
+                s.settingPasskeysHelp,
+                style: TextStyle(color: c.muted, fontSize: 12.5),
+              )
             else
               for (final p in keys)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  leading: Icon(p.synced ? Icons.cloud_done_outlined : Icons.key_rounded, color: c.muted, size: 20),
+                  leading: Icon(
+                    p.synced ? Icons.cloud_done_outlined : Icons.key_rounded,
+                    color: c.muted,
+                    size: 20,
+                  ),
                   title: Text(p.name),
                   subtitle: Text(
                     [
                       p.host,
                       if (p.synced) s.settingPasskeySynced,
-                      p.lastUsedAt == null ? s.settingPasskeyNeverUsed : s.settingPasskeyUsed(timeAgo(p.lastUsedAt)),
+                      p.lastUsedAt == null
+                          ? s.settingPasskeyNeverUsed
+                          : s.settingPasskeyUsed(timeAgo(p.lastUsedAt)),
                     ].join(' · '),
                     style: TextStyle(color: c.muted, fontSize: 12),
                   ),
                   trailing: IconButton(
                     tooltip: s.actionDelete,
-                    icon: Icon(Icons.delete_outline_rounded, size: 18, color: c.failed),
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 18,
+                      color: c.failed,
+                    ),
                     onPressed: () => _delete(context, ref, p),
                   ),
                 ),
             if (!canAdd) ...[
               const SizedBox(height: 6),
-              Text(s.settingPasskeysWebOnly, style: TextStyle(color: c.muted, fontSize: 12)),
+              Text(
+                s.settingPasskeysWebOnly,
+                style: TextStyle(color: c.muted, fontSize: 12),
+              ),
             ],
           ],
         ),

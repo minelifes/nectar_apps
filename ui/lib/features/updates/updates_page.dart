@@ -14,7 +14,11 @@ import '../../widgets/status.dart';
 import 'update_dialog.dart';
 import 'update_settings_card.dart';
 
-const componentNames = {'panel': 'Nectar Apps panel', 'gateway': 'nectar-gateway', 'k3s': 'k3s'};
+const componentNames = {
+  'panel': 'Nectar Apps panel',
+  'gateway': 'nectar-gateway',
+  'k3s': 'k3s',
+};
 
 /// Settings → Updates: versions of the panel, the gateway and k3s, the running update, policies and history.
 class UpdatesPage extends ConsumerWidget {
@@ -38,7 +42,15 @@ class UpdatesPage extends ConsumerWidget {
     if (!session.can('server.view')) {
       return PageScaffold(
         title: s.updateUpdates,
-        children: [NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: s.noAccess, message: s.gatewayYourRoleDoesNotInclude))],
+        children: [
+          NCard(
+            child: EmptyState(
+              icon: Icons.lock_outline_rounded,
+              title: s.noAccess,
+              message: s.gatewayYourRoleDoesNotInclude,
+            ),
+          ),
+        ],
       );
     }
     final manage = session.can('server.manage');
@@ -49,7 +61,11 @@ class UpdatesPage extends ConsumerWidget {
       onRefresh: () async => ref.invalidate(updatesProvider),
       actions: [
         if (manage)
-          OutlinedButton.icon(onPressed: () => _check(context, ref), icon: const Icon(Icons.refresh_rounded, size: 18), label: Text(s.updateCheckNow)),
+          OutlinedButton.icon(
+            onPressed: () => _check(context, ref),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: Text(s.updateCheckNow),
+          ),
       ],
       children: [
         AsyncBlock(
@@ -58,10 +74,16 @@ class UpdatesPage extends ConsumerWidget {
           data: (o) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (o.active != null) ...[_ActiveRun(run: o.active!), const SizedBox(height: NectarTokens.gap)],
+              if (o.active != null) ...[
+                _ActiveRun(run: o.active!),
+                const SizedBox(height: NectarTokens.gap),
+              ],
               _Versions(overview: o, manage: manage),
               const SizedBox(height: NectarTokens.gap),
-              if (manage) ...[UpdateSettingsCard(settings: o.settings), const SizedBox(height: NectarTokens.gap)],
+              if (manage) ...[
+                UpdateSettingsCard(settings: o.settings),
+                const SizedBox(height: NectarTokens.gap),
+              ],
               _History(overview: o, manage: manage),
             ],
           ),
@@ -87,13 +109,19 @@ class _Versions extends ConsumerWidget {
     return NCard(
       title: s.updateVersions,
       trailing: Text(
-        o.checkedAt == null ? 'not checked yet' : 'checked ${timeAgo(o.checkedAt)}',
+        o.checkedAt == null
+            ? 'not checked yet'
+            : 'checked ${timeAgo(o.checkedAt)}',
         style: TextStyle(color: c.muted, fontSize: 12.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final (i, comp) in const ['panel', 'gateway', 'k3s'].indexed) ...[
+          for (final (i, comp) in const [
+            'panel',
+            'gateway',
+            'k3s',
+          ].indexed) ...[
             if (i > 0) const Divider(height: 1),
             _ComponentRow(
               component: comp,
@@ -111,17 +139,27 @@ class _Versions extends ConsumerWidget {
                   Icon(Icons.block_rounded, size: 16, color: c.failed),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text('${e.key.replaceFirst('@', ' ')} is not installed automatically: ${e.value}',
-                        style: TextStyle(fontSize: 12.5, color: c.muted), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      '${e.key.replaceFirst('@', ' ')} is not installed automatically: ${e.value}',
+                      style: TextStyle(fontSize: 12.5, color: c.muted),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   if (manage)
                     TextButton(
                       onPressed: () async {
                         try {
-                          await ref.read(apiProvider).delete('/updates/bad/${Uri.encodeComponent(e.key)}');
+                          await ref
+                              .read(apiProvider)
+                              .delete(
+                                '/updates/bad/${Uri.encodeComponent(e.key)}',
+                              );
                           ref.invalidate(updatesProvider);
                         } on Object catch (err) {
-                          if (context.mounted) showSnack(context, describeError(err), error: true);
+                          if (context.mounted) {
+                            showSnack(context, describeError(err), error: true);
+                          }
                         }
                       },
                       child: Text(s.updateAllowAgain),
@@ -136,7 +174,13 @@ class _Versions extends ConsumerWidget {
 }
 
 class _ComponentRow extends ConsumerWidget {
-  const _ComponentRow({required this.component, required this.state, required this.policy, required this.busy, required this.manage});
+  const _ComponentRow({
+    required this.component,
+    required this.state,
+    required this.policy,
+    required this.busy,
+    required this.manage,
+  });
 
   final String component;
   final ComponentUpdate state;
@@ -151,7 +195,9 @@ class _ComponentRow extends ConsumerWidget {
       final r = state.available.first;
       return '${r.version} available${r.security ? ' · security fix' : ''}${r.breaking ? ' · breaking' : ''}';
     }
-    if (state.latest == null) return state.error.isNotEmpty ? state.error : 'Not checked yet';
+    if (state.latest == null) {
+      return state.error.isNotEmpty ? state.error : 'Not checked yet';
+    }
     return 'Up to date';
   }
 
@@ -159,16 +205,19 @@ class _ComponentRow extends ConsumerWidget {
     final s = S.of(context);
     final v = state.available.first.version;
     if (!await confirmAction(
-        context,
-        s.updateUpdateK3sTo(v),
-        s.updateTheSystemUpgradeControllerUpgrades,
-        s.updateUpgrade)) {
+      context,
+      s.updateUpdateK3sTo(v),
+      s.updateTheSystemUpgradeControllerUpgrades,
+      s.updateUpgrade,
+    )) {
       return;
     }
     try {
       await ref.read(apiProvider).post('/updates/k3s', data: {'version': v});
       ref.invalidate(updatesProvider);
-      if (context.mounted) showSnack(context, s.updateK3sUpgradeToStartedNode(v));
+      if (context.mounted) {
+        showSnack(context, s.updateK3sUpgradeToStartedNode(v));
+      }
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
@@ -178,14 +227,25 @@ class _ComponentRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = S.of(context);
     final c = NectarColors.of(context);
-    final tone = state.hasUpdate ? 'warning' : (state.error.isNotEmpty ? 'failed' : (state.latest != null ? 'running' : 'stopped'));
-    final canUpdate = manage && state.hasUpdate && !busy && (component != 'k3s' || state.controller);
+    final tone = state.hasUpdate
+        ? 'warning'
+        : (state.error.isNotEmpty
+              ? 'failed'
+              : (state.latest != null ? 'running' : 'stopped'));
+    final canUpdate =
+        manage &&
+        state.hasUpdate &&
+        !busy &&
+        (component != 'k3s' || state.controller);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(padding: const EdgeInsets.only(top: 4), child: StatusDot(status: tone)),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: StatusDot(status: tone),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -193,17 +253,37 @@ class _ComponentRow extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Text(componentNames[component]!, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      componentNames[component]!,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     const SizedBox(width: 8),
-                    Text(state.installed.isEmpty ? '—' : state.installed, style: monoStyle(context, size: 12.5, color: c.muted)),
+                    Text(
+                      state.installed.isEmpty ? '—' : state.installed,
+                      style: monoStyle(context, size: 12.5, color: c.muted),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(_statusText(), style: TextStyle(fontSize: 13, color: state.hasUpdate ? c.text : c.muted)),
+                Text(
+                  _statusText(),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: state.hasUpdate ? c.text : c.muted,
+                  ),
+                ),
                 if (state.waiting.isNotEmpty && policy != 'off')
-                  Text(state.waiting, style: TextStyle(fontSize: 12.5, color: c.muted)),
+                  Text(
+                    state.waiting,
+                    style: TextStyle(fontSize: 12.5, color: c.muted),
+                  ),
                 if (state.error.isNotEmpty && state.installed.isNotEmpty)
-                  Text(state.error, style: TextStyle(fontSize: 12.5, color: c.warning), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(
+                    state.error,
+                    style: TextStyle(fontSize: 12.5, color: c.warning),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 if (component == 'k3s' && state.nodes.length > 1)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -211,19 +291,35 @@ class _ComponentRow extends ConsumerWidget {
                       spacing: 10,
                       children: [
                         for (final n in state.nodes)
-                          Text('${n.name} ${n.version}${n.unschedulable ? ' (cordoned)' : ''}', style: monoStyle(context, size: 11.5, color: c.muted)),
+                          Text(
+                            '${n.name} ${n.version}${n.unschedulable ? ' (cordoned)' : ''}',
+                            style: monoStyle(
+                              context,
+                              size: 11.5,
+                              color: c.muted,
+                            ),
+                          ),
                       ],
                     ),
                   ),
                 if (component == 'k3s' && !state.controller && policy != 'off')
-                  Text(s.updateUpdatingK3sFromHereNeeds,
-                      style: TextStyle(fontSize: 12.5, color: c.muted)),
+                  Text(
+                    s.updateUpdatingK3sFromHereNeeds,
+                    style: TextStyle(fontSize: 12.5, color: c.muted),
+                  ),
               ],
             ),
           ),
           if (canUpdate)
             FilledButton(
-              onPressed: () => component == 'k3s' ? _k3sUpdate(context, ref) : showUpdateDialog(context, ref, component: component, state: state),
+              onPressed: () => component == 'k3s'
+                  ? _k3sUpdate(context, ref)
+                  : showUpdateDialog(
+                      context,
+                      ref,
+                      component: component,
+                      state: state,
+                    ),
               child: Text(s.updateUpdate2),
             ),
         ],
@@ -235,21 +331,21 @@ class _ComponentRow extends ConsumerWidget {
 // --------------------------------------------------------------- active run --
 
 String runStateLabel(String s) => switch (s) {
-      'pending' => 'Starting',
-      'running' => 'Running',
-      'succeeded' => 'Done',
-      'failed' => 'Not started',
-      'rolled_back' => 'Rolled back',
-      'rollback_failed' => 'Needs attention',
-      _ => s,
-    };
+  'pending' => 'Starting',
+  'running' => 'Running',
+  'succeeded' => 'Done',
+  'failed' => 'Not started',
+  'rolled_back' => 'Rolled back',
+  'rollback_failed' => 'Needs attention',
+  _ => s,
+};
 
 String runTone(String s) => switch (s) {
-      'succeeded' => 'running',
-      'pending' || 'running' => 'deploying',
-      'failed' || 'rolled_back' => 'warning',
-      _ => 'failed',
-    };
+  'succeeded' => 'running',
+  'pending' || 'running' => 'deploying',
+  'failed' || 'rolled_back' => 'warning',
+  _ => 'failed',
+};
 
 class _ActiveRun extends ConsumerStatefulWidget {
   const _ActiveRun({required this.run});
@@ -261,7 +357,9 @@ class _ActiveRun extends ConsumerStatefulWidget {
 }
 
 class _ActiveRunState extends ConsumerState<_ActiveRun> {
-  late final UpdateInProgress _flag = ref.read(updateInProgressProvider.notifier);
+  late final UpdateInProgress _flag = ref.read(
+    updateInProgressProvider.notifier,
+  );
 
   @override
   void initState() {
@@ -270,23 +368,30 @@ class _ActiveRunState extends ConsumerState<_ActiveRun> {
     Future.microtask(() => _flag.set(true));
   }
 
-
   @override
   Widget build(BuildContext context) {
     final l = S.of(context);
     final c = NectarColors.of(context);
     final run = widget.run;
-    final panelStep = run.steps.any((s) => s.component == 'panel' && s.state == 'running');
+    final panelStep = run.steps.any(
+      (s) => s.component == 'panel' && s.state == 'running',
+    );
     return NCard(
       title: l.updateUpdating(run.summary),
-      trailing: StatusPill(status: 'deploying', label: runStateLabel(run.state)),
+      trailing: StatusPill(
+        status: 'deploying',
+        label: runStateLabel(run.state),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final s in run.steps) RunStepRow(step: s),
           if (panelStep) ...[
             const SizedBox(height: 6),
-            Text(l.updateThePanelRestartsNowThis, style: TextStyle(color: c.muted, fontSize: 12.5)),
+            Text(
+              l.updateThePanelRestartsNowThis,
+              style: TextStyle(color: c.muted, fontSize: 12.5),
+            ),
           ],
           if (run.log.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -325,8 +430,14 @@ class RunStepRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${componentNames[step.component] ?? step.component}  ${step.from} → ${step.to}${step.migrations ? '  · database changes' : ''}'),
-                if (step.message.isNotEmpty) Text(step.message, style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text(
+                  '${componentNames[step.component] ?? step.component}  ${step.from} → ${step.to}${step.migrations ? '  · database changes' : ''}',
+                ),
+                if (step.message.isNotEmpty)
+                  Text(
+                    step.message,
+                    style: TextStyle(color: c.muted, fontSize: 12.5),
+                  ),
               ],
             ),
           ),
@@ -348,7 +459,10 @@ class RunLog extends StatelessWidget {
     String two(int n) => n.toString().padLeft(2, '0');
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: const Color(0xFF0A0B0D), borderRadius: BorderRadius.circular(NectarTokens.radiusSmall)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A0B0D),
+        borderRadius: BorderRadius.circular(NectarTokens.radiusSmall),
+      ),
       child: SelectableText(
         [
           for (final (t, m) in lines)
@@ -368,20 +482,29 @@ class _History extends ConsumerWidget {
   final UpdatesOverview overview;
   final bool manage;
 
-  Future<void> _rollback(BuildContext context, WidgetRef ref, UpdateRunInfo run) async {
+  Future<void> _rollback(
+    BuildContext context,
+    WidgetRef ref,
+    UpdateRunInfo run,
+  ) async {
     final l = S.of(context);
-    final db = run.steps.where((s) => s.migrations && s.state == 'done').map((s) => componentNames[s.component]).join(' and ');
+    final db = run.steps
+        .where((s) => s.migrations && s.state == 'done')
+        .map((s) => componentNames[s.component])
+        .join(' and ');
     final ok = await confirmAction(
       context,
       l.updateRollBack(run.summary),
       'Every component goes back to the version it had before this update.'
-          '${db.isEmpty ? '' : ' The $db database is restored to its state before the update: changes made since then are lost.'}',
+      '${db.isEmpty ? '' : ' The $db database is restored to its state before the update: changes made since then are lost.'}',
       l.updateRollBack2,
       danger: db.isNotEmpty,
     );
     if (!ok || !context.mounted) return;
     try {
-      await ref.read(apiProvider).post('/updates/rollback', data: {'run_id': run.id});
+      await ref
+          .read(apiProvider)
+          .post('/updates/rollback', data: {'run_id': run.id});
       ref.read(updateInProgressProvider.notifier).set(true);
       ref.invalidate(updatesProvider);
     } on Object catch (e) {
@@ -394,7 +517,9 @@ class _History extends ConsumerWidget {
     final l = S.of(context);
     final c = NectarColors.of(context);
     final runs = overview.runs.where((r) => !r.active).toList();
-    final rollbackable = runs.where((r) => r.state == 'succeeded' && r.trigger != 'rollback').firstOrNull;
+    final rollbackable = runs
+        .where((r) => r.state == 'succeeded' && r.trigger != 'rollback')
+        .firstOrNull;
     return NCard(
       title: l.observeHistory,
       child: runs.isEmpty
@@ -406,25 +531,46 @@ class _History extends ConsumerWidget {
                   ExpansionTile(
                     tilePadding: EdgeInsets.zero,
                     leading: StatusDot(status: runTone(r.state)),
-                    title: Text(r.summary.isEmpty ? 'Update #${r.id}' : r.summary),
+                    title: Text(
+                      r.summary.isEmpty ? 'Update #${r.id}' : r.summary,
+                    ),
                     subtitle: Text(
                       [
                         runStateLabel(r.state),
-                        switch (r.trigger) { 'auto' => 'automatic', 'rollback' => 'rollback', _ => 'by hand' },
+                        switch (r.trigger) {
+                          'auto' => 'automatic',
+                          'rollback' => 'rollback',
+                          _ => 'by hand',
+                        },
                         timeAgo(r.startedAt),
                         if (r.error.isNotEmpty) r.error,
                       ].join(' · '),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12.5, color: r.state == 'succeeded' ? c.muted : c.warning),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: r.state == 'succeeded' ? c.muted : c.warning,
+                      ),
                     ),
-                    trailing: manage && identical(r, rollbackable) && overview.active == null
-                        ? TextButton(onPressed: () => _rollback(context, ref, r), child: Text(l.updateRollBack2))
+                    trailing:
+                        manage &&
+                            identical(r, rollbackable) &&
+                            overview.active == null
+                        ? TextButton(
+                            onPressed: () => _rollback(context, ref, r),
+                            child: Text(l.updateRollBack2),
+                          )
                         : null,
-                    childrenPadding: const EdgeInsets.only(left: 28, bottom: 12),
+                    childrenPadding: const EdgeInsets.only(
+                      left: 28,
+                      bottom: 12,
+                    ),
                     children: [
                       for (final s in r.steps) RunStepRow(step: s),
-                      if (r.log.isNotEmpty) ...[const SizedBox(height: 8), RunLog(log: r.log)],
+                      if (r.log.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        RunLog(log: r.log),
+                      ],
                     ],
                   ),
               ],

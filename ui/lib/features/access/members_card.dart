@@ -19,7 +19,11 @@ class MembersCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = S.of(context);
     final members = ref.watch(projectMembersProvider(projectId));
-    final canEdit = ref.watch(sessionProvider.select((s) => s.can('project.members', projectId: projectId)));
+    final canEdit = ref.watch(
+      sessionProvider.select(
+        (s) => s.can('project.members', projectId: projectId),
+      ),
+    );
     final c = NectarColors.of(context);
     return NCard(
       title: l.acceMembers,
@@ -27,7 +31,10 @@ class MembersCard extends ConsumerWidget {
           ? IconButton(
               tooltip: l.acceAddMember,
               icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-              onPressed: () => showDialog<void>(context: context, builder: (_) => _MemberDialog(projectId: projectId)),
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => _MemberDialog(projectId: projectId),
+              ),
             )
           : null,
       child: AsyncBlock(
@@ -39,19 +46,33 @@ class MembersCard extends ConsumerWidget {
           children: [
             for (final m in list)
               InkWell(
-                onTap: canEdit && !m.isOwner ? () => showDialog<void>(context: context, builder: (_) => _MemberDialog(projectId: projectId, member: m)) : null,
+                onTap: canEdit && !m.isOwner
+                    ? () => showDialog<void>(
+                        context: context,
+                        builder: (_) =>
+                            _MemberDialog(projectId: projectId, member: m),
+                      )
+                    : null,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(m.name.isEmpty ? m.email : m.name, style: TextStyle(fontWeight: FontWeight.w600, color: m.disabled ? c.muted : c.text)),
+                      Text(
+                        m.name.isEmpty ? m.email : m.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: m.disabled ? c.muted : c.text,
+                        ),
+                      ),
                       Text(
                         m.isOwner
                             ? 'Owner'
                             : [
                                 ...m.roles.map((r) => r.roleName),
-                                ...m.globalRoles.map((r) => '${r.roleName} (everywhere)'),
+                                ...m.globalRoles.map(
+                                  (r) => '${r.roleName} (everywhere)',
+                                ),
                               ].join(', '),
                         style: TextStyle(fontSize: 12, color: c.muted),
                       ),
@@ -90,7 +111,10 @@ class _MemberDialogState extends ConsumerState<_MemberDialog> {
       if (remove) {
         await api.delete('/projects/${widget.projectId}/members/$uid');
       } else {
-        await api.put('/projects/${widget.projectId}/members/$uid', data: {'role_ids': _roles.toList()});
+        await api.put(
+          '/projects/${widget.projectId}/members/$uid',
+          data: {'role_ids': _roles.toList()},
+        );
       }
       ref.invalidate(projectMembersProvider(widget.projectId));
       if (mounted) Navigator.pop(context);
@@ -109,7 +133,9 @@ class _MemberDialogState extends ConsumerState<_MemberDialog> {
     final m = widget.member;
     final directory = m == null ? ref.watch(userDirectoryProvider) : null;
     return AlertDialog(
-      title: Text(m == null ? 'Add member' : (m.name.isEmpty ? m.email : m.name)),
+      title: Text(
+        m == null ? 'Add member' : (m.name.isEmpty ? m.email : m.name),
+      ),
       content: SizedBox(
         width: 460,
         child: SingleChildScrollView(
@@ -125,14 +151,26 @@ class _MemberDialogState extends ConsumerState<_MemberDialog> {
                     initialValue: _user,
                     isExpanded: true,
                     decoration: InputDecoration(labelText: s.acceUser),
-                    items: [for (final u in users) DropdownMenuItem(value: u.id, child: Text('${u.label} · ${u.email}', overflow: TextOverflow.ellipsis))],
+                    items: [
+                      for (final u in users)
+                        DropdownMenuItem(
+                          value: u.id,
+                          child: Text(
+                            '${u.label} · ${u.email}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
                     onChanged: (v) => setState(() => _user = v),
                   ),
                 ),
               if (m != null && m.globalRoles.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text('Everywhere: ${m.globalRoles.map((r) => r.roleName).join(', ')} (Settings → Users)', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                  child: Text(
+                    'Everywhere: ${m.globalRoles.map((r) => r.roleName).join(', ')} (Settings → Users)',
+                    style: TextStyle(color: c.muted, fontSize: 12.5),
+                  ),
                 ),
               const SizedBox(height: 8),
               const SectionLabel('Roles in this project'),
@@ -147,14 +185,26 @@ class _MemberDialogState extends ConsumerState<_MemberDialog> {
                         contentPadding: EdgeInsets.zero,
                         controlAffinity: ListTileControlAffinity.leading,
                         value: _roles.contains(r.id),
-                        onChanged: (v) => setState(() => v == true ? _roles.add(r.id) : _roles.remove(r.id)),
+                        onChanged: (v) => setState(
+                          () => v == true
+                              ? _roles.add(r.id)
+                              : _roles.remove(r.id),
+                        ),
                         title: Text(r.name),
-                        subtitle: r.description.isEmpty ? null : Text(r.description, style: TextStyle(fontSize: 12, color: c.muted)),
+                        subtitle: r.description.isEmpty
+                            ? null
+                            : Text(
+                                r.description,
+                                style: TextStyle(fontSize: 12, color: c.muted),
+                              ),
                       ),
                   ],
                 ),
               ),
-              Text(s.acceYouCanOnlyGiveRoles, style: TextStyle(color: c.muted, fontSize: 12)),
+              Text(
+                s.acceYouCanOnlyGiveRoles,
+                style: TextStyle(color: c.muted, fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -166,8 +216,14 @@ class _MemberDialogState extends ConsumerState<_MemberDialog> {
             style: TextButton.styleFrom(foregroundColor: c.failed),
             child: Text(s.acceRemoveFromProject),
           ),
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-        FilledButton(onPressed: _busy || (m == null && _user == null) ? null : _save, child: Text(s.actionSave)),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _busy || (m == null && _user == null) ? null : _save,
+          child: Text(s.actionSave),
+        ),
       ],
     );
   }

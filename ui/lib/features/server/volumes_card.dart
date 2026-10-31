@@ -31,14 +31,22 @@ class VolumesCard extends ConsumerWidget {
         loadingHeight: 80,
         onRetry: () => ref.invalidate(serverVolumesProvider),
         data: (list) {
-          if (list.isEmpty) return Text(s.serverNoVolumesYetAppsGet, style: TextStyle(color: c.muted));
-          final sorted = [...list]..sort((a, b) => _share(b).compareTo(_share(a)));
+          if (list.isEmpty) {
+            return Text(
+              s.serverNoVolumesYetAppsGet,
+              style: TextStyle(color: c.muted),
+            );
+          }
+          final sorted = [...list]
+            ..sort((a, b) => _share(b).compareTo(_share(a)));
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (final v in sorted) ...[
                 InkWell(
-                  onTap: v.appId > 0 ? () => context.go('/apps/${v.appId}') : null,
+                  onTap: v.appId > 0
+                      ? () => context.go('/apps/${v.appId}')
+                      : null,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Column(
@@ -48,13 +56,21 @@ class VolumesCard extends ConsumerWidget {
                         const SizedBox(height: 4),
                         if (v.usedBytes >= 0 && v.requestedBytes > 0)
                           UsageBar(
-                            label: v.storageClass.isEmpty ? 'Used' : v.storageClass,
+                            label: v.storageClass.isEmpty
+                                ? 'Used'
+                                : v.storageClass,
                             value: v.usedBytes / v.requestedBytes,
-                            trailing: '${formatBytes(v.usedBytes)} of ${formatBytes(v.requestedBytes)}'
+                            trailing:
+                                '${formatBytes(v.usedBytes)} of ${formatBytes(v.requestedBytes)}'
                                 '${v.availableBytes >= 0 ? ' · ${formatBytes(v.availableBytes)} free on ${v.node.isEmpty ? 'the disk' : v.node}' : ''}',
                           )
                         else
-                          Text(s.serverUsageShowsWhileTheApp(formatBytes(v.requestedBytes)), style: TextStyle(color: c.muted, fontSize: 12)),
+                          Text(
+                            s.serverUsageShowsWhileTheApp(
+                              formatBytes(v.requestedBytes),
+                            ),
+                            style: TextStyle(color: c.muted, fontSize: 12),
+                          ),
                       ],
                     ),
                   ),
@@ -73,5 +89,7 @@ class VolumesCard extends ConsumerWidget {
     );
   }
 
-  static double _share(VolumeUse v) => v.usedBytes < 0 || v.requestedBytes <= 0 ? -1 : v.usedBytes / v.requestedBytes;
+  static double _share(VolumeUse v) => v.usedBytes < 0 || v.requestedBytes <= 0
+      ? -1
+      : v.usedBytes / v.requestedBytes;
 }

@@ -4,7 +4,12 @@ const clientVersion = '0.1.0';
 /// Compares two semantic versions ("1.2.3", "v1.2.3-beta.1"); unparseable versions compare equal.
 int compareVersions(String a, String b) {
   List<int>? parse(String v) {
-    final core = v.trim().replaceFirst(RegExp(r'^v'), '').split(RegExp(r'[-+]')).first.split('.');
+    final core = v
+        .trim()
+        .replaceFirst(RegExp(r'^v'), '')
+        .split(RegExp(r'[-+]'))
+        .first
+        .split('.');
     if (core.length != 3) return null;
     final nums = core.map(int.tryParse).toList();
     return nums.contains(null) ? null : nums.cast<int>();

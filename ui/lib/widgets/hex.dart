@@ -11,7 +11,10 @@ Path hexagonPath(Rect rect, {double cornerRadius = 0}) {
   final c = rect.center;
   final pts = [
     for (var i = 0; i < 6; i++)
-      Offset(c.dx + r * math.cos((60 * i - 90) * math.pi / 180), c.dy + r * math.sin((60 * i - 90) * math.pi / 180)),
+      Offset(
+        c.dx + r * math.cos((60 * i - 90) * math.pi / 180),
+        c.dy + r * math.sin((60 * i - 90) * math.pi / 180),
+      ),
   ];
   final path = Path();
   if (cornerRadius <= 0) {
@@ -50,23 +53,37 @@ class HexagonBorder extends OutlinedBorder {
       hexagonPath(rect.deflate(side.strokeInset), cornerRadius: cornerRadius);
 
   @override
-  Path getOuterPath(Rect rect, {TextDirection? textDirection}) => hexagonPath(rect, cornerRadius: cornerRadius);
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
+      hexagonPath(rect, cornerRadius: cornerRadius);
 
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
     if (side.style == BorderStyle.none) return;
-    canvas.drawPath(hexagonPath(rect.deflate(side.strokeInset / 2), cornerRadius: cornerRadius), side.toPaint());
+    canvas.drawPath(
+      hexagonPath(
+        rect.deflate(side.strokeInset / 2),
+        cornerRadius: cornerRadius,
+      ),
+      side.toPaint(),
+    );
   }
 
   @override
-  ShapeBorder scale(double t) => HexagonBorder(side: side.scale(t), cornerRadius: cornerRadius * t);
+  ShapeBorder scale(double t) =>
+      HexagonBorder(side: side.scale(t), cornerRadius: cornerRadius * t);
 
   @override
   HexagonBorder copyWith({BorderSide? side, double? cornerRadius}) =>
-      HexagonBorder(side: side ?? this.side, cornerRadius: cornerRadius ?? this.cornerRadius);
+      HexagonBorder(
+        side: side ?? this.side,
+        cornerRadius: cornerRadius ?? this.cornerRadius,
+      );
 
   @override
-  bool operator ==(Object other) => other is HexagonBorder && other.side == side && other.cornerRadius == cornerRadius;
+  bool operator ==(Object other) =>
+      other is HexagonBorder &&
+      other.side == side &&
+      other.cornerRadius == cornerRadius;
 
   @override
   int get hashCode => Object.hash(side, cornerRadius);
@@ -74,7 +91,13 @@ class HexagonBorder extends OutlinedBorder {
 
 /// A filled hexagon badge with a centered child (runtime glyph, initials, icon).
 class HexBadge extends StatelessWidget {
-  const HexBadge({super.key, required this.child, this.size = 40, this.color, this.gradient});
+  const HexBadge({
+    super.key,
+    required this.child,
+    this.size = 40,
+    this.color,
+    this.gradient,
+  });
 
   final Widget child;
   final double size;
@@ -105,8 +128,10 @@ class NectarMark extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) =>
-      SizedBox.square(dimension: size, child: CustomPaint(painter: _MarkPainter()));
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: CustomPaint(painter: _MarkPainter()),
+  );
 }
 
 class _MarkPainter extends CustomPainter {
@@ -118,14 +143,27 @@ class _MarkPainter extends CustomPainter {
     final gap = r * 0.05;
     final cy = size.height / 2 + r * 0.72;
     final cells = <(Offset, List<Color>)>[
-      (Offset(size.width / 2 - w / 2 - gap, cy), const [Color(0xFFFFC94A), Color(0xFFF08A00)]),
-      (Offset(size.width / 2 + w / 2 + gap, cy), const [Color(0xFFF5A524), Color(0xFFD96F00)]),
-      (Offset(size.width / 2, cy - 1.5 * r - gap * 1.7), const [Color(0xFFFFE08A), Color(0xFFFFB940)]),
+      (
+        Offset(size.width / 2 - w / 2 - gap, cy),
+        const [Color(0xFFFFC94A), Color(0xFFF08A00)],
+      ),
+      (
+        Offset(size.width / 2 + w / 2 + gap, cy),
+        const [Color(0xFFF5A524), Color(0xFFD96F00)],
+      ),
+      (
+        Offset(size.width / 2, cy - 1.5 * r - gap * 1.7),
+        const [Color(0xFFFFE08A), Color(0xFFFFB940)],
+      ),
     ];
     for (final (center, colors) in cells) {
       final rect = Rect.fromCenter(center: center, width: w, height: 2 * r);
       final paint = Paint()
-        ..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors).createShader(rect);
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ).createShader(rect);
       canvas.drawPath(hexagonPath(rect, cornerRadius: r * 0.06), paint);
     }
     // chevron in the top cell ("run")
@@ -160,9 +198,12 @@ class HexLoader extends StatefulWidget {
   State<HexLoader> createState() => _HexLoaderState();
 }
 
-class _HexLoaderState extends State<HexLoader> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
-    ..repeat();
+class _HexLoaderState extends State<HexLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat();
 
   @override
   void dispose() {
@@ -181,7 +222,8 @@ class _HexLoaderState extends State<HexLoader> with SingleTickerProviderStateMix
         height: widget.size,
         child: AnimatedBuilder(
           animation: _c,
-          builder: (context, _) => CustomPaint(painter: _FillPainter(_c.value, colors.border)),
+          builder: (context, _) =>
+              CustomPaint(painter: _FillPainter(_c.value, colors.border)),
         ),
       ),
     );

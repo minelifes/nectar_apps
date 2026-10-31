@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/client.dart';
 import '../../api/models.dart';
+import '../../api/session.dart';
 import '../../core/format.dart';
+import '../../data/providers.dart';
 import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -32,7 +35,9 @@ String alertTitle(AlertIncident a) => alertRuleTitles[a.rule] ?? a.rule;
 /// Where an alert leads in the panel.
 String? alertTarget(AlertIncident a) {
   if (a.appId != null) return '/apps/${a.appId}';
-  if (a.rule == 'addon_down' && a.key.contains(':')) return '/addons/${a.key.split(':').last}';
+  if (a.rule == 'addon_down' && a.key.contains(':')) {
+    return '/addons/${a.key.split(':').last}';
+  }
   if (a.rule.startsWith('node_')) return '/server';
   if (a.rule == 'backup_failed') return '/backups';
   if (a.rule.startsWith('update_')) return '/updates';
@@ -47,22 +52,62 @@ String _span(Duration d) {
 }
 
 /// One incident row: severity icon, rule title, subject, message and timing.
-class AlertTile extends StatelessWidget {
-  const AlertTile({super.key, required this.alert, this.dense = false});
+/// Marks incidents as read for me (ids null = every firing one) — they leave my dashboard and nav badge.
+Future<void> markAlertsRead(
+  BuildContext context,
+  WidgetRef ref, {
+  List<int>? ids,
+}) async {
+  try {
+    await ref.read(apiProvider).post('/alerts/read', data: {'ids': ?ids});
+    ref.invalidate(firingAlertsProvider);
+  } on Object catch (e) {
+    if (context.mounted) showSnack(context, describeError(e), error: true);
+  }
+}
+
+Future<void> _markAlertUnread(
+  BuildContext context,
+  WidgetRef ref,
+  int id,
+) async {
+  try {
+    await ref.read(apiProvider).delete('/alerts/read/$id');
+    ref.invalidate(firingAlertsProvider);
+  } on Object catch (e) {
+    if (context.mounted) showSnack(context, describeError(e), error: true);
+  }
+}
+
+class AlertTile extends ConsumerWidget {
+  const AlertTile({
+    super.key,
+    required this.alert,
+    this.dense = false,
+    this.readToggle = false,
+  });
 
   final AlertIncident alert;
   final bool dense;
 
+  /// Shows a read / unread button on firing incidents.
+  final bool readToggle;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final a = alert;
     final color = !a.firing ? c.running : (a.critical ? c.failed : c.warning);
-    final icon = !a.firing ? Icons.check_circle_rounded : (a.critical ? Icons.error_rounded : Icons.warning_amber_rounded);
+    final icon = !a.firing
+        ? Icons.check_circle_rounded
+        : (a.critical ? Icons.error_rounded : Icons.warning_amber_rounded);
     final started = a.startedAt;
     final timing = a.firing
         ? 'since ${timeAgo(started)}'
-        : (a.resolvedAt != null && started != null ? 'lasted ${_span(a.resolvedAt!.difference(started))} · ${timeAgo(a.resolvedAt)}' : 'resolved');
+        : (a.resolvedAt != null && started != null
+              ? 'lasted ${_span(a.resolvedAt!.difference(started))} · ${timeAgo(a.resolvedAt)}'
+              : 'resolved');
     final target = alertTarget(a);
     final body = Padding(
       padding: EdgeInsets.symmetric(vertical: dense ? 6 : 10, horizontal: 4),
@@ -79,38 +124,76 @@ class AlertTile extends StatelessWidget {
                   spacing: 8,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(alertTitle(a), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    Text(a.subject, style: TextStyle(color: c.muted, fontSize: 13)),
+                    Text(
+                      alertTitle(a),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      a.subject,
+                      style: TextStyle(color: c.muted, fontSize: 13),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(a.message, style: const TextStyle(fontSize: 13.5)),
                 const SizedBox(height: 2),
                 Text(
-                  [timing, if (a.firing && a.notified == 0) 'no channel notified'].join(' · '),
+                  [
+                    timing,
+                    if (a.firing && a.notified == 0) 'no channel notified',
+                    if (a.firing && a.read) s.alertReadLabel,
+                  ].join(' · '),
                   style: TextStyle(color: c.muted, fontSize: 12),
                 ),
               ],
             ),
           ),
+          if (readToggle && a.firing)
+            IconButton(
+              tooltip: a.read ? s.alertMarkUnread : s.alertMarkRead,
+              visualDensity: VisualDensity.compact,
+              icon: Icon(
+                a.read ? Icons.mark_email_unread_outlined : Icons.done_rounded,
+                size: 18,
+                color: c.muted,
+              ),
+              onPressed: () => a.read
+                  ? _markAlertUnread(context, ref, a.id)
+                  : markAlertsRead(context, ref, ids: [a.id]),
+            ),
           if (target != null) Icon(Icons.chevron_right_rounded, color: c.muted),
         ],
       ),
     );
     if (target == null) return body;
-    return InkWell(borderRadius: BorderRadius.circular(NectarTokens.radiusSmall), onTap: () => context.go(target), child: body);
+    return InkWell(
+      borderRadius: BorderRadius.circular(NectarTokens.radiusSmall),
+      onTap: () => context.go(target),
+      child: body,
+    );
   }
 }
 
 /// Compact card listing firing alerts (dashboard, app page). Renders nothing when there are none.
-class FiringAlertsCard extends StatelessWidget {
-  const FiringAlertsCard({super.key, required this.alerts, this.showAll = true});
+class FiringAlertsCard extends ConsumerWidget {
+  const FiringAlertsCard({
+    super.key,
+    required this.alerts,
+    this.showAll = true,
+    this.readActions = false,
+  });
 
   final List<AlertIncident> alerts;
   final bool showAll;
 
+  /// "Mark as read" per alert and "Mark all read" (dashboard: read alerts are filtered out by the caller).
+  final bool readActions;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final s = S.of(context);
     if (alerts.isEmpty) return const SizedBox.shrink();
     final c = NectarColors.of(context);
@@ -120,7 +203,9 @@ class FiringAlertsCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(NectarTokens.radius),
-          border: Border.all(color: (critical ? c.failed : c.warning).withValues(alpha: 0.6)),
+          border: Border.all(
+            color: (critical ? c.failed : c.warning).withValues(alpha: 0.6),
+          ),
           color: (critical ? c.failed : c.warning).withValues(alpha: 0.06),
         ),
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
@@ -131,18 +216,37 @@ class FiringAlertsCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    alerts.length == 1 ? '1 alert firing' : '${alerts.length} alerts firing',
+                    alerts.length == 1
+                        ? '1 alert firing'
+                        : '${alerts.length} alerts firing',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
-                if (showAll) TextButton(onPressed: () => context.go('/alerts'), child: Text(s.alertAllAlerts)),
+                if (readActions && alerts.length > 1)
+                  TextButton(
+                    onPressed: () => markAlertsRead(
+                      context,
+                      ref,
+                      ids: [for (final a in alerts) a.id],
+                    ),
+                    child: Text(s.alertMarkAllRead),
+                  ),
+                if (showAll)
+                  TextButton(
+                    onPressed: () => context.go('/alerts'),
+                    child: Text(s.alertAllAlerts),
+                  ),
               ],
             ),
-            for (final a in alerts.take(5)) AlertTile(alert: a, dense: true),
+            for (final a in alerts.take(5))
+              AlertTile(alert: a, dense: true, readToggle: readActions),
             if (alerts.length > 5)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text(s.alertAndMore(alerts.length - 5), style: TextStyle(color: c.muted, fontSize: 12.5)),
+                child: Text(
+                  s.alertAndMore(alerts.length - 5),
+                  style: TextStyle(color: c.muted, fontSize: 12.5),
+                ),
               ),
           ],
         ),
@@ -173,4 +277,8 @@ String formatFor(int seconds) {
 }
 
 /// Empty state of alert lists.
-Widget noAlerts(String message) => EmptyState(icon: Icons.notifications_off_outlined, title: 'All quiet', message: message);
+Widget noAlerts(String message) => EmptyState(
+  icon: Icons.notifications_off_outlined,
+  title: 'All quiet',
+  message: message,
+);

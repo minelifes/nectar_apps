@@ -34,12 +34,20 @@ class EnvEditor extends StatelessWidget {
             maxLines: 12,
             minLines: 8,
             style: monoStyle(ctx, size: 13),
-            decoration: InputDecoration(hintText: s.appDatabaseUrlPostgresLogLevel),
+            decoration: InputDecoration(
+              hintText: s.appDatabaseUrlPostgresLogLevel,
+            ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(s.actionCancel)),
-          FilledButton(onPressed: () => Navigator.pop(ctx, ctl.text), child: Text(s.appAddVariables)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(s.actionCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctl.text),
+            child: Text(s.appAddVariables),
+          ),
         ],
       ),
     );
@@ -67,7 +75,10 @@ class EnvEditor extends StatelessWidget {
         if (vars.isEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(s.appNoVariablesEveryAppAlso, style: TextStyle(color: c.muted, fontSize: 13)),
+            child: Text(
+              s.appNoVariablesEveryAppAlso,
+              style: TextStyle(color: c.muted, fontSize: 13),
+            ),
           ),
         for (final v in vars)
           _EnvRow(
@@ -83,7 +94,11 @@ class EnvEditor extends StatelessWidget {
         Wrap(
           spacing: 8,
           children: [
-            TextButton.icon(onPressed: _add, icon: const Icon(Icons.add_rounded, size: 18), label: Text(s.appAddVariable)),
+            TextButton.icon(
+              onPressed: _add,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(s.appAddVariable),
+            ),
             TextButton.icon(
               onPressed: () => _paste(context),
               icon: const Icon(Icons.content_paste_rounded, size: 18),
@@ -97,7 +112,12 @@ class EnvEditor extends StatelessWidget {
 }
 
 class _EnvRow extends StatefulWidget {
-  const _EnvRow({super.key, required this.v, required this.onChanged, required this.onRemove});
+  const _EnvRow({
+    super.key,
+    required this.v,
+    required this.onChanged,
+    required this.onRemove,
+  });
 
   final EnvVar v;
   final VoidCallback onChanged;
@@ -162,7 +182,12 @@ class _EnvRowState extends State<_EnvRow> {
                 suffixIcon: v.secret && !kept
                     ? IconButton(
                         tooltip: _show ? 'Hide' : 'Show',
-                        icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
+                        icon: Icon(
+                          _show
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 18,
+                        ),
                         onPressed: () => setState(() => _show = !_show),
                       )
                     : null,
@@ -175,16 +200,26 @@ class _EnvRowState extends State<_EnvRow> {
           ),
           const SizedBox(width: 4),
           Tooltip(
-            message: v.secret ? 'Secret: stored encrypted, hidden in the UI' : 'Mark as secret',
+            message: v.secret
+                ? 'Secret: stored encrypted, hidden in the UI'
+                : 'Mark as secret',
             child: IconButton(
-              icon: Icon(v.secret ? Icons.lock_rounded : Icons.lock_open_rounded, size: 18, color: v.secret ? NectarTokens.amber : c.muted),
+              icon: Icon(
+                v.secret ? Icons.lock_rounded : Icons.lock_open_rounded,
+                size: 18,
+                color: v.secret ? NectarTokens.amber : c.muted,
+              ),
               onPressed: () {
                 setState(() => v.secret = !v.secret);
                 widget.onChanged();
               },
             ),
           ),
-          IconButton(tooltip: s.backupRemove2, icon: const Icon(Icons.close_rounded, size: 18), onPressed: widget.onRemove),
+          IconButton(
+            tooltip: s.backupRemove2,
+            icon: const Icon(Icons.close_rounded, size: 18),
+            onPressed: widget.onRemove,
+          ),
         ],
       ),
     );

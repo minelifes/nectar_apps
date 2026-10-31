@@ -21,7 +21,14 @@ class _ScaleControlState extends ConsumerState<ScaleControl> {
 
   Future<void> _scale(int n) async {
     setState(() => _busy = true);
-    await appOperation(context, ref, widget.app, 'scale', data: {'replicas': n}, done: n == 0 ? '${widget.app.name} stopped' : 'Scaled to $n');
+    await appOperation(
+      context,
+      ref,
+      widget.app,
+      'scale',
+      data: {'replicas': n},
+      done: n == 0 ? '${widget.app.name} stopped' : 'Scaled to $n',
+    );
     if (mounted) setState(() => _busy = false);
   }
 
@@ -31,7 +38,10 @@ class _ScaleControlState extends ConsumerState<ScaleControl> {
     final c = NectarColors.of(context);
     final n = widget.app.replicas;
     return Container(
-      decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: BorderRadius.circular(NectarTokens.radiusSmall)),
+      decoration: BoxDecoration(
+        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(NectarTokens.radiusSmall),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -41,7 +51,14 @@ class _ScaleControlState extends ConsumerState<ScaleControl> {
             icon: const Icon(Icons.remove_rounded, size: 16),
             onPressed: _busy || n == 0 ? null : () => _scale(n - 1),
           ),
-          SizedBox(width: 22, child: Text('$n', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600))),
+          SizedBox(
+            width: 22,
+            child: Text(
+              '$n',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
           IconButton(
             tooltip: s.appMoreReplicas,
             visualDensity: VisualDensity.compact,
@@ -56,7 +73,13 @@ class _ScaleControlState extends ConsumerState<ScaleControl> {
 
 /// Tells that saved settings, image or environment changes are not live yet, with a redeploy button.
 class PendingBanner extends ConsumerWidget {
-  const PendingBanner({super.key, required this.app, required this.pending, required this.canDeploy, required this.onStarted});
+  const PendingBanner({
+    super.key,
+    required this.app,
+    required this.pending,
+    required this.canDeploy,
+    required this.onStarted,
+  });
 
   final App app;
   final List<String> pending;
@@ -72,7 +95,9 @@ class PendingBanner extends ConsumerWidget {
       if (pending.contains('image')) 'version',
       if (pending.contains('environment')) 'environment variables or files',
     ];
-    final list = what.length <= 1 ? what.join() : '${what.sublist(0, what.length - 1).join(', ')} and ${what.last}';
+    final list = what.length <= 1
+        ? what.join()
+        : '${what.sublist(0, what.length - 1).join(', ')} and ${what.last}';
     return Padding(
       padding: const EdgeInsets.only(bottom: NectarTokens.gap),
       child: Container(
@@ -84,12 +109,22 @@ class PendingBanner extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.pending_actions_rounded, color: NectarTokens.amber, size: 20),
+            const Icon(
+              Icons.pending_actions_rounded,
+              color: NectarTokens.amber,
+              size: 20,
+            ),
             const SizedBox(width: 12),
-            Expanded(child: Text(s.appChangedAreSavedButNot(list), style: TextStyle(color: c.text, fontSize: 13.5))),
+            Expanded(
+              child: Text(
+                s.appChangedAreSavedButNot(list),
+                style: TextStyle(color: c.text, fontSize: 13.5),
+              ),
+            ),
             if (canDeploy)
               FilledButton(
-                onPressed: () async => onStarted(await redeploy(context, ref, app)),
+                onPressed: () async =>
+                    onStarted(await redeploy(context, ref, app)),
                 child: Text(s.appRedeploy),
               ),
           ],

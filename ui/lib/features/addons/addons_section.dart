@@ -13,11 +13,16 @@ import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/status.dart';
 
-IconData addonIcon(String kind) => kind == 'redis' ? Icons.bolt_rounded : Icons.storage_rounded;
+IconData addonIcon(String kind) =>
+    kind == 'redis' ? Icons.bolt_rounded : Icons.storage_rounded;
 
 /// The databases of a project (project page).
 class AddonsSection extends ConsumerWidget {
-  const AddonsSection({super.key, required this.projectId, required this.canCreate});
+  const AddonsSection({
+    super.key,
+    required this.projectId,
+    required this.canCreate,
+  });
 
   final int projectId;
   final bool canCreate;
@@ -60,11 +65,18 @@ class AddonsSection extends ConsumerWidget {
                   for (var i = 0; i < list.length; i++) ...[
                     if (i > 0) const Divider(height: 1),
                     ListTile(
-                      leading: Icon(addonIcon(list[i].kind), color: NectarTokens.amber),
-                      title: Text(list[i].name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      leading: Icon(
+                        addonIcon(list[i].kind),
+                        color: NectarTokens.amber,
+                      ),
+                      title: Text(
+                        list[i].name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       subtitle: Text(
                         '${list[i].kindName} ${list[i].version} · ${list[i].host}:${list[i].port} · ${formatMb(list[i].sizeMb)}'
-                        '${list[i].links.isEmpty ? '' : ' · ${list[i].links.length} linked'}',
+                        '${list[i].links.isEmpty ? '' : ' · ${list[i].links.length} linked'}'
+                        '${list[i].shared ? ' · ${s.appSharedWithProject}' : ''}',
                         style: TextStyle(color: c.muted, fontSize: 12.5),
                       ),
                       trailing: StatusPill(status: list[i].liveStatus),
@@ -82,8 +94,14 @@ class AddonsSection extends ConsumerWidget {
 }
 
 /// Asks for kind, version and size, creates the add-on and opens it.
-Future<void> showCreateAddon(BuildContext context, WidgetRef ref, int projectId) =>
-    showDialog<void>(context: context, builder: (_) => _CreateAddonDialog(projectId: projectId));
+Future<void> showCreateAddon(
+  BuildContext context,
+  WidgetRef ref,
+  int projectId,
+) => showDialog<void>(
+  context: context,
+  builder: (_) => _CreateAddonDialog(projectId: projectId),
+);
 
 class _CreateAddonDialog extends ConsumerStatefulWidget {
   const _CreateAddonDialog({required this.projectId});
@@ -118,7 +136,9 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
       _version = k.defaultVersion;
       if (!_slugTouched) _slug.text = k.id;
       final mem = int.tryParse(_mem.text) ?? 0;
-      if (mem < k.minMemoryMb) _mem.text = '${k.minMemoryMb < 256 ? 256 : k.minMemoryMb}';
+      if (mem < k.minMemoryMb) {
+        _mem.text = '${k.minMemoryMb < 256 ? 256 : k.minMemoryMb}';
+      }
       if (k.id == 'redis' && _size.text == '2048') _size.text = '512';
     });
   }
@@ -129,13 +149,18 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
       _error = null;
     });
     try {
-      final res = await ref.read(apiProvider).post('/projects/${widget.projectId}/addons', data: {
-        'kind': _kind,
-        'slug': _slug.text.trim(),
-        if (_version != null) 'version': _version,
-        'size_mb': int.tryParse(_size.text.trim()) ?? 0,
-        'memory_mb': int.tryParse(_mem.text.trim()) ?? 0,
-      });
+      final res = await ref
+          .read(apiProvider)
+          .post(
+            '/projects/${widget.projectId}/addons',
+            data: {
+              'kind': _kind,
+              'slug': _slug.text.trim(),
+              if (_version != null) 'version': _version,
+              'size_mb': int.tryParse(_size.text.trim()) ?? 0,
+              'memory_mb': int.tryParse(_mem.text.trim()) ?? 0,
+            },
+          );
       ref.invalidate(projectAddonsProvider(widget.projectId));
       if (!mounted) return;
       Navigator.pop(context);
@@ -160,7 +185,8 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
           value: kinds,
           loadingHeight: 120,
           data: (list) {
-            final k = list.where((x) => x.id == _kind).firstOrNull ?? list.first;
+            final k =
+                list.where((x) => x.id == _kind).firstOrNull ?? list.first;
             final version = _version ?? k.defaultVersion;
             return Column(
               mainAxisSize: MainAxisSize.min,
@@ -185,7 +211,10 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
                     Expanded(
                       child: TextField(
                         controller: _slug,
-                        decoration: InputDecoration(labelText: s.addonNameAlsoTheHostName, helperText: s.addonLowercaseLettersDigitsDashes),
+                        decoration: InputDecoration(
+                          labelText: s.addonNameAlsoTheHostName,
+                          helperText: s.addonLowercaseLettersDigitsDashes,
+                        ),
                         onChanged: (_) => _slugTouched = true,
                       ),
                     ),
@@ -193,7 +222,13 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
                     if (k.versions.length > 1)
                       DropdownButton<String>(
                         value: version,
-                        items: [for (final v in k.versions) DropdownMenuItem(value: v.$1, child: Text('${k.name} ${v.$1}'))],
+                        items: [
+                          for (final v in k.versions)
+                            DropdownMenuItem(
+                              value: v.$1,
+                              child: Text('${k.name} ${v.$1}'),
+                            ),
+                        ],
                         onChanged: (v) => setState(() => _version = v),
                       )
                     else
@@ -207,8 +242,12 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
                       child: TextField(
                         controller: _size,
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: InputDecoration(labelText: s.addonStorageMib),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          labelText: s.addonStorageMib,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -216,21 +255,36 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
                       child: TextField(
                         controller: _mem,
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: InputDecoration(labelText: s.addonMemoryMib, helperText: s.addonAtLeast(k.minMemoryMb)),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: InputDecoration(
+                          labelText: s.addonMemoryMib,
+                          helperText: s.addonAtLeast(k.minMemoryMb),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: c.failed))),
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(_error!, style: TextStyle(color: c.failed)),
+                  ),
               ],
             );
           },
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
-        FilledButton(onPressed: _saving ? null : _create, child: Text(_saving ? 'Creating…' : 'Create')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _create,
+          child: Text(_saving ? 'Creating…' : 'Create'),
+        ),
       ],
     );
   }

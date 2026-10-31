@@ -10,8 +10,15 @@ import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 
 /// Adds a backup plan, or edits [plan] (schedule, retention, paused).
-Future<void> showPlanDialog(BuildContext context, WidgetRef ref, {required List<BackupTarget> targets, BackupPlan? plan}) =>
-    showDialog<void>(context: context, builder: (_) => _PlanDialog(targets: targets, plan: plan));
+Future<void> showPlanDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  required List<BackupTarget> targets,
+  BackupPlan? plan,
+}) => showDialog<void>(
+  context: context,
+  builder: (_) => _PlanDialog(targets: targets, plan: plan),
+);
 
 /// A thing that can be backed up.
 class _Subject {
@@ -22,7 +29,8 @@ class _Subject {
   final String label;
 
   @override
-  bool operator ==(Object other) => other is _Subject && other.scope == scope && other.id == id;
+  bool operator ==(Object other) =>
+      other is _Subject && other.scope == scope && other.id == id;
 
   @override
   int get hashCode => Object.hash(scope, id);
@@ -50,13 +58,23 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
   late int _target = widget.plan?.targetId ?? widget.targets.first.id;
   _Subject? _subject;
   late String _schedule = widget.plan?.schedule ?? '0 3 * * *';
-  late final _custom = TextEditingController(text: _schedules.any((s) => s.$1 == _schedule) ? '' : _schedule);
+  late final _custom = TextEditingController(
+    text: _schedules.any((s) => s.$1 == _schedule) ? '' : _schedule,
+  );
   late bool _customOn = !_schedules.any((s) => s.$1 == _schedule);
-  late final _daily = TextEditingController(text: '${widget.plan?.keepDaily ?? 7}');
-  late final _weekly = TextEditingController(text: '${widget.plan?.keepWeekly ?? 4}');
-  late final _monthly = TextEditingController(text: '${widget.plan?.keepMonthly ?? 6}');
+  late final _daily = TextEditingController(
+    text: '${widget.plan?.keepDaily ?? 7}',
+  );
+  late final _weekly = TextEditingController(
+    text: '${widget.plan?.keepWeekly ?? 4}',
+  );
+  late final _monthly = TextEditingController(
+    text: '${widget.plan?.keepMonthly ?? 6}',
+  );
   late bool _enabled = widget.plan?.enabled ?? true;
-  late final Future<List<_Subject>> _subjects = widget.plan == null ? _loadSubjects() : Future.value(const []);
+  late final Future<List<_Subject>> _subjects = widget.plan == null
+      ? _loadSubjects()
+      : Future.value(const []);
   bool _saving = false;
   String? _error;
 
@@ -70,15 +88,37 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
 
   Future<List<_Subject>> _loadSubjects() async {
     final api = ref.read(apiProvider);
-    final out = <_Subject>[const _Subject('panel', 0, 'Panel data (database, uploads) · needed for disaster recovery')];
+    final out = <_Subject>[
+      const _Subject(
+        'panel',
+        0,
+        'Panel data (database, uploads) · needed for disaster recovery',
+      ),
+    ];
     final projects = listOf(await api.get('/projects'), Project.fromJson);
     for (final p in projects) {
       try {
-        for (final a in listOf(await api.get('/projects/${p.id}/addons'), Addon.fromJson)) {
-          out.add(_Subject('addon', a.id, '${p.slug}/${a.slug} · ${a.kindName} dump'));
+        for (final a in listOf(
+          await api.get('/projects/${p.id}/addons'),
+          Addon.fromJson,
+        )) {
+          out.add(
+            _Subject('addon', a.id, '${p.slug}/${a.slug} · ${a.kindName} dump'),
+          );
         }
-        for (final a in listOf(await api.get('/projects/${p.id}/apps'), App.fromJson)) {
-          if (a.volumes.isNotEmpty) out.add(_Subject('app', a.id, '${p.slug}/${a.slug} · volumes ${a.volumes.map((v) => v.name).join(', ')}'));
+        for (final a in listOf(
+          await api.get('/projects/${p.id}/apps'),
+          App.fromJson,
+        )) {
+          if (a.volumes.isNotEmpty) {
+            out.add(
+              _Subject(
+                'app',
+                a.id,
+                '${p.slug}/${a.slug} · volumes ${a.volumes.map((v) => v.name).join(', ')}',
+              ),
+            );
+          }
         }
       } on Object {
         // no access to this project's apps
@@ -132,13 +172,13 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
     final c = NectarColors.of(context);
     final p = widget.plan;
     Widget keep(TextEditingController ctl, String label) => Expanded(
-          child: TextField(
-            controller: ctl,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(labelText: label),
-          ),
-        );
+      child: TextField(
+        controller: ctl,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: InputDecoration(labelText: label),
+      ),
+    );
     return AlertDialog(
       title: Text(p == null ? 'Add a backup plan' : 'Edit · ${p.subject}'),
       content: SizedBox(
@@ -157,7 +197,16 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                       initialValue: _subject,
                       isExpanded: true,
                       decoration: InputDecoration(labelText: l.backupWhat),
-                      items: [for (final s in snap.data!) DropdownMenuItem(value: s, child: Text(s.label, overflow: TextOverflow.ellipsis))],
+                      items: [
+                        for (final s in snap.data!)
+                          DropdownMenuItem(
+                            value: s,
+                            child: Text(
+                              s.label,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
                       onChanged: (v) => setState(() => _subject = v),
                     );
                   },
@@ -166,7 +215,10 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                 DropdownButtonFormField<int>(
                   initialValue: _target,
                   decoration: InputDecoration(labelText: l.backupTo),
-                  items: [for (final t in widget.targets) DropdownMenuItem(value: t.id, child: Text(t.name))],
+                  items: [
+                    for (final t in widget.targets)
+                      DropdownMenuItem(value: t.id, child: Text(t.name)),
+                  ],
                   onChanged: (v) => setState(() => _target = v ?? _target),
                 ),
                 const SizedBox(height: 12),
@@ -175,7 +227,8 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                 initialValue: _customOn ? '*' : _schedule,
                 decoration: InputDecoration(labelText: l.backupWhen),
                 items: [
-                  for (final (v, label) in _schedules) DropdownMenuItem(value: v, child: Text(label)),
+                  for (final (v, label) in _schedules)
+                    DropdownMenuItem(value: v, child: Text(label)),
                   DropdownMenuItem(value: '*', child: Text(l.backupCustomCron)),
                 ],
                 onChanged: (v) => setState(() {
@@ -188,7 +241,11 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                   padding: const EdgeInsets.only(top: 12),
                   child: TextField(
                     controller: _custom,
-                    decoration: InputDecoration(labelText: l.backupCronExpressionUtc, hintText: '30 2 * * *', helperText: l.backupMinuteHourDayMonthWeekday),
+                    decoration: InputDecoration(
+                      labelText: l.backupCronExpressionUtc,
+                      hintText: '30 2 * * *',
+                      helperText: l.backupMinuteHourDayMonthWeekday,
+                    ),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -203,7 +260,10 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(l.backupOlderSnapshotsAreRemovedAfter, style: TextStyle(color: c.muted, fontSize: 12)),
+              Text(
+                l.backupOlderSnapshotsAreRemovedAfter,
+                style: TextStyle(color: c.muted, fontSize: 12),
+              ),
               if (p != null)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -211,14 +271,24 @@ class _PlanDialogState extends ConsumerState<_PlanDialog> {
                   onChanged: (v) => setState(() => _enabled = v),
                   title: Text(l.backupScheduledBackupsOn),
                 ),
-              if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: c.failed))),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(_error!, style: TextStyle(color: c.failed)),
+                ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.actionCancel)),
-        FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l.actionCancel),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? 'Saving…' : 'Save'),
+        ),
       ],
     );
   }
