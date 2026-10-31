@@ -7,7 +7,7 @@
           "component": "panel",
           "version": "1.0.6",
           "channel": "stable",
-          "image": "ghcr.io/minelifes/nectar-apps@sha256:9d573f1eef2c55a94cb2c9b8f95490e6a5d3edba5f668df7e6e515e04c1876a6",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:d21f25d084bf27aab7eb95c3dd3259e71ed77dd2acc8abd3d9275c64f6173f2e",
           "kind": "patch",
           "security": false,
           "breaking": false,
@@ -21,7 +21,7 @@
           "migrations": false,
           "notes": "- Fix file storage metter. deploy issue",
           "previous": "1.0.5",
-          "published_at": "2026-10-31T22:00:21+00:00"
+          "published_at": "2026-10-31T22:00:56+00:00"
         },
         {
           "component": "panel",
@@ -149,7 +149,7 @@
           "component": "panel",
           "version": "1.0.6",
           "channel": "stable",
-          "image": "ghcr.io/minelifes/nectar-apps@sha256:9d573f1eef2c55a94cb2c9b8f95490e6a5d3edba5f668df7e6e515e04c1876a6",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:d21f25d084bf27aab7eb95c3dd3259e71ed77dd2acc8abd3d9275c64f6173f2e",
           "kind": "patch",
           "security": false,
           "breaking": false,
@@ -163,7 +163,7 @@
           "migrations": false,
           "notes": "- Fix file storage metter. deploy issue",
           "previous": "1.0.5",
-          "published_at": "2026-10-31T22:00:21+00:00"
+          "published_at": "2026-10-31T22:00:56+00:00"
         },
         {
           "component": "panel",
@@ -288,5 +288,5 @@
       ]
     }
   },
-  "updated_at": "2026-10-31T22:00:21+00:00"
+  "updated_at": "2026-10-31T22:00:56+00:00"
 }
