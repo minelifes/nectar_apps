@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../generated/l10n.dart';
 import '../theme/tokens.dart';
 
 /// One line of a [TimeSeriesChart].
@@ -49,6 +50,7 @@ class _TimeSeriesChartState extends State<TimeSeriesChart> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final empty = widget.series.every((s) => s.points.isEmpty);
     return Column(
@@ -76,7 +78,7 @@ class _TimeSeriesChartState extends State<TimeSeriesChart> {
         SizedBox(
           height: widget.height,
           child: empty
-              ? Center(child: Text('No data yet: history fills in every 15 seconds.', style: TextStyle(color: c.muted, fontSize: 12.5)))
+              ? Center(child: Text(l.widgetNoDataYetHistoryFills, style: TextStyle(color: c.muted, fontSize: 12.5)))
               : LayoutBuilder(
                   builder: (context, box) => MouseRegion(
                     onHover: (e) => setState(() => _hoverX = e.localPosition.dx),

@@ -6,6 +6,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 
@@ -105,6 +106,7 @@ class _TargetDialogState extends ConsumerState<_TargetDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final editing = widget.target != null;
     final fields = <Widget>[
@@ -123,7 +125,7 @@ class _TargetDialogState extends ConsumerState<_TargetDialog> {
         _field('port', 'Port', hint: '22', number: true),
         _field('user', 'User'),
         _field('path', 'Folder on the server', hint: '/srv/backups/nectar'),
-        _field('private_key', 'Private key (OpenSSH, no passphrase)', hint: '-----BEGIN OPENSSH PRIVATE KEY-----', secret: true, multiline: true),
+        _field('private_key', 'Private key (OpenSSH, no passphrase)', hint: l.backupBeginOpensshPrivateKey, secret: true, multiline: true),
       ],
       if (_kind == 'local') ...[
         _field('path', 'Folder on this server', hint: '/var/backups/nectar',
@@ -144,11 +146,11 @@ class _TargetDialogState extends ConsumerState<_TargetDialog> {
             children: [
               if (!editing)
                 SegmentedButton<String>(
-                  segments: const [
+                  segments: [
                     ButtonSegment(value: 's3', label: Text('S3')),
-                    ButtonSegment(value: 'b2', label: Text('Backblaze B2')),
-                    ButtonSegment(value: 'sftp', label: Text('SFTP')),
-                    ButtonSegment(value: 'local', label: Text('Folder')),
+                    ButtonSegment(value: 'b2', label: Text(l.backupBackblazeB2)),
+                    ButtonSegment(value: 'sftp', label: Text(l.backupSftp)),
+                    ButtonSegment(value: 'local', label: Text(l.backupFolder)),
                   ],
                   selected: {_b2 ? 'b2' : _kind},
                   showSelectedIcon: false,
@@ -158,17 +160,17 @@ class _TargetDialogState extends ConsumerState<_TargetDialog> {
                   }),
                 ),
               const SizedBox(height: 4),
-              TextField(controller: _name, decoration: InputDecoration(labelText: 'Name', hintText: _b2 ? 'Backblaze B2' : _kind.toUpperCase())),
+              TextField(controller: _name, decoration: InputDecoration(labelText: l.backupName, hintText: _b2 ? 'Backblaze B2' : _kind.toUpperCase())),
               ...fields,
               const SizedBox(height: 12),
-              Text('Backups are encrypted with the repository password before they leave the server.', style: TextStyle(color: c.muted, fontSize: 12)),
+              Text(l.backupBackupsAreEncryptedWithThe, style: TextStyle(color: c.muted, fontSize: 12)),
               if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: c.failed))),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.actionCancel)),
         FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
       ],
     );

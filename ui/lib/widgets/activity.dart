@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/models.dart';
 import '../core/format.dart';
+import '../generated/l10n.dart';
 import '../theme/tokens.dart';
 import 'common.dart';
 
@@ -14,11 +15,12 @@ class ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return NCard(
       title: title,
       child: entries.isEmpty
-          ? Text('Nothing yet.', style: TextStyle(color: c.muted))
+          ? Text(s.widgetNothingYet, style: TextStyle(color: c.muted))
           : Column(
               children: [
                 for (final e in entries)

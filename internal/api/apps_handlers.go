@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -575,33 +576,74 @@ func (s *Server) updateApp(w http.ResponseWriter, r *http.Request, p *principal,
 }
 
 func (s *Server) deleteApp(w http.ResponseWriter, r *http.Request, p *principal, app store.App, proj store.Project) {
-	if s.deployer != nil {
-		if s.deployer.Busy(app.ID) {
-			writeError(w, http.StatusConflict, deploy.ErrBusy.Error())
-			return
-		}
-		if err := s.deployer.DeleteApp(r.Context(), app, proj); err != nil {
-			writeError(w, http.StatusBadGateway, "could not remove the app from the cluster: "+err.Error())
-			return
+	if s.deployer != nil && s.deployer.Busy(app.ID) {
+		writeError(w, http.StatusConflict, deploy.ErrBusy.Error())
+		return
+	}
+	// its preview environments go with it
+	if previews, err := s.store.ListPreviews(r.Context(), app.ID); err == nil {
+		for _, pv := range previews {
+			if pa, err := s.store.GetApp(r.Context(), pv.AppID); err == nil {
+				if err := s.removeApp(r.Context(), pa, proj); err != nil {
+					writeError(w, http.StatusBadGateway, "could not remove the preview "+pa.Slug+": "+err.Error())
+					return
+				}
+			}
 		}
 	}
-	arts, _ := s.store.ListArtifacts(r.Context(), app.ID, 1000)
-	if err := s.store.DeleteApp(r.Context(), app.ID); err != nil {
+	if err := s.removeApp(r.Context(), app, proj); errors.Is(err, errCluster) {
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	} else if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	var shas []string
-	for _, a := range arts {
-		shas = append(shas, a.SHA256)
+	s.audit(r, p, "app.delete", proj.Slug+"/"+app.Slug, nil)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+var errCluster = errors.New("could not remove the app from the cluster")
+
+// removeApp deletes an app everywhere: cluster objects, database rows, uploads, logs, gateway routes and
+// (for apps built from Git) its images in the built-in registry.
+func (s *Server) removeApp(ctx context.Context, app store.App, proj store.Project) error {
+	if s.deployer != nil {
+		if s.deployer.Busy(app.ID) {
+			return deploy.ErrBusy
+		}
+		if err := s.deployer.DeleteApp(ctx, app, proj); err != nil {
+			return fmt.Errorf("%w: %v", errCluster, err)
+		}
 	}
-	s.removeOrphanFiles(r, shas)
-	_ = s.store.DeletePlansFor(r.Context(), "app", app.ID)
+	_, srcErr := s.store.GetAppSource(ctx, app.ID)
+	arts, _ := s.store.ListArtifacts(ctx, app.ID, 1000)
+	if err := s.store.DeleteApp(ctx, app.ID); err != nil {
+		return err
+	}
+	for _, a := range arts {
+		if used, err := s.store.ArtifactSHAExists(ctx, a.SHA256); err == nil && !used {
+			_ = s.artifacts.Remove(a.SHA256)
+		}
+	}
+	_ = s.store.DeletePlansFor(ctx, "app", app.ID)
 	if s.logs != nil {
 		_ = s.logs.DeleteApp(app.ID)
 	}
-	s.resync(r) // its domains are gone (cascade) → remove the gateway routes
-	s.audit(r, p, "app.delete", proj.Slug+"/"+app.Slug, nil)
-	w.WriteHeader(http.StatusNoContent)
+	if srcErr == nil && s.builder != nil && s.builder.Registry.Enabled() {
+		go func() { // build images of the app
+			pctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			if _, err := s.builder.Registry.Prune(pctx, build.Repo(proj, app), 0, nil); err != nil {
+				s.log.Warn("registry prune", "app", app.Slug, "err", err)
+			}
+		}()
+	}
+	sctx, cancel := context.WithTimeout(ctx, 10*time.Second) // its domains are gone (cascade) → remove the gateway routes
+	defer cancel()
+	if err := s.syncer.Sync(sctx); err != nil {
+		s.log.Warn("route sync", "err", err)
+	}
+	return nil
 }
 
 func (s *Server) appStatus(w http.ResponseWriter, r *http.Request, _ *principal, app store.App, proj store.Project) {

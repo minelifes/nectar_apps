@@ -8,6 +8,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -19,6 +20,7 @@ class TwoFactorCard extends ConsumerWidget {
   const TwoFactorCard({super.key});
 
   Future<String?> _password(BuildContext context, String title, String action) async {
+    final s = S.of(context);
     final ctl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
@@ -26,10 +28,10 @@ class TwoFactorCard extends ConsumerWidget {
         title: Text(title),
         content: SizedBox(
           width: 380,
-          child: TextField(controller: ctl, autofocus: true, obscureText: true, decoration: const InputDecoration(labelText: 'Your password')),
+          child: TextField(controller: ctl, autofocus: true, obscureText: true, decoration: InputDecoration(labelText: s.settingYourPassword)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.actionCancel)),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(action)),
         ],
       ),
@@ -40,12 +42,13 @@ class TwoFactorCard extends ConsumerWidget {
   }
 
   Future<void> _disable(BuildContext context, WidgetRef ref) async {
+    final s = S.of(context);
     final pw = await _password(context, 'Turn off two-factor authentication?', 'Turn off');
     if (pw == null || !context.mounted) return;
     try {
       await ref.read(apiProvider).post('/me/mfa/disable', data: {'password': pw});
       ref.invalidate(mfaStatusProvider);
-      if (context.mounted) showSnack(context, 'Two-factor authentication is off');
+      if (context.mounted) showSnack(context, s.settingTwoFactorAuthenticationIsOff);
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
@@ -65,10 +68,11 @@ class TwoFactorCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final status = ref.watch(mfaStatusProvider);
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Two-factor authentication',
+      title: l.settingTwoFactorAuthentication,
       child: AsyncBlock(
         value: status,
         loadingHeight: 60,
@@ -91,7 +95,7 @@ class TwoFactorCard extends ConsumerWidget {
               if (enabled && left <= 3)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text('Only $left recovery codes left: create new ones.', style: TextStyle(color: c.warning, fontSize: 12.5)),
+                  child: Text(l.settingOnlyRecoveryCodesLeftCreate(left), style: TextStyle(color: c.warning, fontSize: 12.5)),
                 ),
               const SizedBox(height: 12),
               Wrap(
@@ -99,18 +103,18 @@ class TwoFactorCard extends ConsumerWidget {
                 runSpacing: 8,
                 children: enabled
                     ? [
-                        OutlinedButton(onPressed: () => _newCodes(context, ref), child: const Text('New recovery codes')),
+                        OutlinedButton(onPressed: () => _newCodes(context, ref), child: Text(l.settingNewRecoveryCodes)),
                         TextButton(
                           style: TextButton.styleFrom(foregroundColor: c.failed),
                           onPressed: () => _disable(context, ref),
-                          child: const Text('Turn off'),
+                          child: Text(l.settingTurnOff),
                         ),
                       ]
                     : [
                         FilledButton.icon(
                           onPressed: () => showDialog<void>(context: context, builder: (_) => const _SetupDialog()),
                           icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                          label: const Text('Set up'),
+                          label: Text(l.settingSetUp),
                         ),
                       ],
               ),
@@ -126,14 +130,14 @@ Future<void> showRecoveryCodes(BuildContext context, List<String> codes) => show
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Recovery codes'),
+        title: Text(S.of(context).settingRecoveryCodes),
         content: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Each code signs you in once if your phone is not at hand. Store them in your password manager: they are shown only now.'),
+              Text(S.of(context).settingEachCodeSignsYouIn),
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -147,11 +151,11 @@ Future<void> showRecoveryCodes(BuildContext context, List<String> codes) => show
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: codes.join('\n')));
-              showSnack(ctx, 'Copied');
+              showSnack(ctx, S.of(context).backupCopied);
             },
-            child: const Text('Copy'),
+            child: Text(S.of(context).backupCopy),
           ),
-          FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('I saved them')),
+          FilledButton(onPressed: () => Navigator.pop(ctx), child: Text(S.of(context).settingISavedThem)),
         ],
       ),
     );
@@ -195,9 +199,10 @@ class _SetupDialogState extends ConsumerState<_SetupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
-      title: const Text('Set up two-factor authentication'),
+      title: Text(s.settingSetUpTwoFactorAuthentication),
       content: SizedBox(
         width: 420,
         child: FutureBuilder<Map<String, dynamic>>(
@@ -211,7 +216,7 @@ class _SetupDialogState extends ConsumerState<_SetupDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('1. Scan this code with your authenticator app.'),
+                Text(s.setting1ScanThisCodeWith),
                 const SizedBox(height: 12),
                 Center(
                   child: Container(
@@ -221,17 +226,17 @@ class _SetupDialogState extends ConsumerState<_SetupDialog> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text('Or enter the key by hand:', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text(s.settingOrEnterTheKeyBy, style: TextStyle(color: c.muted, fontSize: 12.5)),
                 SelectableText(secret.replaceAllMapped(RegExp(r'.{4}'), (m) => '${m[0]} ').trim(), style: monoStyle(context, size: 13)),
                 const SizedBox(height: 16),
-                const Text('2. Enter the 6-digit code it shows.'),
+                Text(s.setting2EnterThe6Digit),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _code,
                   autofocus: true,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
-                  decoration: const InputDecoration(labelText: 'Code'),
+                  decoration: InputDecoration(labelText: s.authCode),
                   onSubmitted: (_) => _enable(),
                 ),
                 if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: TextStyle(color: c.failed))),
@@ -241,7 +246,7 @@ class _SetupDialogState extends ConsumerState<_SetupDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
         FilledButton(onPressed: _busy ? null : _enable, child: Text(_busy ? 'Checking…' : 'Turn on')),
       ],
     );
@@ -265,10 +270,11 @@ class SessionsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final sessions = ref.watch(mySessionsProvider);
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Signed in',
+      title: l.settingSignedIn,
       child: AsyncBlock(
         value: sessions,
         loadingHeight: 60,
@@ -279,8 +285,8 @@ class SessionsCard extends ConsumerWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(s.kind == 'mobile' ? Icons.phone_iphone_rounded : Icons.laptop_rounded),
                 title: Text(s.current ? '${s.device} · this device' : s.device),
-                subtitle: Text('${s.ip} · active ${timeAgo(s.lastSeenAt)} · since ${timeAgo(s.createdAt)}', style: TextStyle(color: c.muted, fontSize: 12.5)),
-                trailing: s.current ? null : TextButton(onPressed: () => _revoke(context, ref, s), child: const Text('Sign out')),
+                subtitle: Text(l.settingActiveSince(s.ip, timeAgo(s.lastSeenAt), timeAgo(s.createdAt)), style: TextStyle(color: c.muted, fontSize: 12.5)),
+                trailing: s.current ? null : TextButton(onPressed: () => _revoke(context, ref, s), child: Text(l.logout)),
               ),
           ],
         ),
@@ -297,9 +303,10 @@ class SmtpCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final smtp = ref.watch(smtpSettingsProvider);
     return NCard(
-      title: 'Email',
+      title: l.loginEmail,
       child: AsyncBlock(
         value: smtp,
         loadingHeight: 60,
@@ -345,15 +352,16 @@ class _SmtpFormState extends ConsumerState<_SmtpForm> {
       };
 
   Future<void> _save({bool test = false}) async {
+        final s = S.of(context);
     setState(() => _busy = true);
     final api = ref.read(apiProvider);
     try {
       await api.put('/settings/smtp', data: _body);
       if (test) {
         await api.post('/settings/smtp/test', data: <String, dynamic>{});
-        if (mounted) showSnack(context, 'Test email sent to your address');
+        if (mounted) showSnack(context, s.settingTestEmailSentToYour);
       } else if (mounted) {
-        showSnack(context, 'Email settings saved');
+        showSnack(context, s.settingEmailSettingsSaved);
       }
       ref.invalidate(smtpSettingsProvider);
     } on Object catch (e) {
@@ -365,6 +373,7 @@ class _SmtpFormState extends ConsumerState<_SmtpForm> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     Widget f(String k, String label, {String? hint, double width = 260, bool secret = false}) => SizedBox(
           width: width,
@@ -377,7 +386,7 @@ class _SmtpFormState extends ConsumerState<_SmtpForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Used for password resets, invitations and alert emails.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+        Text(s.settingUsedForPasswordResetsInvitations, style: TextStyle(color: c.muted, fontSize: 12.5)),
         const SizedBox(height: 12),
         Wrap(
           spacing: 12,
@@ -388,16 +397,16 @@ class _SmtpFormState extends ConsumerState<_SmtpForm> {
             f('port', 'Port', hint: '587', width: 100),
             DropdownButton<String>(
               value: _security,
-              items: const [
-                DropdownMenuItem(value: 'starttls', child: Text('STARTTLS')),
-                DropdownMenuItem(value: 'tls', child: Text('TLS')),
-                DropdownMenuItem(value: 'none', child: Text('No encryption')),
+              items: [
+                DropdownMenuItem(value: 'starttls', child: Text(s.settingStarttls)),
+                DropdownMenuItem(value: 'tls', child: Text(s.settingTls)),
+                DropdownMenuItem(value: 'none', child: Text(s.settingNoEncryption)),
               ],
               onChanged: (v) => setState(() => _security = v ?? 'starttls'),
             ),
             f('username', 'User name'),
             f('password', 'Password', secret: true),
-            f('from', 'From', hint: 'Nectar Apps <panel@example.com>', width: 360),
+            f('from', 'From', hint: s.settingNectarAppsPanelExampleCom, width: 360),
             f('panel_url', 'Panel address for links', hint: 'https://panel.example.com', width: 360),
           ],
         ),
@@ -405,8 +414,8 @@ class _SmtpFormState extends ConsumerState<_SmtpForm> {
         Wrap(
           spacing: 8,
           children: [
-            FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
-            OutlinedButton(onPressed: _busy ? null : () => _save(test: true), child: const Text('Save and send a test')),
+            FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave)),
+            OutlinedButton(onPressed: _busy ? null : () => _save(test: true), child: Text(s.settingSaveAndSendATest)),
           ],
         ),
       ],
@@ -422,9 +431,10 @@ class AccessCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final access = ref.watch(accessSettingsProvider);
     return NCard(
-      title: 'Panel access',
+      title: s.settingPanelAccess,
       child: AsyncBlock(
         value: access,
         loadingHeight: 60,
@@ -454,12 +464,13 @@ class _AccessFormState extends ConsumerState<_AccessForm> {
   }
 
   Future<void> _save() async {
+    final l = S.of(context);
     setState(() => _busy = true);
     try {
       final entries = _list.text.split(RegExp(r'[\s,]+')).where((e) => e.isNotEmpty).toList();
       await ref.read(apiProvider).put('/settings/access', data: {'ip_allowlist': entries});
       ref.invalidate(accessSettingsProvider);
-      if (mounted) showSnack(context, entries.isEmpty ? 'Every address may use the panel' : 'Only the listed addresses may use the panel');
+      if (mounted) showSnack(context, entries.isEmpty ? 'Every address may use the panel' : l.settingOnlyTheListedAddressesMay);
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     } finally {
@@ -469,20 +480,20 @@ class _AccessFormState extends ConsumerState<_AccessForm> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final ip = '${widget.initial['your_ip'] ?? ''}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Allow only these IP addresses or networks (one per line, e.g. 203.0.113.7 or 203.0.113.0/24). Empty = everyone. '
-          'Your address: $ip. An SSH tunnel to the server always works, so a wrong list can be fixed.',
+          s.settingAllowOnlyTheseIpAddresses(ip),
           style: TextStyle(color: c.muted, fontSize: 12.5),
         ),
         const SizedBox(height: 10),
         TextField(controller: _list, minLines: 3, maxLines: 8, style: monoStyle(context, size: 13), decoration: InputDecoration(hintText: ip)),
         const SizedBox(height: 10),
-        Align(alignment: Alignment.centerLeft, child: FilledButton(onPressed: _busy ? null : _save, child: const Text('Save'))),
+        Align(alignment: Alignment.centerLeft, child: FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave))),
       ],
     );
   }

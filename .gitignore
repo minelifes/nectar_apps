@@ -34,3 +34,4 @@ PROGRESS.md
 .DS_Store
 *.swp
 examples/**/*.jar
+site/

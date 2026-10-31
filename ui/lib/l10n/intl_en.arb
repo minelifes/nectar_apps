@@ -1,0 +1,1546 @@
+{
+  "@@locale": "en",
+  "navDashboard": "Dashboard",
+  "navProjects": "Projects",
+  "navDomains": "Domains",
+  "navServer": "Server",
+  "navAlerts": "Alerts",
+  "navBackups": "Backups",
+  "navSettings": "Settings",
+  "actionCancel": "Cancel",
+  "actionSave": "Save",
+  "actionClose": "Close",
+  "actionDelete": "Delete",
+  "actionOk": "OK",
+  "actionRetry": "Try again",
+  "actionRefresh": "Refresh",
+  "settingsAppearance": "Appearance",
+  "themeDark": "Dark",
+  "themeLight": "Light",
+  "themeSystem": "System",
+  "settingsLanguage": "Language",
+  "languageSystem": "System",
+  "languageEnglish": "English",
+  "languageUkrainian": "Українська",
+  "settingsLanguageHint": "The interface language on this device. Server messages and logs stay in English.",
+  "loginTitle": "Sign in",
+  "loginEmail": "Email",
+  "loginPassword": "Password",
+  "loginButton": "Sign in",
+  "logout": "Sign out",
+  "newApp": "New app",
+  "oneClickApp": "One-click app",
+  "noAccess": "No access",
+  "savedRedeploy": "Saved. Redeploy the app to apply.",
+  "pageNotFound": "Page not found",
+  "goToDashboard": "Go to the dashboard",
+  "statusRunning": "Running",
+  "statusStopped": "Stopped",
+  "statusFailed": "Failed",
+  "statusDeploying": "Deploying",
+  "countApps": "{count, plural, =0{No apps} =1{1 app} other{{count} apps}}",
+  "@countApps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backupYourRoleDoesNotInclude": "Your role does not include backup.manage.",
+  "backupVolumesDatabaseDumpsAndThe": "Volumes, database dumps and the panel itself, encrypted with restic to S3, Backblaze B2, SFTP or a folder.",
+  "backupBackupOfStarted": "Backup of {subject} started",
+  "@backupBackupOfStarted": {
+    "placeholders": {
+      "subject": {
+        "type": "Object"
+      }
+    }
+  },
+  "backupDeleteThisPlan": "Delete this plan?",
+  "backupNoMoreBackupsOfTo": "No more backups of {subject} to {targetName}. Existing snapshots stay in the repository.",
+  "@backupNoMoreBackupsOfTo": {
+    "placeholders": {
+      "subject": {
+        "type": "Object"
+      },
+      "targetName": {
+        "type": "Object"
+      }
+    }
+  },
+  "backupWhatIsBackedUp": "What is backed up",
+  "backupAddPlan": "Add plan",
+  "backupAddATargetFirst": "Add a target first",
+  "backupATargetIsWhereBackups": "A target is where backups go: an S3 bucket (AWS, Backblaze B2, R2, MinIO), an SFTP server or a folder on this server.",
+  "backupNothingIsBackedUpYet": "Nothing is backed up yet",
+  "backupAddAPlanForThe": "Add a plan for the panel itself (needed to rebuild a lost server), for databases and for apps with volumes.",
+  "backupBackupsOfVolumesReadFiles": "Backups of volumes read files while the app runs; databases are dumped consistently. Times are UTC.",
+  "backupNotBackedUpYet": "Not backed up yet",
+  "backupNext": "Next: {nextRun}",
+  "@backupNext": {
+    "placeholders": {
+      "nextRun": {
+        "type": "Object"
+      }
+    }
+  },
+  "backupBackUpNow": "Back up now",
+  "backupEdit": "Edit",
+  "backupRestore": "Restore {shortId}?",
+  "@backupRestore": {
+    "placeholders": {
+      "shortId": {
+        "type": "Object"
+      }
+    }
+  },
+  "backupChangesSinceThenAreLost": "{what} Changes since then are lost.",
+  "@backupChangesSinceThenAreLost": {
+    "placeholders": {
+      "what": {
+        "type": "Object"
+      }
+    }
+  },
+  "backupRestore2": "Restore",
+  "backupRestoreStartedFollowItUnder": "Restore started: follow it under History",
+  "backupSnapshots": "Snapshots · {subject}",
+  "@backupSnapshots": {
+    "placeholders": {
+      "subject": {
+        "type": "Object"
+      }
+    }
+  },
+  "backupReadingTheRepository": "Reading the repository…",
+  "backupNoSnapshotsYet": "No snapshots yet.",
+  "backupChecking": "Checking {tName}…",
+  "@backupChecking": {
+    "placeholders": {
+      "tName": {
+        "type": "Object"
+      }
+    }
+  },
+  "backupRecoveryKit": "Recovery kit",
+  "backupSaveThisAsNectarRecovery": "Save this as nectar-recovery-kit.json somewhere safe, together with your master key. On a new server: install.sh --restore-kit nectar-recovery-kit.json --master-key <key>",
+  "backupItHoldsTheRepositoryPassword": "It holds the repository password and access keys: anyone with it and the master key can read your backups.",
+  "backupCopied": "Copied",
+  "backupCopy": "Copy",
+  "backupDone": "Done",
+  "backupRemove": "Remove {tName}?",
+  "@backupRemove": {
+    "placeholders": {
+      "tName": {
+        "type": "Object"
+      }
+    }
+  },
+  "backupThePanelForgetsTheTarget": "The panel forgets the target. The backups stay where they are.",
+  "backupRemove2": "Remove",
+  "backupWhereBackupsGo": "Where backups go",
+  "backupAddTarget": "Add target",
+  "backupNoTargetYet": "No target yet.",
+  "backupCheck": "Check",
+  "backupNoBackupHasRunYet": "No backup has run yet.",
+  "backupWhat": "What",
+  "backupTo": "To",
+  "backupWhen": "When",
+  "backupCustomCron": "Custom (cron)",
+  "backupCronExpressionUtc": "Cron expression (UTC)",
+  "backupMinuteHourDayMonthWeekday": "minute hour day month weekday",
+  "backupKeep": "Keep",
+  "backupOlderSnapshotsAreRemovedAfter": "Older snapshots are removed after each backup.",
+  "backupScheduledBackupsOn": "Scheduled backups on",
+  "backupBeginOpensshPrivateKey": "-----BEGIN OPENSSH PRIVATE KEY-----",
+  "backupBackblazeB2": "Backblaze B2",
+  "backupSftp": "SFTP",
+  "backupFolder": "Folder",
+  "backupName": "Name",
+  "backupBackupsAreEncryptedWithThe": "Backups are encrypted with the repository password before they leave the server.",
+  "serverAddANode": "Add a node",
+  "serverRunThisAsRootOn": "Run this as root on the new machine (Linux, a fresh install):",
+  "serverTheCommandContainsTheCluster": "The command contains the cluster join token: treat it like a password.",
+  "serverCopyCommand": "Copy command",
+  "serverRemoveUnusedImages": "Remove unused images?",
+  "serverDeletesTheContainerImagesThat": "Deletes the container images that no container on the server uses right now: old releases, stopped apps and images pulled ahead of time. They are downloaded again when needed, so the next deploy or start of those apps takes longer.",
+  "serverRemoveImages": "Remove images",
+  "serverImageCleanupStarted": "Image cleanup started",
+  "serverDisk": "Disk",
+  "serverServerDisk": "Server disk",
+  "serverPanelDataVolume": "Panel data volume",
+  "serverKeptTheLastUploadsPer": "Kept: the last {keepArtifacts} uploads per app (and every upload a live release uses), {auditDays} days of audit log, {alertDays} days of resolved alerts. Cleanup runs every hour.",
+  "@serverKeptTheLastUploadsPer": {
+    "placeholders": {
+      "keepArtifacts": {
+        "type": "Object"
+      },
+      "auditDays": {
+        "type": "Object"
+      },
+      "alertDays": {
+        "type": "Object"
+      }
+    }
+  },
+  "serverRetention": "Retention",
+  "serverImageCleanups": "Image cleanups",
+  "serverKeepAppLogs": "Keep app logs",
+  "serverStoresEveryAppSOutput": "Stores every app's output on the panel's disk, searchable on the Logs tab after restarts and deploys.",
+  "serverK3sDataDirectory": "k3s data directory",
+  "serverUsedToFindCrictlFor": "Used to find crictl for image cleanup",
+  "serverKeepImagesOnEveryNode": "Keep images on every node",
+  "serverPrePullsBusyboxAndThe": "Pre-pulls busybox and the runtime images your apps use, so new nodes and moved pods start without downloading them. Image cleanup keeps them.",
+  "serverExtraImages": "Extra images",
+  "serverOnePerLineEG": "One per line, e.g. postgres:17 (up to 20)",
+  "serverDrain": "Drain {nodeName}?",
+  "@serverDrain": {
+    "placeholders": {
+      "nodeName": {
+        "type": "Object"
+      }
+    }
+  },
+  "serverNoNewPodsStartThere": "No new pods start there, and its pods move to the other nodes (DaemonSet pods stay). Apps with one replica are briefly unavailable.",
+  "serverDrain2": "Drain",
+  "serverDrainAnyway": "Drain {nodeName} anyway?",
+  "@serverDrainAnyway": {
+    "placeholders": {
+      "nodeName": {
+        "type": "Object"
+      }
+    }
+  },
+  "serverDrainAnyway2": "Drain anyway",
+  "serverMakeAnEdgeNode": "Make {nodeName} an edge node?",
+  "@serverMakeAnEdgeNode": {
+    "placeholders": {
+      "nodeName": {
+        "type": "Object"
+      }
+    }
+  },
+  "serverANectarGatewayReplicaStarts": "A nectar-gateway replica starts there (ports 80 and 443) and copies routes and certificates from the main gateway. DNS records managed by the panel then point to every edge node. Open ports 80 and 443 on this machine.",
+  "serverMakeEdgeNode": "Make edge node",
+  "serverStopServingTrafficOn": "Stop serving traffic on {nodeName}?",
+  "@serverStopServingTrafficOn": {
+    "placeholders": {
+      "nodeName": {
+        "type": "Object"
+      }
+    }
+  },
+  "serverItsGatewayReplicaStopsAnd": "Its gateway replica stops and the panel removes the node from the DNS records it manages. Records you created yourself still point there.",
+  "serverStop": "Stop",
+  "serverRemoveFromTheCluster": "Remove {nodeName} from the cluster?",
+  "@serverRemoveFromTheCluster": {
+    "placeholders": {
+      "nodeName": {
+        "type": "Object"
+      }
+    }
+  },
+  "serverTheNodeObjectIsDeleted": "The node object is deleted. On the machine, run /usr/local/bin/k3s-agent-uninstall.sh to remove k3s.",
+  "serverCpu": "CPU",
+  "serverMemory": "Memory",
+  "serverLiveUsageNeedsMetricsServer": "Live usage needs metrics-server (k3s includes it).",
+  "serverNodeActions": "Node actions",
+  "serverAllowNewPodsUncordon": "Allow new pods (uncordon)",
+  "serverNoNewPodsCordon": "No new pods (cordon)",
+  "serverDrainMovePodsAway": "Drain (move pods away)",
+  "serverStopServingTrafficEdge": "Stop serving traffic (edge)",
+  "serverServeTrafficTooEdgeNode": "Serve traffic too (edge node)",
+  "serverRemoveFromTheCluster2": "Remove from the cluster",
+  "serverYourRoleDoesNotInclude": "Your role does not include viewing the server (server.view).",
+  "serverClusterNodesTheirResourcesAnd": "Cluster nodes, their resources and recent warnings.",
+  "serverGateway": "Gateway",
+  "serverAddNode": "Add node",
+  "serverWarnings": "Warnings",
+  "serverIn": "In",
+  "serverOut": "Out",
+  "serverHistoryLast": "History · {historyName} · last {range}",
+  "@serverHistoryLast": {
+    "placeholders": {
+      "historyName": {
+        "type": "Object"
+      },
+      "range": {
+        "type": "Object"
+      }
+    }
+  },
+  "serverVolumes": "Volumes",
+  "serverNoVolumesYetAppsGet": "No volumes yet. Apps get one under Settings → Volumes; databases have their own.",
+  "serverUsageShowsWhileTheApp": "{requestedBytes} · usage shows while the app or database runs",
+  "@serverUsageShowsWhileTheApp": {
+    "placeholders": {
+      "requestedBytes": {
+        "type": "Object"
+      }
+    }
+  },
+  "serverOnLocalPathStorageThe": "On local-path storage (the k3s default) a size is not enforced: a volume can grow past it until the node's disk is full. The \"Volume almost full\" alert warns at 90 %.",
+  "gatewayYourRoleDoesNotInclude": "Your role does not include server.view.",
+  "gatewayNectarGatewayServesEveryDomain": "nectar-gateway serves every domain on ports 80/443: routes, certificates, rate limits and blocked IPs.",
+  "gatewayNoRoutes": "No routes",
+  "gatewayDomainsOfYourAppsAppear": "Domains of your apps appear here.",
+  "gatewayRateLimitsTimeoutsAndBody": "Rate limits, timeouts and body limits are set per domain on the app page (Domains → edit).",
+  "gatewayLetSEncryptCertificatesRenew": "Let's Encrypt certificates renew automatically about 30 days before they expire; the \"Certificate expiring\" alert warns when one does not.",
+  "gatewayWildcardCertificates": "Wildcard certificates",
+  "gatewayOneCertificateForYourDomain": "One certificate for *.your-domain serves every app at once, with no Let's Encrypt order per app. This needs nectar-gateway 1.2.2 or newer: update it under Settings → Updates.",
+  "gatewayAWildcardCertificateExampleCom": "A wildcard certificate (*.example.com) is proved over DNS: the gateway adds a TXT record through your DNS provider. Apps under it get HTTPS the moment they are created.",
+  "gatewayTheGatewaySLetS": "The gateway's Let's Encrypt client is off: set the Let's Encrypt email (Settings → Gateway) first.",
+  "gatewayRemoveTheDnsProvider": "Remove the DNS provider?",
+  "gatewayWildcardCertificatesStopRenewingUntil": "Wildcard certificates stop renewing until you set it again.",
+  "gatewayGet": "Get {baseWildcard}",
+  "@gatewayGet": {
+    "placeholders": {
+      "baseWildcard": {
+        "type": "Object"
+      }
+    }
+  },
+  "gatewayOtherDomain": "Other domain…",
+  "gatewayDelete": "Delete {domain}?",
+  "@gatewayDelete": {
+    "placeholders": {
+      "domain": {
+        "type": "Object"
+      }
+    }
+  },
+  "gatewayHostsItServesFallBack": "Hosts it serves fall back to their own Let's Encrypt certificates (ordered per host).",
+  "gatewayRenewNow": "Renew now",
+  "gatewayInCloudflareMyProfileApi": "In Cloudflare: My Profile → API Tokens → Create Token → \"Edit zone DNS\", limited to your zone (permissions Zone:Read and DNS:Edit). The token is stored in the gateway and never shown again.",
+  "gatewayApiToken": "API token",
+  "gatewayWildcardCertificate": "Wildcard certificate",
+  "gatewayDomain": "Domain",
+  "gatewayExampleCom": "*.example.com",
+  "gatewayAlsoTheDomainItselfExample": "Also the domain itself (example.com)",
+  "gatewayOrder": "Order",
+  "gatewayRateLimits": "Rate limits",
+  "gatewayThisNectarGatewayBlocksA": "This nectar-gateway blocks a client over a rate limit for 24 hours. Update it to answer 429 instead.",
+  "gatewayAboveADomainSRate": "Above a domain's rate limit a client gets 429 and may retry a second later. A client that keeps going (more than ten times the limit refused within a minute) is blocked:",
+  "gatewayBlockedIps": "Blocked IPs",
+  "gatewayBlockIp": "Block IP",
+  "gatewayNobodyIsBlockedTheGateway": "Nobody is blocked. The gateway blocks scanners (requests for .env, wp-login …) by itself.",
+  "gatewayUnblock": "Unblock",
+  "gatewayBlockAnIp": "Block an IP",
+  "gatewayIpAddress": "IP address",
+  "gatewayReasonOptional": "Reason (optional)",
+  "gatewayFor": "For",
+  "gateway1Hour": "1 hour",
+  "gateway1Day": "1 day",
+  "gateway1Week": "1 week",
+  "gatewayUntilUnblocked": "until unblocked",
+  "gatewayBlock": "Block",
+  "gatewayLatestRequests": "Latest requests",
+  "gatewayAllDomains": "All domains",
+  "gatewayStatus": "Status",
+  "gatewayAny": "Any",
+  "gatewayClientIp": "Client IP",
+  "gatewayNoRequestsMatchTheGateway": "No requests match. The gateway keeps the latest requests in memory (ACCESS_LOG_SIZE, 2000 by default).",
+  "gatewayMs": "{ms} ms",
+  "@gatewayMs": {
+    "placeholders": {
+      "ms": {
+        "type": "Object"
+      }
+    }
+  },
+  "gatewayBlock2": "Block {ip}",
+  "@gatewayBlock2": {
+    "placeholders": {
+      "ip": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectBack": "Back",
+  "projectOpenTheApp": "Open the app",
+  "projectTheAppSlugItsDefault": "The app slug; its default domain is <name>-<project>.<base domain>",
+  "projectPasswordsAreGeneratedAndStored": "Passwords are generated and stored as secret variables. The app is deployed right away.",
+  "projectImport": "Import {what}",
+  "@projectImport": {
+    "placeholders": {
+      "what": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectChoose": "Choose {what}",
+  "@projectChoose": {
+    "placeholders": {
+      "what": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectOrPasteItBelow": "or paste it below",
+  "projectDeployTheApps": "Deploy the apps",
+  "projectCopiedApplyItWithNectar": "Copied — apply it with: nectar apply -f nectar.yaml --project {slug}",
+  "@projectCopiedApplyItWithNectar": {
+    "placeholders": {
+      "slug": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectEnvGroups": "Env groups",
+  "projectNewGroup": "New group",
+  "projectVariablesSeveralAppsShareA": "Variables several apps share (a region, an API endpoint, a Sentry DSN). Apps choose their groups on the Environment tab.",
+  "projectInvalidVariableNameUseLetters": "Invalid variable name \"{key}\": use letters, digits and _",
+  "@projectInvalidVariableNameUseLetters": {
+    "placeholders": {
+      "key": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectSaved": "Saved",
+  "projectDeleteTheGroup": "Delete the group {gName}?",
+  "@projectDeleteTheGroup": {
+    "placeholders": {
+      "gName": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectItsVariablesAreDeleted": "Its variables are deleted.",
+  "projectShowSecretValues": "Show secret values",
+  "projectSharedEnvGroups": "Shared env groups",
+  "projectThisProjectHasNoEnv": "This project has no env groups yet (project page → Env groups).",
+  "projectTheAppGetsEveryVariable": "The app gets every variable of the chosen groups; its own variables win.",
+  "projectCopy": "Copy {appName}",
+  "@projectCopy": {
+    "placeholders": {
+      "appName": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectIntoProject": "Into project",
+  "projectSlug": "Slug",
+  "projectCopiesTheSettingsVariablesSecrets": "Copies the settings, variables (secrets too), config files and env groups. Volumes start empty; nothing is deployed.",
+  "projectNewEnvironment": "New environment",
+  "projectEnvironmentOfTheCopy": "Environment of the copy",
+  "projectProjectSlugOfTheCopy": "Project slug of the copy",
+  "projectEnvironmentOf": "Environment of {slug}",
+  "@projectEnvironmentOf": {
+    "placeholders": {
+      "slug": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectCopiesTheEnvGroupsThe": "Copies the env groups, the databases (new and empty, with new passwords) and the apps with their settings, variables and config files. Nothing is deployed. Later, \"Promote\" deploys the live build of an app to the same app in the other environment.",
+  "projectPromoteTo": "Promote {appName} to {target}?",
+  "@projectPromoteTo": {
+    "placeholders": {
+      "appName": {
+        "type": "Object"
+      },
+      "target": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectTheLiveBuildOfIts": "The live build of {slug} (its image or uploaded file) is deployed to {slug2}/{slug3}. Its settings and variables there stay as they are.",
+  "@projectTheLiveBuildOfIts": {
+    "placeholders": {
+      "slug": {
+        "type": "Object"
+      },
+      "slug2": {
+        "type": "Object"
+      },
+      "slug3": {
+        "type": "Object"
+      }
+    }
+  },
+  "projectPromote": "Promote",
+  "projectNewProject": "New project",
+  "projectMyShop": "My Shop",
+  "projectCreate": "Create",
+  "projectAllProjects": "All projects",
+  "projectProject": "Project",
+  "projectImportExport": "Import / export",
+  "projectImportDockerComposeYml": "Import docker-compose.yml",
+  "projectApplyNectarYaml": "Apply nectar.yaml",
+  "projectExportNectarYaml": "Export nectar.yaml",
+  "projectNewEnvironmentCopy": "New environment (copy)…",
+  "projectActivity": "Activity",
+  "projectNoAppsInThisProject": "No apps in this project yet",
+  "projectDeployAJarABinary": "Deploy a JAR, a binary, a static site, Node, Python, PHP or any Docker image.",
+  "projectResources": "Resources",
+  "projectCpuRequested": "CPU requested",
+  "projectMemoryRequested": "Memory requested",
+  "projectApps": "Apps",
+  "projectRequestsOfAllReplicasLive": "Requests of all replicas. Live usage arrives with the metrics view.",
+  "projectEachProjectHasItsOwn": "Each project has its own Kubernetes namespace and optional quota.",
+  "projectNoProjectsYet": "No projects yet",
+  "projectSearchProjects": "Search projects",
+  "projectAdoptedFromAnExistingNamespace": "Adopted from an existing namespace: other workloads there are left alone.",
+  "projectAdopted": "Adopted",
+  "authConnectToYourServer": "Connect to your server",
+  "authNectarAppsRunsOnYour": "Nectar Apps runs on your own server. Enter the address of its panel.",
+  "authPanelAddress": "Panel address",
+  "authBeforeThePanelHasA": "Before the panel has a domain, open an SSH tunnel and use http://localhost:8480.",
+  "authConnect": "Connect",
+  "authResetYourPassword": "Reset your password",
+  "authWeEmailYouALink": "We email you a link to choose a new password (if the panel can send emails).",
+  "authSendLink": "Send link",
+  "authIfTheAddressHasAn": "If the address has an account, a reset link is on its way.",
+  "authCannotReachThePanel": "Cannot reach the panel",
+  "authUseAnotherServer": "Use another server",
+  "authEnterThe6DigitCode": "Enter the 6-digit code from your authenticator app, or one of your recovery codes.",
+  "authCode": "Code",
+  "authVerify": "Verify",
+  "authForgotYourPassword": "Forgot your password?",
+  "authContinueWith": "Continue with {pName}",
+  "@authContinueWith": {
+    "placeholders": {
+      "pName": {
+        "type": "Object"
+      }
+    }
+  },
+  "authChooseAPassword": "Choose a password",
+  "authPasswordSaved": "Password saved",
+  "authSignInWithYourNew": "Sign in with your new password and your authenticator code.",
+  "authLinkExpired": "Link expired",
+  "authGoToSignIn": "Go to sign-in",
+  "authAtLeast10Characters": "At least 10 characters",
+  "authRepeatThePassword": "Repeat the password",
+  "authWelcomeToNectarApps": "Welcome to Nectar Apps",
+  "authSetupToken": "Setup token",
+  "authTheInstallerPrintedItTogether": "The installer printed it together with the setup link.",
+  "authYourName": "Your name",
+  "authRepeatPassword": "Repeat password",
+  "authCreateOwnerAccount": "Create Owner account",
+  "observeRequested": "Requested",
+  "observeTotalsAcrossReplicasTheDashed": "Totals across {replicas} replicas; the dashed line is what all of them requested together.",
+  "@observeTotalsAcrossReplicasTheDashed": {
+    "placeholders": {
+      "replicas": {
+        "type": "Object"
+      }
+    }
+  },
+  "observeTrafficLastHour": "Traffic · last hour",
+  "observeNoRequestsYetTrafficAppears": "No requests yet. Traffic appears once the app has a domain and the gateway routes requests to it.",
+  "observeRequests": "Requests",
+  "observePerSecond": "Per second",
+  "observeErrors5xx": "Errors (5xx)",
+  "observeNoRequestsYet": "No requests yet.",
+  "observeLive": "Live",
+  "observeHistory": "History",
+  "observeRegex": ".* regex",
+  "observeLastHour": "Last hour",
+  "observeLast6Hours": "Last 6 hours",
+  "observeLast24Hours": "Last 24 hours",
+  "observeLast7Days": "Last 7 days",
+  "observeEverythingKept": "Everything kept",
+  "observeSearch": "Search",
+  "observeCopyShownLines": "Copy shown lines",
+  "observeCopiedLines": "Copied {linesLength} lines",
+  "@observeCopiedLines": {
+    "placeholders": {
+      "linesLength": {
+        "type": "Object"
+      }
+    }
+  },
+  "observeNewestFirstLogsAreKept": "Newest first. Logs are kept on the panel for the days set under Server → Disk → Retention.",
+  "observeAllPods": "All pods",
+  "observeFilter": "Filter",
+  "observeCopiedLines2": "Copied {visibleLength} lines",
+  "@observeCopiedLines2": {
+    "placeholders": {
+      "visibleLength": {
+        "type": "Object"
+      }
+    }
+  },
+  "observeDownloadLast5000Lines": "Download (last 5000 lines)",
+  "observeClear": "Clear",
+  "observeBeforeTheLastRestart": "Before the last restart · {pod}",
+  "@observeBeforeTheLastRestart": {
+    "placeholders": {
+      "pod": {
+        "type": "Object"
+      }
+    }
+  },
+  "observeThePreviousContainerWroteNothing": "The previous container wrote nothing.",
+  "updateUpdateStarted": "Update started",
+  "updateUpdate": "Update {component}",
+  "@updateUpdate": {
+    "placeholders": {
+      "component": {
+        "type": "Object"
+      }
+    }
+  },
+  "updateVersion": "Version",
+  "updateEachStepTheDatabaseIs": "Each step: the database is backed up, the image is switched, and the panel waits until the new version is healthy (and the gateway serves its canary and keeps every route). If a check fails it rolls back on its own.",
+  "updateUpdateSettingsSaved": "Update settings saved",
+  "updatePolicy": "Policy",
+  "updateStable": "Stable",
+  "updateBeta": "Beta",
+  "updateChannel": "Channel",
+  "updateStableLatestV131": "stable, latest, v1.31",
+  "updateAutomaticUpdates": "Automatic updates",
+  "updateMajorAndBreakingReleasesAre": "Major and breaking releases are never installed automatically. A release that failed its checks is not retried.",
+  "updateFrom": "From",
+  "updateTimeZone": "Time zone",
+  "updateUtcEuropeKyiv": "UTC, Europe/Kyiv",
+  "updateCheckEvery": "Check every",
+  "updateNoDaysAndNoTimes": "No days and no times = any time. A window like 22:00–02:00 crosses midnight. k3s upgrades use the same window.",
+  "updateUpdateSources": "Update sources",
+  "updatePanelFeedUrl": "Panel feed URL",
+  "updateGatewayFeedUrl": "Gateway feed URL",
+  "updateEmptyTheOfficialFeedsWhen": "Empty = the official feeds. When a feed cannot be read, the panel asks the GitHub Releases API instead.",
+  "updateCheckedForUpdates": "Checked for updates",
+  "updateUpdates": "Updates",
+  "updateThePanelNectarGatewayAnd": "The panel, nectar-gateway and k3s. Every update is backed up first, checked after the switch and rolled back when a check fails.",
+  "updateCheckNow": "Check now",
+  "updateVersions": "Versions",
+  "updateAllowAgain": "Allow again",
+  "updateUpdateK3sTo": "Update k3s to {v}?",
+  "@updateUpdateK3sTo": {
+    "placeholders": {
+      "v": {
+        "type": "Object"
+      }
+    }
+  },
+  "updateTheSystemUpgradeControllerUpgrades": "The system-upgrade-controller upgrades one node at a time: each node is cordoned, k3s restarts with the new version and the node is uncordoned. Pods on a node restart during its upgrade; on a single-node server apps are briefly unavailable.",
+  "updateUpgrade": "Upgrade",
+  "updateK3sUpgradeToStartedNode": "k3s upgrade to {v} started: node versions update here as it progresses",
+  "@updateK3sUpgradeToStartedNode": {
+    "placeholders": {
+      "v": {
+        "type": "Object"
+      }
+    }
+  },
+  "updateUpdatingK3sFromHereNeeds": "Updating k3s from here needs the system-upgrade-controller: re-run install.sh with --k3s-upgrades.",
+  "updateUpdate2": "Update…",
+  "updateUpdating": "Updating · {summary}",
+  "@updateUpdating": {
+    "placeholders": {
+      "summary": {
+        "type": "Object"
+      }
+    }
+  },
+  "updateThePanelRestartsNowThis": "The panel restarts now: this page reconnects by itself in a few seconds.",
+  "updateRollBack": "Roll back {summary}?",
+  "@updateRollBack": {
+    "placeholders": {
+      "summary": {
+        "type": "Object"
+      }
+    }
+  },
+  "updateRollBack2": "Roll back",
+  "updateNoUpdateHasRunOn": "No update has run on this server yet.",
+  "acceMembers": "Members",
+  "acceAddMember": "Add member",
+  "acceUser": "User",
+  "acceYouCanOnlyGiveRoles": "You can only give roles whose permissions you hold in this project.",
+  "acceRemoveFromProject": "Remove from project",
+  "acceRoles": "Roles",
+  "acceARoleIsASet": "A role is a set of permissions. Users get roles everywhere or for one project; API tokens can be limited to a role.",
+  "acceNewRole": "New role",
+  "acceChangingRolesNeedsRoleManage": "Changing roles needs role.manage.",
+  "acceDeleteRole": "Delete role {rName}?",
+  "@acceDeleteRole": {
+    "placeholders": {
+      "rName": {
+        "type": "Object"
+      }
+    }
+  },
+  "acceRolesStillAssignedToUsers": "Roles still assigned to users cannot be deleted.",
+  "acceBuiltInRolesCannotBe": "Built-in roles cannot be changed. Clone it to make your own version.",
+  "acceDescription": "Description",
+  "acceAllNone": "all / none",
+  "acceGlobalOnlyPermissionsHaveNo": "\"Global only\" permissions have no effect when the role is given for one project.",
+  "acceClone": "Clone",
+  "acceApiTokens": "API tokens",
+  "acceForCiAndScriptsA": "For CI and scripts. A token acts as you, limited to a role and a project when you choose them.",
+  "acceNewToken": "New token",
+  "acceYourTokens": "Your tokens",
+  "acceNoTokensYet": "No tokens yet",
+  "acceCreateOneForGithubActions": "Create one for GitHub Actions or the nectar CLI. A Deployer token for one project is enough to deploy.",
+  "acceEveryoneSTokens": "Everyone's tokens",
+  "acceNoTokens": "No tokens.",
+  "acceRevoke": "Revoke {tName}?",
+  "@acceRevoke": {
+    "placeholders": {
+      "tName": {
+        "type": "Object"
+      }
+    }
+  },
+  "acceScriptsAndPipelinesThatUse": "Scripts and pipelines that use it stop working immediately.",
+  "acceRevoke2": "Revoke",
+  "acceUsingAToken": "Using a token",
+  "acceAnyHttpClientWorksToo": "Any HTTP client works too: Authorization: Bearer nat_… on the API (see api/openapi.yaml).",
+  "acceCopyYourToken": "Copy your token",
+  "acceItIsShownOnlyNow": "It is shown only now. Store it as a secret (e.g. NECTAR_TOKEN in GitHub).",
+  "acceNewApiToken": "New API token",
+  "acceGithubActionsShop": "GitHub Actions: shop",
+  "acceRights": "Rights",
+  "acceEverythingYouMayDo": "Everything you may do",
+  "acceOnly": "Only {rName}",
+  "@acceOnly": {
+    "placeholders": {
+      "rName": {
+        "type": "Object"
+      }
+    }
+  },
+  "acceOnly2": "Only {pName}",
+  "@acceOnly2": {
+    "placeholders": {
+      "pName": {
+        "type": "Object"
+      }
+    }
+  },
+  "acceExpires": "Expires",
+  "acceIn30Days": "in 30 days",
+  "acceIn90Days": "in 90 days",
+  "acceInAYear": "in a year",
+  "acceATokenNeverHasMore": "A token never has more rights than you. For CI: the Deployer role and one project.",
+  "acceUsers": "Users",
+  "acceYourRoleDoesNotInclude": "Your role does not include user.manage.",
+  "acceWhoCanSignInAnd": "Who can sign in, and what they may do. Roles apply everywhere or to one project.",
+  "acceAddUser": "Add user",
+  "acceUserCreated": "User created",
+  "acceShareTheInvitationLink": "Share the invitation link",
+  "acceThePanelCannotSendEmails": "The panel cannot send emails (Settings → Email). Send this link yourself; it works for 7 days.",
+  "acceSendAnInvitation": "Send an invitation",
+  "acceTheyChooseTheirOwnPassword": "They choose their own password",
+  "accePassword10Characters": "Password (10+ characters)",
+  "acceNewUsersHaveNoRoles": "New users have no roles: give them one after creating them.",
+  "acceDelete": "Delete {label}?",
+  "@acceDelete": {
+    "placeholders": {
+      "label": {
+        "type": "Object"
+      }
+    }
+  },
+  "acceTheyCanNoLongerSign": "They can no longer sign in; their API tokens stop working. The audit log keeps their actions.",
+  "acceDisabled": "Disabled",
+  "acceCannotSignInSessionsAnd": "Cannot sign in; sessions and tokens stop working",
+  "acceOwnersCanDoEverythingRoles": "Owners can do everything; roles do not change that.",
+  "acceRole": "Role",
+  "acceWhere": "Where",
+  "acceEverywhere": "Everywhere",
+  "acceAddRole": "Add role",
+  "acceYouCanOnlyGiveOr": "You can only give or take away roles whose permissions you hold yourself.",
+  "acceReset2fa": "Reset 2FA",
+  "acceSendInvitationResetLink": "Send invitation / reset link",
+  "acceAdded": "Added {createdAt}",
+  "@acceAdded": {
+    "placeholders": {
+      "createdAt": {
+        "type": "Object"
+      }
+    }
+  },
+  "domainEveryDomainOfEveryApp": "Every domain of every app you can see, with its HTTPS and DNS state.",
+  "domainSearchDomainsAppsProjects": "Search domains, apps, projects",
+  "domainAll": "All",
+  "domainCustom": "Custom",
+  "domainProblems": "Problems",
+  "domainNoDomainsYet": "No domains yet",
+  "domainWebAppsGetADomain": "Web apps get a domain under the base domain when they are created; add your own on the app page.",
+  "domainNothingMatches": "Nothing matches.",
+  "domainAutomaticDnsRecordsOff": "Automatic DNS records off",
+  "domainDnsSetup": "DNS setup",
+  "domainTheServerSPublicIp": "The server's public IP is unknown. Set it in the setup wizard (Settings → Domain, HTTPS email and sample app) so the records can be shown and checked.",
+  "domainPointDomainsAtThisServer": "Point domains at this server with these records at your DNS provider:",
+  "domainTheRecordServesEveryApp": "The *.{baseDomain} record serves every app's default domain. A CNAME to {baseHost} works for subdomains of your own domains once it exists.",
+  "@domainTheRecordServesEveryApp": {
+    "placeholders": {
+      "baseDomain": {
+        "type": "Object"
+      },
+      "baseHost": {
+        "type": "Object"
+      }
+    }
+  },
+  "domainCreateDnsRecordsAutomatically": "Create DNS records automatically",
+  "domainActions": "Actions",
+  "domainOpenApp": "Open app",
+  "domainCheckDns": "Check DNS",
+  "addonDatabase": "Database",
+  "addonDelete": "Delete {addonName}?",
+  "@addonDelete": {
+    "placeholders": {
+      "addonName": {
+        "type": "Object"
+      }
+    }
+  },
+  "addonTheDatabaseAndAllIts": "The database and all its data are deleted for good. Linked apps lose their connection settings with their next deploy.",
+  "addonDeleteDatabase": "Delete database",
+  "addonConnection": "Connection",
+  "addonShowCredentials": "Show credentials",
+  "addonReachableOnlyFromAppsIn": "Reachable only from apps in the same project, at {host}:{port}. Link an app below to give it these settings as variables.",
+  "@addonReachableOnlyFromAppsIn": {
+    "placeholders": {
+      "host": {
+        "type": "Object"
+      },
+      "port": {
+        "type": "Object"
+      }
+    }
+  },
+  "addonEveryAppOfTheProject": "Every app of the project is linked already",
+  "addonLinkToAnApp": "Link {addonName} to an app",
+  "@addonLinkToAnApp": {
+    "placeholders": {
+      "addonName": {
+        "type": "Object"
+      }
+    }
+  },
+  "addonApp": "App",
+  "addonVariablePrefixOptional": "Variable prefix (optional)",
+  "addonCache": "CACHE_",
+  "addonForASecondDatabaseCache": "For a second database: CACHE_ gives CACHE_DATABASE_URL",
+  "addonLink": "Link",
+  "addonLinkedRedeployToApply": "Linked. Redeploy {appName} to apply.",
+  "@addonLinkedRedeployToApply": {
+    "placeholders": {
+      "appName": {
+        "type": "Object"
+      }
+    }
+  },
+  "addonLinkedApps": "Linked apps",
+  "addonLinkAnApp": "Link an app",
+  "addonNoAppUsesThisDatabase": "No app uses this database yet.",
+  "addonUnlink": "Unlink",
+  "addonSavedTheDatabaseRestartsWith": "Saved; the database restarts with the new resources",
+  "addonAddDatabase": "Add database",
+  "addonPostgresqlMysqlMariadbOrRedis": "PostgreSQL, MySQL, MariaDB or Redis with a persistent volume. Link it to an app and it gets DATABASE_URL (or REDIS_URL).",
+  "addonAddADatabase": "Add a database",
+  "addonNameAlsoTheHostName": "Name (also the host name)",
+  "addonLowercaseLettersDigitsDashes": "Lowercase letters, digits, dashes",
+  "addonStorageMib": "Storage (MiB)",
+  "addonMemoryMib": "Memory (MiB)",
+  "addonAtLeast": "At least {minMemoryMb}",
+  "@addonAtLeast": {
+    "placeholders": {
+      "minMemoryMb": {
+        "type": "Object"
+      }
+    }
+  },
+  "settingPushNotifications": "Push notifications",
+  "settingOptionalAlertsReachTheNectar": "Optional. Alerts reach the Nectar app on Android, iPhone and Mac through your own Firebase project (free). Without it, use ntfy, Telegram or email channels under Alerts.",
+  "settingSendTestToMyDevices": "Send test to my devices",
+  "setting1CreateAFirebaseProject": "1. Create a Firebase project (console.firebase.google.com) and add an Android app and/or an Apple app with the Nectar app's package / bundle id.\n2. iPhone and Mac: upload your APNs key under Project settings → Cloud Messaging.\n3. Copy the values below from Project settings, then add a \"Mobile app\" channel under Alerts.",
+  "settingSendPushNotifications": "Send push notifications",
+  "settingServiceAccountKeyJson": "Service account key (JSON)",
+  "settingProjectSettingsServiceAccountsGenerate": "Project settings → Service accounts → Generate new private key. Stored encrypted.",
+  "settingSenderId": "Sender ID",
+  "settingProjectSettingsCloudMessaging": "Project settings → Cloud Messaging",
+  "settingAppId": "App ID",
+  "setting1123456789Android": "1:123456789:android:…",
+  "settingApiKey": "API key",
+  "settingAiza": "AIza…",
+  "setting1123456789Ios": "1:123456789:ios:…",
+  "settingBundleId": "Bundle ID",
+  "settingAsInXcodeNeededFor": "as in Xcode (needed for iPhone)",
+  "settingRemoveTheLoginFor": "Remove the login for {host}?",
+  "@settingRemoveTheLoginFor": {
+    "placeholders": {
+      "host": {
+        "type": "Object"
+      }
+    }
+  },
+  "settingAppsCanNoLongerPull": "Apps can no longer pull private images from it.",
+  "settingRegistries": "Registries",
+  "settingAddLogin": "Add login",
+  "settingNoPrivateRegistryLoginsPublic": "No private registry logins. Public images (Docker Hub, GHCR public packages, …) need none.",
+  "settingChanged": "{username} · changed {updatedAt}",
+  "@settingChanged": {
+    "placeholders": {
+      "username": {
+        "type": "Object"
+      },
+      "updatedAt": {
+        "type": "Object"
+      }
+    }
+  },
+  "settingLoginsAreStoredEncryptedAnd": "Logins are stored encrypted and given to every project as an image pull secret; builds use them for base images.",
+  "settingRegistryLogin": "Registry login",
+  "settingRegistry": "Registry",
+  "settingGhcrIoDockerIoRegistry": "ghcr.io, docker.io, registry.gitlab.com",
+  "settingUserName": "User name",
+  "settingPasswordOrAccessToken": "Password or access token",
+  "settingGhcrATokenWithRead": "GHCR: a token with read:packages",
+  "settingYourPassword": "Your password",
+  "settingTwoFactorAuthenticationIsOff": "Two-factor authentication is off",
+  "settingTwoFactorAuthentication": "Two-factor authentication",
+  "settingOnlyRecoveryCodesLeftCreate": "Only {left} recovery codes left: create new ones.",
+  "@settingOnlyRecoveryCodesLeftCreate": {
+    "placeholders": {
+      "left": {
+        "type": "Object"
+      }
+    }
+  },
+  "settingNewRecoveryCodes": "New recovery codes",
+  "settingTurnOff": "Turn off",
+  "settingSetUp": "Set up",
+  "settingRecoveryCodes": "Recovery codes",
+  "settingEachCodeSignsYouIn": "Each code signs you in once if your phone is not at hand. Store them in your password manager: they are shown only now.",
+  "settingISavedThem": "I saved them",
+  "settingSetUpTwoFactorAuthentication": "Set up two-factor authentication",
+  "setting1ScanThisCodeWith": "1. Scan this code with your authenticator app.",
+  "settingOrEnterTheKeyBy": "Or enter the key by hand:",
+  "setting2EnterThe6Digit": "2. Enter the 6-digit code it shows.",
+  "settingSignedIn": "Signed in",
+  "settingActiveSince": "{ip} · active {lastSeenAt} · since {createdAt}",
+  "@settingActiveSince": {
+    "placeholders": {
+      "ip": {
+        "type": "Object"
+      },
+      "lastSeenAt": {
+        "type": "Object"
+      },
+      "createdAt": {
+        "type": "Object"
+      }
+    }
+  },
+  "settingTestEmailSentToYour": "Test email sent to your address",
+  "settingEmailSettingsSaved": "Email settings saved",
+  "settingUsedForPasswordResetsInvitations": "Used for password resets, invitations and alert emails.",
+  "settingStarttls": "STARTTLS",
+  "settingTls": "TLS",
+  "settingNoEncryption": "No encryption",
+  "settingNectarAppsPanelExampleCom": "Nectar Apps <panel@example.com>",
+  "settingSaveAndSendATest": "Save and send a test",
+  "settingPanelAccess": "Panel access",
+  "settingOnlyTheListedAddressesMay": "Only the listed addresses may use the panel",
+  "settingAllowOnlyTheseIpAddresses": "Allow only these IP addresses or networks (one per line, e.g. 203.0.113.7 or 203.0.113.0/24). Empty = everyone. Your address: {ip}. An SSH tunnel to the server always works, so a wrong list can be fixed.",
+  "@settingAllowOnlyTheseIpAddresses": {
+    "placeholders": {
+      "ip": {
+        "type": "Object"
+      }
+    }
+  },
+  "settingAccount": "Account",
+  "settingOwner": "Owner",
+  "settingInvitePeopleAndGiveThem": "Invite people and give them roles, everywhere or per project",
+  "settingPermissionSetsCloneABuilt": "Permission sets; clone a built-in role to make your own",
+  "settingForTheNectarCliGithub": "For the nectar CLI, GitHub Actions and scripts",
+  "settingPlansTargetsRestoreAndThe": "Plans, targets, restore and the recovery kit",
+  "settingPanelGatewayAndK3sVersions": "Panel, gateway and k3s versions, automatic updates, history and rollback",
+  "settingRulesAndNotificationChannels": "Rules and notification channels",
+  "settingDomainHttpsEmailAndSample": "Domain, HTTPS email and sample app (setup wizard)",
+  "settingAbout": "About",
+  "settingNectarAppsTechbrainLlcNectar": "Nectar Apps · © TechBrain LLC · Nectar Source License",
+  "settingLicenses": "Licenses",
+  "settingSignInProviders": "Sign-in providers",
+  "settingAddProvider": "Add provider",
+  "settingLetPeopleSignInWith": "Let people sign in with GitHub, Google or your company's identity provider (Authentik, Keycloak, Zitadel, Okta, Entra ID … over OpenID Connect). Works in the web panel.",
+  "settingRemove": "Remove {pName}?",
+  "@settingRemove": {
+    "placeholders": {
+      "pName": {
+        "type": "Object"
+      }
+    }
+  },
+  "settingItsButtonDisappearsFromThe": "Its button disappears from the login page. Users keep their accounts.",
+  "settingId": "ID",
+  "settingButtonLabel": "Button label",
+  "settingCompanySso": "Company SSO",
+  "settingCallbackRedirectUrlToRegister": "Callback (redirect) URL to register at the provider:",
+  "settingIssuerUrl": "Issuer URL",
+  "settingClientId": "Client ID",
+  "settingClientSecret": "Client secret",
+  "settingAllowedEmailDomains": "Allowed email domains",
+  "settingExampleComExampleOrg": "example.com, example.org",
+  "settingEmptyOnlyUsersThatAlready": "Empty: only users that already exist can sign in this way (matched by email).",
+  "settingCreateUsersOnTheirFirst": "Create users on their first sign-in",
+  "settingNeedsAllowedDomains": "Needs allowed domains.",
+  "settingRoleOfNewUsersEverywhere": "Role of new users (everywhere)",
+  "settingNoneAnAdminAssignsRoles": "None (an admin assigns roles)",
+  "settingGroupRoleOnePerLine": "Group → role (one per line)",
+  "settingNectarAdminsAdminDevelopersDeveloper": "nectar-admins=admin\ndevelopers=developer",
+  "settingAppliedAtEverySignIn": "Applied at every sign-in from the provider's \"groups\" claim.",
+  "settingShowOnTheLoginPage": "Show on the login page",
+  "appDelete": "Delete {appName}?",
+  "@appDelete": {
+    "placeholders": {
+      "appName": {
+        "type": "Object"
+      }
+    }
+  },
+  "appThisRemovesTheAppIts": "This removes the app, its domains, releases and uploaded files from the server. It cannot be undone.",
+  "appTypeToConfirm": "Type {slug} to confirm:",
+  "@appTypeToConfirm": {
+    "placeholders": {
+      "slug": {
+        "type": "Object"
+      }
+    }
+  },
+  "appDeployANewVersion": "Deploy a new version",
+  "appUploading": "Uploading… {round}%",
+  "@appUploading": {
+    "placeholders": {
+      "round": {
+        "type": "Object"
+      }
+    }
+  },
+  "appUploadedAndChecked": "{size} uploaded and checked",
+  "@appUploadedAndChecked": {
+    "placeholders": {
+      "size": {
+        "type": "Object"
+      }
+    }
+  },
+  "appDeploy": "Deploy",
+  "appDeployAnotherImage": "Deploy another image",
+  "appImage": "Image",
+  "appDeployImage": "Deploy image",
+  "appDeployInProgress": "Deploy in progress",
+  "appHide": "Hide",
+  "appNotDeployedYet": "Not deployed yet",
+  "appMore": "More",
+  "appRedeployCurrentVersion": "Redeploy current version",
+  "appRestart": "Restart",
+  "appPromoteTo": "Promote to {t}…",
+  "@appPromoteTo": {
+    "placeholders": {
+      "t": {
+        "type": "Object"
+      }
+    }
+  },
+  "appCopyApp": "Copy app…",
+  "appDeleteApp": "Delete app…",
+  "appReady": "{ready} / {replicas} ready",
+  "@appReady": {
+    "placeholders": {
+      "ready": {
+        "type": "Object"
+      },
+      "replicas": {
+        "type": "Object"
+      }
+    }
+  },
+  "appCrashLog": "Crash log",
+  "appPortIsOpenOnThe": "Port {port}/{proto} is open on the server as {nodePort}",
+  "@appPortIsOpenOnThe": {
+    "placeholders": {
+      "port": {
+        "type": "Object"
+      },
+      "proto": {
+        "type": "Object"
+      },
+      "nodePort": {
+        "type": "Object"
+      }
+    }
+  },
+  "appAddDomain": "Add domain",
+  "appNoDomainSetABase": "No domain. Set a base domain in Settings to get one automatically; custom domains come with the domains page.",
+  "appCopied": "Copied {host}",
+  "@appCopied": {
+    "placeholders": {
+      "host": {
+        "type": "Object"
+      }
+    }
+  },
+  "appConfiguration": "Configuration",
+  "appChangeTheseOnTheSettings": "Change these on the Settings tab, variables and files on Environment.",
+  "appNoDeploymentsYet": "No deployments yet.",
+  "appKubernetesEvents": "Kubernetes events",
+  "appSource": "Source",
+  "appBuildDeploy": "Build & deploy",
+  "appBuilds": "Builds",
+  "appNoBuildYet": "No build yet.",
+  "appPushWebhook": "Push webhook",
+  "appGithubSettingsWebhooksAddWebhook": "GitHub: Settings → Webhooks → Add webhook, content type application/json, this secret. GitLab: Webhooks, secret token = this secret, push events. Gitea/Forgejo: the same as GitHub. For preview environments also send pull request (GitLab: merge request) events.",
+  "appNewWebhookSecret": "New webhook secret?",
+  "appTheOldSecretStopsWorking": "The old secret stops working: update it in your Git host.",
+  "appRotate": "Rotate",
+  "appNewSecret": "New secret",
+  "appCancelBuild": "Cancel build",
+  "appRemoveTheSavedTokenPublic": "Remove the saved token (public repository)",
+  "appBuildAndDeployOnEvery": "Build and deploy on every push",
+  "appNeedsThePushWebhookIn": "Needs the push webhook in your Git host",
+  "appRepository": "Repository",
+  "appBranch": "Branch",
+  "appRoot": "(root)",
+  "appDockerfile": "Dockerfile",
+  "appGithubAFineGrainedToken": "GitHub: a fine-grained token with Contents: read. GitLab: read_repository.",
+  "appTheRepositoryNeedsADockerfile": "The repository needs a Dockerfile. Images are built in the cluster with Kaniko and kept in the built-in registry.",
+  "appRemove": "Remove {host}?",
+  "@appRemove": {
+    "placeholders": {
+      "host": {
+        "type": "Object"
+      }
+    }
+  },
+  "appTheGatewayStopsServingIt": "The gateway stops serving it.",
+  "appPointItsDnsARecord": "Point its DNS (A record) to this server first.",
+  "appAlsoWwwRedirectsHere": "Also www. (redirects here)",
+  "appHttpsLetSEncrypt": "HTTPS (Let's Encrypt)",
+  "appRedirectHttpToHttps": "Redirect HTTP to HTTPS",
+  "appRequestsSPerIp": "Requests/s per IP",
+  "appMaxUploadMb": "Max upload MB",
+  "appTimeoutS": "Timeout s",
+  "app0NoLimitTimeout60": "0 = no limit (timeout: 60 s). Above the rate limit a client gets 429 (Too Many Requests); one that keeps going is blocked for a while (Gateway → Blocked IPs). One page load can make dozens of requests. Older gateways block for 24 h at once and need at least 10.",
+  "appRedirectsAccessHeaders": "Redirects, access, headers",
+  "appPasteAEnvFile": "Paste a .env file",
+  "appDatabaseUrlPostgresLogLevel": "DATABASE_URL=postgres://…\nLOG_LEVEL=info",
+  "appAddVariables": "Add variables",
+  "appNoVariablesEveryAppAlso": "No variables. Every app also gets PORT and APP_ARGS.",
+  "appAddVariable": "Add variable",
+  "appPasteEnv": "Paste .env",
+  "appKey": "KEY",
+  "appEnvironmentVariables": "Environment variables",
+  "appConfigFiles": "Config files",
+  "appNoVariables": "No variables.",
+  "appRevealSecrets": "Reveal secrets",
+  "appDiscard": "Discard",
+  "appRemove2": "Remove {path}?",
+  "@appRemove2": {
+    "placeholders": {
+      "path": {
+        "type": "Object"
+      }
+    }
+  },
+  "appTheFileDisappearsFromThe": "The file disappears from the containers with the next deploy.",
+  "appMountFilesSuchAsApplication": "Mount files such as application.yml, a .env file or a certificate at any path in the container.",
+  "appAddFile": "Add file",
+  "appPathInTheContainer": "Path in the container",
+  "appContent": "Content",
+  "appSecret": "Secret",
+  "appHiddenInThePanelUnless": "Hidden in the panel unless revealed (always encrypted at rest)",
+  "appSaveFile": "Save file",
+  "appDatabases": "Databases",
+  "appProjectDatabases": "Project databases",
+  "appNoDatabaseLinkedAddOne": "No database linked. Add one on the project page and link it to this app.",
+  "appYourOwnVariablesWithThe": "Your own variables with the same names win.",
+  "appBuildStartedItDeploysWhen": "Build started: it deploys {appName} when it is done",
+  "@appBuildStartedItDeploysWhen": {
+    "placeholders": {
+      "appName": {
+        "type": "Object"
+      }
+    }
+  },
+  "appLeaveTheWizard": "Leave the wizard?",
+  "appWasCreatedButNotDeployed": "\"{appName}\" was created but not deployed yet. Keep it to finish later, or discard it.",
+  "@appWasCreatedButNotDeployed": {
+    "placeholders": {
+      "appName": {
+        "type": "Object"
+      }
+    }
+  },
+  "appCouldNotDiscard": "Could not discard: {e}",
+  "@appCouldNotDiscard": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "appDeployAnyway": "Deploy anyway",
+  "appStepOf": "Step {index} of {stepsLength}",
+  "@appStepOf": {
+    "placeholders": {
+      "index": {
+        "type": "Object"
+      },
+      "stepsLength": {
+        "type": "Object"
+      }
+    }
+  },
+  "appIsSavedAsNotDeployed": "{appName} is saved as \"not deployed\"; you can close the wizard and continue later from the app page.",
+  "@appIsSavedAsNotDeployed": {
+    "placeholders": {
+      "appName": {
+        "type": "Object"
+      }
+    }
+  },
+  "appThereAreNoProjectsYet": "There are no projects yet. Create one first.",
+  "appTheTypeIsFixedOnce": "The type is fixed once the app exists. Discard the app to choose another type.",
+  "appExistingImage": "Existing image",
+  "appBuildFromGit": "Build from Git",
+  "appGhcrIoAcmeShop1": "ghcr.io/acme/shop:1.4.2",
+  "appAnyPublicImageOrA": "Any public image, or a private one with a login under Settings → Registries. Pin a version tag (not :latest) so deploys and rollbacks are reproducible.",
+  "appShopApi": "Shop API",
+  "appUsedInKubernetesNamesAnd": "Used in Kubernetes names and the default domain",
+  "appPortYourAppListensOn": "Port your app listens on",
+  "appAlsoAvailableToTheApp": "Also available to the app as $PORT",
+  "appNoBaseDomainIsSet": "No base domain is set, so the app gets no domain automatically. Set one in Settings, or add a domain on the app page later.",
+  "appDefaultDomainWithALet": "default domain, with a Let's Encrypt certificate",
+  "appScheduleCron": "Schedule (cron)",
+  "appEG15Every15": "e.g. */15 * * * * = every 15 minutes, @daily",
+  "appCancelUpload": "Cancel upload",
+  "appRetryUpload": "Retry upload",
+  "appThisFileSuitsBetterThan": "This file suits {label} better than the version you chose.",
+  "@appThisFileSuitsBetterThan": {
+    "placeholders": {
+      "label": {
+        "type": "Object"
+      }
+    }
+  },
+  "appUse": "Use {label}",
+  "@appUse": {
+    "placeholders": {
+      "label": {
+        "type": "Object"
+      }
+    }
+  },
+  "appCpuMillicores": "CPU (millicores)",
+  "appMemoryMb": "Memory (MB)",
+  "appPortOpen": "Port open",
+  "appHttp": "HTTP",
+  "appNone": "None",
+  "appPath": "Path",
+  "appTrafficOnlyReachesAReplica": "Traffic only reaches a replica once its health check passes, so a broken release never replaces a working one.",
+  "appSpringProfilesActiveProd": "--spring.profiles.active=prod",
+  "appPassedToYourAppAs": "Passed to your app as $APP_ARGS",
+  "appYouCanLeaveThisPage": "You can leave this page; the deploy continues on the server.",
+  "appBackToTheProject": "Back to the project",
+  "appMoreReplicas": "More replicas",
+  "appChangedAreSavedButNot": "Changed {list} are saved but not live yet.",
+  "@appChangedAreSavedButNot": {
+    "placeholders": {
+      "list": {
+        "type": "Object"
+      }
+    }
+  },
+  "appRedeploy": "Redeploy",
+  "appGeneral": "General",
+  "appGhcrIoAcmeApp1": "ghcr.io/acme/app:1.2.3",
+  "appBuildFromAGitRepository": "Build from a Git repository instead",
+  "appNetworkAndHealthCheck": "Network and health check",
+  "appResourcesPerReplica": "Resources per replica",
+  "appNoLimit": "No limit",
+  "appReserveTheseButAllowUsing": "Reserve these, but allow using any free capacity",
+  "appCommands": "Commands",
+  "appLeaveEmptyForTheDefault": "Leave empty for the default",
+  "appEGMigrateUp": "e.g. ./migrate up",
+  "appChangingSettingsNeedsTheApp": "Changing settings needs the app.edit permission.",
+  "appOpenPortsOnTheServer": "Open ports on the server",
+  "appTcpUdpPortsReachableFrom": "TCP/UDP ports reachable from outside (MQTT, game servers…). Web traffic goes through domains instead.",
+  "appContainerPort": "Container port",
+  "appTcp": "TCP",
+  "appUdp": "UDP",
+  "appServerPort": "Server port",
+  "appAuto3000032767": "auto (30000–32767)",
+  "appOpenAPort": "Open a port",
+  "appPersistentDisksFilesWrittenThere": "Persistent disks: files written there survive restarts and deploys. Everything else in the container is temporary.",
+  "appMountedAt": "Mounted at",
+  "appSizeMib": "Size (MiB)",
+  "appRemoveFromTheAppThe": "Remove from the app (the data is kept until you delete it)",
+  "appUsed": "Used",
+  "appFiles": "Files",
+  "appAddVolume": "Add volume",
+  "appNoVolumes": "No volumes.",
+  "appRemovedFromTheAppData": "Removed from the app, data still kept",
+  "appDeleteData": "Delete data",
+  "appStorage": "Storage",
+  "appDefault": "Default",
+  "appSharedByAllReplicas": "Shared by all replicas",
+  "appFixedOnceTheVolumeExists": "Fixed once the volume exists.",
+  "appDeleteTheDataOf": "Delete the data of {vName}?",
+  "@appDeleteTheDataOf": {
+    "placeholders": {
+      "vName": {
+        "type": "Object"
+      }
+    }
+  },
+  "appEverythingStoredOnThisVolume": "Everything stored on this volume is deleted for good.",
+  "appVolumeDeleted": "Volume {vName} deleted",
+  "@appVolumeDeleted": {
+    "placeholders": {
+      "vName": {
+        "type": "Object"
+      }
+    }
+  },
+  "appNewestPod": "Newest pod",
+  "appDisconnect": "Disconnect",
+  "appChangesInsideTheContainerAre": "Changes inside the container are lost on restart, except on volumes. Every session is recorded in the audit log.",
+  "appFilesUpTo64Mb": "Files up to 64 MB can be uploaded here",
+  "appReplace": "Replace {fName}?",
+  "@appReplace": {
+    "placeholders": {
+      "fName": {
+        "type": "Object"
+      }
+    }
+  },
+  "appTheFileInThisFolder": "The file in this folder is overwritten.",
+  "appReplace2": "Replace",
+  "appSaved": "Saved {eName}",
+  "@appSaved": {
+    "placeholders": {
+      "eName": {
+        "type": "Object"
+      }
+    }
+  },
+  "appIsNotATextFile": "{eName} is not a text file — download it instead",
+  "@appIsNotATextFile": {
+    "placeholders": {
+      "eName": {
+        "type": "Object"
+      }
+    }
+  },
+  "appDelete2": "Delete {what}?",
+  "@appDelete2": {
+    "placeholders": {
+      "what": {
+        "type": "Object"
+      }
+    }
+  },
+  "appThisCannotBeUndoneBackups": "This cannot be undone (backups of the volume keep older copies).",
+  "appFiles2": "Files · {volume}",
+  "@appFiles2": {
+    "placeholders": {
+      "volume": {
+        "type": "Object"
+      }
+    }
+  },
+  "appUpload": "Upload",
+  "appNewFolder": "New folder",
+  "appChangesApplyToTheRunning": "Changes apply to the running app at once. New files get the owner of their folder.",
+  "appOpeningTheVolume": "Opening the volume…",
+  "appEmptyFolder": "Empty folder",
+  "appDownload": "Download",
+  "appRenameMove": "Rename / move",
+  "appNewOrHttps": "/new or https://…",
+  "appAlsoRedirectFromAndKeep": "Also redirect /from/… and keep the rest of the path",
+  "appRemoveRule": "Remove rule",
+  "appAddRedirectRule": "Add redirect rule",
+  "appAllowedIps": "Allowed IPs",
+  "appOneIpOrCidrPer": "One IP or CIDR per line; everyone else gets 403. Empty = open to everyone.",
+  "appResponseHeaders": "Response headers",
+  "appXFrameOptionsDeny": "X-Frame-Options: DENY",
+  "appRequestHeadersToTheApp": "Request headers (to the app)",
+  "appXEnvStaging": "X-Env: staging",
+  "appNameValuePerLineAn": "\"Name: value\" per line; an empty value removes the header.",
+  "appLetOtherSitesCallThis": "Let other sites call this domain from the browser",
+  "appAllowedOrigins": "Allowed origins",
+  "appOnePerLineOrFor": "One per line, or * for any site (then without credentials).",
+  "appAllowCookiesCredentials": "Allow cookies / credentials",
+  "appCompressTextResponsesGzip": "Compress text responses (gzip)",
+  "appHtmlCssJsJsonThat": "HTML, CSS, JS, JSON … that the app does not compress itself",
+  "appHstsBrowsersOnlyUseHttps": "HSTS (browsers only use HTTPS)",
+  "appOff": "Off",
+  "app5MinutesTesting": "5 minutes (testing)",
+  "app6Months": "6 months",
+  "app1Year": "1 year",
+  "app2Years": "2 years",
+  "appIncludeSubdomains": "Include subdomains",
+  "onboardingOnlyAnOwnerCanSet": "Only an Owner can set up the panel",
+  "onboardingSetUpNectarApps": "Set up Nectar Apps",
+  "onboardingThreeShortStepsYouCan": "Three short steps. You can change everything later in Settings.",
+  "onboardingSkipSetupForNow": "Skip setup for now",
+  "onboardingBaseDomain": "Base domain",
+  "onboardingAtYourDnsProviderAdd": "At your DNS provider, add one record:",
+  "onboardingContinue": "Continue",
+  "onboardingEmailForLetSEncrypt": "Email for Let's Encrypt",
+  "onboardingOnlyUsedForExpiryWarnings": "Only used for expiry warnings",
+  "onboardingLeaveItEmptyToRegister": "Leave it empty to register without an email.",
+  "onboardingImage50mCpu64Mb": "Image: {sampleImage} · 50m CPU · 64 MB",
+  "@onboardingImage50mCpu64Mb": {
+    "placeholders": {
+      "sampleImage": {
+        "type": "Object"
+      }
+    }
+  },
+  "onboardingSkip": "Skip",
+  "onboardingDeploySample": "Deploy sample",
+  "alertAllAlerts": "All alerts",
+  "alertAndMore": "and {alertsLength} more",
+  "@alertAndMore": {
+    "placeholders": {
+      "alertsLength": {
+        "type": "Object"
+      }
+    }
+  },
+  "alertGetNotifiedWhenAppsGo": "Get notified when apps go down, servers run out of resources or certificates are about to expire.",
+  "alertNoNotificationChannelYetAlerts": "No notification channel yet: alerts only show up here. Add ntfy, Telegram, email or a webhook under Channels.",
+  "alertEnterANumber": "{title}: enter a number",
+  "@alertEnterANumber": {
+    "placeholders": {
+      "title": {
+        "type": "Object"
+      }
+    }
+  },
+  "alertAlertRulesSaved": "Alert rules saved",
+  "alertNotifications": "Notifications",
+  "alertPanelAddressForLinks": "Panel address for links",
+  "alertNotificationsLinkToTheAffected": "Notifications link to the affected app. Leave empty for no links.",
+  "alertRemindMeWhileAnAlert": "Remind me while an alert keeps firing",
+  "alertChangingRulesNeedsTheSettings": "Changing rules needs the settings.manage permission.",
+  "alertForAtLeast": "For at least",
+  "alertTestMessageSentTo": "Test message sent to {chName}",
+  "@alertTestMessageSentTo": {
+    "placeholders": {
+      "chName": {
+        "type": "Object"
+      }
+    }
+  },
+  "alertDelete": "Delete {chName}?",
+  "@alertDelete": {
+    "placeholders": {
+      "chName": {
+        "type": "Object"
+      }
+    }
+  },
+  "alertAlertsWillNoLongerBe": "Alerts will no longer be sent there.",
+  "alertChannels": "Channels",
+  "alertAddChannel": "Add channel",
+  "alertNoChannelsYet": "No channels yet",
+  "alertNtfyIsTheQuickestInstall": "ntfy is the quickest: install the ntfy app, subscribe to a topic name only you know, and add it here.",
+  "alertSendATest": "Send a test",
+  "alertSendWithThePanelS": "Send with the panel's email settings",
+  "alertSettingsEmailTurnOffTo": "Settings → Email; turn off to use another SMTP server",
+  "alertEncryption": "Encryption",
+  "alertStarttlsPort587": "STARTTLS (port 587)",
+  "alertTlsPort465": "TLS (port 465)",
+  "alertNonePort25LocalRelays": "None (port 25, local relays only)",
+  "dashboardFinishSettingUpDomainHttps": "Finish setting up: domain, HTTPS email and a sample app.",
+  "dashboardContinueSetup": "Continue setup",
+  "dashboardNeedAttention": "Need attention",
+  "dashboardNoAppsYet": "No apps yet.",
+  "dashboardNothingDeployedYet": "Nothing deployed yet",
+  "dashboardAProjectIsASpace": "A project is a space for related apps with its own quota. Create one, then add your first app.",
+  "shellLater": "Later",
+  "shellReload": "Reload",
+  "widgetNothingYet": "Nothing yet.",
+  "widgetNoDataYetHistoryFills": "No data yet: history fills in every 15 seconds.",
+  "widgetRetry": "Retry",
+  "widgetLoading": "Loading",
+  "appPreviewEnvironments": "Preview environments",
+  "appPreviewsSwitch": "A preview for every pull request",
+  "appPreviewsHelp": "Each pull request into this branch gets its own copy of the app at its own domain, rebuilt on new commits and deleted when the pull request closes. Needs the webhook with pull request events.",
+  "appPreviewDatabases": "Previews use this app's databases",
+  "appPreviewDatabasesHelp": "Off: previews start without database links (they must not change real data).",
+  "appPreviewForks": "Also pull requests from forks",
+  "appPreviewForksHelp": "Their code runs with this app's variables and secrets.",
+  "appPreviewTtl": "Delete inactive previews after",
+  "appPreviewTtlNever": "never",
+  "appPreviewDays": "{days} days",
+  "@appPreviewDays": {
+    "placeholders": {
+      "days": {
+        "type": "Object"
+      }
+    }
+  },
+  "appPreviews": "Previews",
+  "appNoPreviews": "No open pull request has a preview.",
+  "appPreviewOf": "Preview of {parent} · pull request #{number}",
+  "@appPreviewOf": {
+    "placeholders": {
+      "parent": {
+        "type": "Object"
+      },
+      "number": {
+        "type": "Object"
+      }
+    }
+  },
+  "appPreviewOfHelp": "Rebuilt on new commits and deleted when the pull request closes. Change settings on {parent}.",
+  "@appPreviewOfHelp": {
+    "placeholders": {
+      "parent": {
+        "type": "Object"
+      }
+    }
+  },
+  "appOpenPullRequest": "Pull request",
+  "appOpenPreview": "Open",
+  "appDeletePreview": "Delete the preview {slug}?",
+  "@appDeletePreview": {
+    "placeholders": {
+      "slug": {
+        "type": "Object"
+      }
+    }
+  },
+  "appDeletePreviewHelp": "A new commit to the pull request creates it again.",
+  "authOr": "or",
+  "authSignInWithPasskey": "Sign in with a passkey",
+  "settingPasskeys": "Passkeys",
+  "settingAddPasskey": "Add passkey",
+  "settingPasskeyName": "New passkey",
+  "settingPasskeyNameHint": "Name (e.g. MacBook, iPhone, YubiKey)",
+  "settingPasskeyAdded": "Passkey added: sign in with it on the login page",
+  "settingPasskeyDelete": "Remove the passkey {name}?",
+  "@settingPasskeyDelete": {
+    "placeholders": {
+      "name": {
+        "type": "Object"
+      }
+    }
+  },
+  "settingPasskeyDeleteHelp": "It can no longer sign in here. Also delete it from your device or password manager.",
+  "settingPasskeysHelp": "Sign in with Touch ID, Face ID, Windows Hello, your phone or a security key — no password and no code needed. A passkey works at this panel address only.",
+  "settingPasskeySynced": "synced",
+  "settingPasskeyNeverUsed": "not used yet",
+  "settingPasskeyUsed": "used {when}",
+  "@settingPasskeyUsed": {
+    "placeholders": {
+      "when": {
+        "type": "Object"
+      }
+    }
+  },
+  "settingPasskeysWebOnly": "Add and use passkeys in the web panel (a recent Chrome, Edge, Safari or Firefox)."
+}

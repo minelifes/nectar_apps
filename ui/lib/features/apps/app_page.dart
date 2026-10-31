@@ -12,6 +12,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -75,9 +76,10 @@ class _AppPageState extends ConsumerState<AppPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final app = ref.watch(appProvider(widget.id));
     final back = IconButton(
-      tooltip: 'Project',
+      tooltip: s.projectProject,
       icon: const Icon(Icons.arrow_back_rounded),
       onPressed: () => app.hasValue ? context.go('/projects/${app.value!.projectId}') : context.go('/projects'),
     );
@@ -85,12 +87,13 @@ class _AppPageState extends ConsumerState<AppPage> {
       skipLoadingOnRefresh: true,
       skipLoadingOnReload: true,
       loading: () => const LoadingBlock(height: 320),
-      error: (e, _) => PageScaffold(title: 'App', leading: back, children: [ErrorBlock(error: e, onRetry: _refresh)]),
+      error: (e, _) => PageScaffold(title: s.addonApp, leading: back, children: [ErrorBlock(error: e, onRetry: _refresh)]),
       data: (a) => _body(a, back),
     );
   }
 
   Widget _body(App app, Widget back) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     bool can(String p) => session.can(p, projectId: app.projectId);
     final releases = ref.watch(releasesProvider(app.id));
@@ -124,7 +127,7 @@ class _AppPageState extends ConsumerState<AppPage> {
         FilledButton.icon(
           onPressed: running != null ? null : () async => _started(await showChangeImage(context, app)),
           icon: const Icon(Icons.rocket_launch_rounded, size: 18),
-          label: const Text('Deploy image'),
+          label: Text(s.appDeployImage),
         ),
       _Menu(
         app: app,
@@ -162,10 +165,10 @@ class _AppPageState extends ConsumerState<AppPage> {
         const SizedBox(height: NectarTokens.gap),
         if (watch != null) ...[
           NCard(
-            title: 'Deploy in progress',
+            title: s.appDeployInProgress,
             trailing: _watchRelease != null && running == null
                 ? IconButton(
-                    tooltip: 'Hide',
+                    tooltip: s.appHide,
                     icon: const Icon(Icons.close_rounded, size: 18),
                     onPressed: () => setState(() => _watchRelease = null),
                   )
@@ -185,7 +188,7 @@ class _AppPageState extends ConsumerState<AppPage> {
             child: NCard(
               child: EmptyState(
                 icon: Icons.rocket_launch_rounded,
-                title: 'Not deployed yet',
+                title: s.appNotDeployedYet,
                 message: app.runtime == 'image'
                     ? 'Deploy the image to start the app.'
                     : 'Upload your file and deploy it to start the app.',
@@ -216,6 +219,7 @@ class _Menu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final stopped = app.replicas == 0;
     final cron = app.kind == 'cron';
     final session = ref.watch(sessionProvider);
@@ -223,7 +227,7 @@ class _Menu extends ConsumerWidget {
     final mine = projects.where((p) => p.id == app.projectId).firstOrNull;
     final targets = mine == null ? const <Project>[] : relatedProjects(mine, projects).where((p) => session.can('app.deploy', projectId: p.id)).toList();
     return PopupMenuButton<String>(
-      tooltip: 'More',
+      tooltip: s.appMore,
       icon: const Icon(Icons.more_horiz_rounded),
       onSelected: (v) async {
         switch (v) {
@@ -247,16 +251,16 @@ class _Menu extends ConsumerWidget {
         }
       },
       itemBuilder: (_) => [
-        if (canDeploy) PopupMenuItem(value: 'redeploy', enabled: !busy, child: const Text('Redeploy current version')),
-        if (canOperate && app.hasReplicas && !stopped) PopupMenuItem(value: 'restart', enabled: !busy, child: const Text('Restart')),
+        if (canDeploy) PopupMenuItem(value: 'redeploy', enabled: !busy, child: Text(s.appRedeployCurrentVersion)),
+        if (canOperate && app.hasReplicas && !stopped) PopupMenuItem(value: 'restart', enabled: !busy, child: Text(s.appRestart)),
         if (canOperate && (app.hasReplicas || cron) && !stopped)
           PopupMenuItem(value: 'stop', enabled: !busy, child: Text(cron ? 'Pause schedule' : 'Stop')),
         if (canOperate && (app.hasReplicas || cron) && stopped)
           PopupMenuItem(value: 'start', enabled: !busy, child: Text(cron ? 'Resume schedule' : 'Start')),
-        for (final t in targets) PopupMenuItem(value: 'promote:${t.id}', enabled: !busy, child: Text('Promote to ${envLabel(t)}…')),
-        const PopupMenuItem(value: 'clone', child: Text('Copy app…')),
+        for (final t in targets) PopupMenuItem(value: 'promote:${t.id}', enabled: !busy, child: Text(s.appPromoteTo(envLabel(t)))),
+        PopupMenuItem(value: 'clone', child: Text(s.appCopyApp)),
         if (canDelete) const PopupMenuDivider(),
-        if (canDelete) const PopupMenuItem(value: 'delete', child: Text('Delete app…')),
+        if (canDelete) PopupMenuItem(value: 'delete', child: Text(s.appDeleteApp)),
       ],
     );
   }
@@ -327,17 +331,18 @@ class _LiveCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final live = ref.watch(appLiveProvider(app.id));
     final canLogs = ref.watch(sessionProvider.select((s) => s.can('app.logs', projectId: app.projectId)));
     final canScale = ref.watch(sessionProvider.select((s) => s.can('app.restart', projectId: app.projectId)));
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Running',
+      title: l.statusRunning,
       trailing: live.hasValue && app.hasReplicas
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('${live.value!.ready} / ${live.value!.replicas} ready', style: TextStyle(color: c.muted, fontSize: 13)),
+                Text(l.appReady(live.value!.ready, live.value!.replicas), style: TextStyle(color: c.muted, fontSize: 13)),
                 if (canScale) ...[const SizedBox(width: 8), ScaleControl(app: app)],
               ],
             )
@@ -391,7 +396,7 @@ class _LiveCard extends ConsumerWidget {
                         TextButton.icon(
                           onPressed: () => showCrashLog(context, ref, app, p.name),
                           icon: const Icon(Icons.history_rounded, size: 16),
-                          label: const Text('Crash log'),
+                          label: Text(l.appCrashLog),
                         ),
                     ],
                   ),
@@ -399,7 +404,7 @@ class _LiveCard extends ConsumerWidget {
               for (final (port, proto, nodePort) in s.nodePorts)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text('Port $port/$proto is open on the server as $nodePort', style: const TextStyle(fontSize: 13)),
+                  child: Text(l.appPortIsOpenOnThe(port, proto, nodePort), style: const TextStyle(fontSize: 13)),
                 ),
             ],
           );
@@ -416,20 +421,21 @@ class _DomainsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final domains = ref.watch(domainsProvider(app.id));
     final c = NectarColors.of(context);
     final canManage = ref.watch(sessionProvider.select((s) => s.can('domain.manage', projectId: app.projectId)));
     return NCard(
-      title: 'Domains',
+      title: l.navDomains,
       trailing: canManage
-          ? IconButton(tooltip: 'Add domain', icon: const Icon(Icons.add_link_rounded, size: 20), onPressed: () => showDomainDialog(context, appId: app.id))
+          ? IconButton(tooltip: l.appAddDomain, icon: const Icon(Icons.add_link_rounded, size: 20), onPressed: () => showDomainDialog(context, appId: app.id))
           : null,
       child: AsyncBlock(
         value: domains,
         loadingHeight: 60,
         data: (list) => list.isEmpty
             ? Text(
-                'No domain. Set a base domain in Settings to get one automatically; custom domains come with the domains page.',
+                l.appNoDomainSetABase,
                 style: TextStyle(color: c.muted, fontSize: 13.5),
               )
             : Column(
@@ -466,16 +472,16 @@ class _DomainsCard extends ConsumerWidget {
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Copy',
+                            tooltip: l.backupCopy,
                             icon: const Icon(Icons.copy_rounded, size: 16),
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: d.url));
-                              showSnack(context, 'Copied ${d.host}');
+                              showSnack(context, l.appCopied(d.host));
                             },
                           ),
                           if (canManage)
                             IconButton(
-                              tooltip: 'Edit',
+                              tooltip: l.backupEdit,
                               icon: const Icon(Icons.tune_rounded, size: 16),
                               onPressed: () => showDomainDialog(context, appId: app.id, domain: d),
                             ),
@@ -497,6 +503,7 @@ class _ConfigCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final rows = <(String, String)>[
       ('Type', '${runtimeInfo(app.runtime).label}${app.runtimeVersion.isEmpty ? '' : ' ${app.runtimeVersion}'}'),
@@ -511,7 +518,7 @@ class _ConfigCard extends StatelessWidget {
       if (app.updatedAt != null) ('Changed', timeAgo(app.updatedAt)),
     ];
     return NCard(
-      title: 'Configuration',
+      title: s.appConfiguration,
       child: Column(
         children: [
           for (final (k, v) in rows)
@@ -526,7 +533,7 @@ class _ConfigCard extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 6),
-          Text('Change these on the Settings tab, variables and files on Environment.', style: TextStyle(color: c.muted, fontSize: 12)),
+          Text(s.appChangeTheseOnTheSettings, style: TextStyle(color: c.muted, fontSize: 12)),
         ],
       ),
     );
@@ -546,6 +553,7 @@ class _Deployments extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final artifacts = ref.watch(artifactsProvider(app.id));
     final byId = {for (final a in (artifacts.hasValue ? artifacts.value! : const <Artifact>[])) a.id: a};
     final c = NectarColors.of(context);
@@ -554,7 +562,7 @@ class _Deployments extends ConsumerWidget {
       child: AsyncBlock(
         value: releases,
         data: (list) {
-          if (list.isEmpty) return Padding(padding: const EdgeInsets.all(12), child: Text('No deployments yet.', style: TextStyle(color: c.muted)));
+          if (list.isEmpty) return Padding(padding: const EdgeInsets.all(12), child: Text(s.appNoDeploymentsYet, style: TextStyle(color: c.muted)));
           final liveNumber = list.where((r) => r.status == 'live').firstOrNull?.number;
           return Column(
             children: [
@@ -600,7 +608,7 @@ class _Deployments extends ConsumerWidget {
                       if (canRollback && r.number != liveNumber && (r.status == 'live' || r.status == 'superseded'))
                         TextButton(
                           onPressed: busy ? null : () async => onStarted(await rollbackTo(context, ref, app, r)),
-                          child: const Text('Roll back'),
+                          child: Text(s.updateRollBack2),
                         ),
                     ],
                   ),
@@ -620,11 +628,12 @@ class _Events extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final events = ref.watch(appEventsProvider(app.id));
     return NCard(
-      title: 'Kubernetes events',
+      title: s.appKubernetesEvents,
       trailing: IconButton(
-        tooltip: 'Refresh',
+        tooltip: s.actionRefresh,
         icon: const Icon(Icons.refresh_rounded, size: 18),
         onPressed: () => ref.invalidate(appEventsProvider(app.id)),
       ),

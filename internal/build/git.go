@@ -114,7 +114,7 @@ func (rm Remote) Head(ctx context.Context, repo, branch, token string) (string, 
 	if err != nil {
 		return "", err
 	}
-	if sha, ok := refs["refs/heads/"+branch]; ok {
+	if sha, ok := refs[fullRef(branch)]; ok {
 		return sha, nil
 	}
 	return "", fmt.Errorf("%w: %s", ErrNoBranch, branch)
@@ -162,14 +162,43 @@ func parseAdvertisement(r io.Reader) (map[string]string, error) {
 
 // ------------------------------------------------------------- webhooks --
 
-// Push is a push event from GitHub, GitLab or Gitea/Forgejo.
+// fullRef turns a branch name into its ref; refs/… (e.g. refs/pull/12/head of a preview) stay as they are.
+func fullRef(branch string) string {
+	if strings.HasPrefix(branch, "refs/") {
+		return branch
+	}
+	return "refs/heads/" + branch
+}
+
+// Push is a push or pull request event from GitHub, GitLab or Gitea/Forgejo.
 type Push struct {
 	Provider string
 	Branch   string // "" for tags
 	Commit   string
 	Message  string
 	Deleted  bool
-	Ping     bool
+	Ping     bool         // an event that starts nothing (ping, issues, …)
+	PR       *PullRequest // a pull / merge request event
+}
+
+// Pull request actions.
+const (
+	PROpen   = "open"   // opened or reopened
+	PRUpdate = "update" // new commits
+	PRClose  = "close"  // closed or merged
+)
+
+// PullRequest is a pull (GitHub, Gitea) or merge (GitLab) request event.
+type PullRequest struct {
+	Number     int
+	Action     string // open | update | close ("" = an event that changes nothing, e.g. a new label)
+	BaseBranch string // the branch it merges into
+	HeadRef    string // the ref the provider keeps for it: refs/pull/12/head, refs/merge-requests/12/head
+	HeadSHA    string
+	Title      string
+	URL        string
+	Author     string
+	Fork       bool // from another repository
 }
 
 // ErrSignature means the webhook signature or token did not match.
@@ -184,7 +213,11 @@ func ParsePush(h http.Header, body []byte, secret string) (Push, error) {
 		if !hmac.Equal([]byte(h.Get("X-Gitlab-Token")), []byte(secret)) {
 			return p, ErrSignature
 		}
-		if ev := h.Get("X-Gitlab-Event"); ev != "Push Hook" {
+		switch h.Get("X-Gitlab-Event") {
+		case "Push Hook":
+		case "Merge Request Hook":
+			return parseGitLabMR(p, body)
+		default:
 			p.Ping = true
 			return p, nil
 		}
@@ -198,6 +231,9 @@ func ParsePush(h http.Header, body []byte, secret string) (Push, error) {
 			return p, ErrSignature
 		}
 		ev := h.Get("X-Gitea-Event") + h.Get("X-Forgejo-Event") + h.Get("X-Gogs-Event")
+		if strings.HasPrefix(ev, "pull_request") {
+			return parsePR(p, body)
+		}
 		if !strings.HasPrefix(ev, "push") {
 			p.Ping = true
 			return p, nil
@@ -207,7 +243,11 @@ func ParsePush(h http.Header, body []byte, secret string) (Push, error) {
 		if !checkHMAC(body, secret, strings.TrimPrefix(h.Get("X-Hub-Signature-256"), "sha256=")) {
 			return p, ErrSignature
 		}
-		if h.Get("X-GitHub-Event") != "push" {
+		switch h.Get("X-GitHub-Event") {
+		case "push":
+		case "pull_request":
+			return parsePR(p, body)
+		default:
 			p.Ping = true
 			return p, nil
 		}
@@ -259,6 +299,103 @@ func ParsePush(h http.Header, body []byte, secret string) (Push, error) {
 			return p, errors.New("webhook: no commit in the push event")
 		}
 	}
+	return p, nil
+}
+
+// parsePR decodes a GitHub or Gitea/Forgejo pull_request event.
+func parsePR(p Push, body []byte) (Push, error) {
+	type repo struct {
+		FullName string `json:"full_name"`
+	}
+	var ev struct {
+		Action      string `json:"action"`
+		Number      int    `json:"number"`
+		PullRequest struct {
+			Number  int    `json:"number"`
+			Title   string `json:"title"`
+			HTMLURL string `json:"html_url"`
+			User    struct {
+				Login string `json:"login"`
+			} `json:"user"`
+			Head struct {
+				SHA  string `json:"sha"`
+				Ref  string `json:"ref"`
+				Repo *repo  `json:"repo"`
+			} `json:"head"`
+			Base struct {
+				Ref  string `json:"ref"`
+				Repo *repo  `json:"repo"`
+			} `json:"base"`
+		} `json:"pull_request"`
+	}
+	if err := json.Unmarshal(body, &ev); err != nil {
+		return p, fmt.Errorf("webhook: %w", err)
+	}
+	pr := ev.PullRequest
+	n := ev.Number
+	if n == 0 {
+		n = pr.Number
+	}
+	if n <= 0 {
+		return p, errors.New("webhook: no pull request number")
+	}
+	out := &PullRequest{Number: n, BaseBranch: pr.Base.Ref, HeadRef: fmt.Sprintf("refs/pull/%d/head", n), HeadSHA: pr.Head.SHA,
+		Title: pr.Title, URL: pr.HTMLURL, Author: pr.User.Login}
+	out.Fork = pr.Head.Repo == nil || pr.Base.Repo == nil || !strings.EqualFold(pr.Head.Repo.FullName, pr.Base.Repo.FullName)
+	switch ev.Action {
+	case "opened", "reopened", "ready_for_review":
+		out.Action = PROpen
+	case "synchronize", "synchronized":
+		out.Action = PRUpdate
+	case "closed":
+		out.Action = PRClose
+	}
+	p.PR = out
+	p.Commit, p.Message = pr.Head.SHA, pr.Title
+	return p, nil
+}
+
+// parseGitLabMR decodes a GitLab merge request event.
+func parseGitLabMR(p Push, body []byte) (Push, error) {
+	var ev struct {
+		User struct {
+			Username string `json:"username"`
+		} `json:"user"`
+		Attrs struct {
+			IID             int    `json:"iid"`
+			Title           string `json:"title"`
+			URL             string `json:"url"`
+			Action          string `json:"action"`
+			TargetBranch    string `json:"target_branch"`
+			SourceProjectID int64  `json:"source_project_id"`
+			TargetProjectID int64  `json:"target_project_id"`
+			OldRev          string `json:"oldrev"`
+			LastCommit      struct {
+				ID string `json:"id"`
+			} `json:"last_commit"`
+		} `json:"object_attributes"`
+	}
+	if err := json.Unmarshal(body, &ev); err != nil {
+		return p, fmt.Errorf("webhook: %w", err)
+	}
+	a := ev.Attrs
+	if a.IID <= 0 {
+		return p, errors.New("webhook: no merge request number")
+	}
+	out := &PullRequest{Number: a.IID, BaseBranch: a.TargetBranch, HeadRef: fmt.Sprintf("refs/merge-requests/%d/head", a.IID),
+		HeadSHA: a.LastCommit.ID, Title: a.Title, URL: a.URL, Author: ev.User.Username, Fork: a.SourceProjectID != a.TargetProjectID}
+	switch a.Action {
+	case "open", "reopen":
+		out.Action = PROpen
+	case "update":
+		if a.OldRev != "" { // new commits (without oldrev only the title, labels … changed)
+			out.Action = PRUpdate
+		}
+	case "close", "merge":
+		out.Action = PRClose
+	}
+	p.PR = out
+	p.Commit, p.Message = a.LastCommit.ID, a.Title
 	return p, nil
 }
 

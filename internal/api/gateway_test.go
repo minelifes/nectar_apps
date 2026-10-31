@@ -41,6 +41,7 @@ type fakeGateway struct {
 	covered  map[string]string   // host → certificate domain (covered_by on routes)
 	dns      map[string][]string // name → IPs (records the gateway created)
 	foreign  map[string]bool     // names with records someone else created
+	replicas []map[string]any    // GET /api/replicas
 }
 
 func (f *fakeGateway) handler(t *testing.T) http.Handler {
@@ -73,6 +74,9 @@ func (f *fakeGateway) handler(t *testing.T) http.Handler {
 		f.mu.Unlock()
 		js(w, map[string]any{"version": "test", "api_version": 1, "features": feats})
 	})
+	mux.HandleFunc("GET /api/replicas", auth(func(w http.ResponseWriter, r *http.Request) {
+		js(w, map[string]any{"role": "primary", "replicas": f.replicas})
+	}))
 	mux.HandleFunc("GET /api/routes", auth(func(w http.ResponseWriter, r *http.Request) {
 		out := []map[string]any{}
 		for _, rt := range f.routes {

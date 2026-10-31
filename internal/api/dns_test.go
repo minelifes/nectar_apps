@@ -84,7 +84,7 @@ func TestWebOptionsAndAutoDNS(t *testing.T) {
 	for _, x := range list {
 		m := x.(map[string]any)
 		if m["host"] == "shop.example.com" {
-			found = strings.Contains(m["status_message"].(string), "nectar-gateway 1.3")
+			found = strings.Contains(m["status_message"].(string), "the latest nectar-gateway")
 		}
 	}
 	if !found {

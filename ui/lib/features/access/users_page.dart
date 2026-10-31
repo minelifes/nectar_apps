@@ -7,6 +7,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/hex.dart';
@@ -17,24 +18,25 @@ class UsersPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     if (!session.can('user.manage')) {
-      return const PageScaffold(
-        title: 'Users',
-        children: [NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: 'No access', message: 'Your role does not include user.manage.'))],
+      return PageScaffold(
+        title: s.acceUsers,
+        children: [NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: s.noAccess, message: s.acceYourRoleDoesNotInclude))],
       );
     }
     final users = ref.watch(usersProvider);
     return PageScaffold(
-      title: 'Users',
-      subtitle: 'Who can sign in, and what they may do. Roles apply everywhere or to one project.',
+      title: s.acceUsers,
+      subtitle: s.acceWhoCanSignInAnd,
       maxWidth: 980,
       onRefresh: () async => ref.invalidate(usersProvider),
       actions: [
         FilledButton.icon(
           onPressed: () => showDialog<void>(context: context, builder: (_) => const _NewUserDialog()),
           icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-          label: const Text('Add user'),
+          label: Text(s.acceAddUser),
         ),
       ],
       children: [
@@ -148,6 +150,7 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
   }
 
   Future<void> _create() async {
+    final s = S.of(context);
     setState(() => _busy = true);
     try {
       final res = await ref.read(apiProvider).post('/users', data: {
@@ -162,7 +165,7 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
         setState(() => _link = '${m['invite_url']}');
       } else {
         Navigator.pop(context);
-        showSnack(context, m['emailed'] == true ? 'Invitation sent to ${_email.text.trim()}' : 'User created');
+        showSnack(context, m['emailed'] == true ? 'Invitation sent to ${_email.text.trim()}' : s.acceUserCreated);
       }
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
@@ -173,17 +176,18 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     if (_link != null) {
       return AlertDialog(
-        title: const Text('Share the invitation link'),
+        title: Text(s.acceShareTheInvitationLink),
         content: SizedBox(
           width: 520,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('The panel cannot send emails (Settings → Email). Send this link yourself; it works for 7 days.'),
+              Text(s.acceThePanelCannotSendEmails),
               const SizedBox(height: 10),
               SelectableText(_link!, style: const TextStyle(fontFamily: 'monospace', fontSize: 12.5)),
             ],
@@ -193,40 +197,40 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: _link!));
-              showSnack(context, 'Copied');
+              showSnack(context, s.backupCopied);
             },
-            child: const Text('Copy'),
+            child: Text(s.backupCopy),
           ),
-          FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+          FilledButton(onPressed: () => Navigator.pop(context), child: Text(s.backupDone)),
         ],
       );
     }
     return AlertDialog(
-      title: const Text('Add user'),
+      title: Text(s.acceAddUser),
       content: SizedBox(
         width: 460,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _email, decoration: const InputDecoration(labelText: 'Email'), keyboardType: TextInputType.emailAddress),
+            TextField(controller: _email, decoration: InputDecoration(labelText: s.loginEmail), keyboardType: TextInputType.emailAddress),
             const SizedBox(height: 10),
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name')),
+            TextField(controller: _name, decoration: InputDecoration(labelText: s.backupName)),
             const SizedBox(height: 10),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: _invite,
               onChanged: (v) => setState(() => _invite = v),
-              title: const Text('Send an invitation'),
-              subtitle: Text('They choose their own password', style: TextStyle(color: c.muted, fontSize: 12.5)),
+              title: Text(s.acceSendAnInvitation),
+              subtitle: Text(s.acceTheyChooseTheirOwnPassword, style: TextStyle(color: c.muted, fontSize: 12.5)),
             ),
-            if (!_invite) TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Password (10+ characters)')),
+            if (!_invite) TextField(controller: _password, obscureText: true, decoration: InputDecoration(labelText: s.accePassword10Characters)),
             const SizedBox(height: 8),
-            Text('New users have no roles: give them one after creating them.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+            Text(s.acceNewUsersHaveNoRoles, style: TextStyle(color: c.muted, fontSize: 12.5)),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
         FilledButton(onPressed: _busy ? null : _create, child: Text(_busy ? 'Creating…' : 'Create')),
       ],
     );
@@ -283,7 +287,8 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
   }
 
   Future<void> _delete() async {
-    if (!await confirmAction(context, 'Delete ${widget.user.label}?', 'They can no longer sign in; their API tokens stop working. The audit log keeps their actions.', 'Delete',
+    final s = S.of(context);
+    if (!await confirmAction(context, s.acceDelete(widget.user.label), s.acceTheyCanNoLongerSign, s.actionDelete,
         danger: true)) {
       return;
     }
@@ -295,6 +300,7 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final session = ref.watch(sessionProvider);
     final u = widget.user;
@@ -314,19 +320,19 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
             children: [
               Text(u.email, style: TextStyle(color: c.muted)),
               const SizedBox(height: 12),
-              TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(controller: _name, decoration: InputDecoration(labelText: s.backupName)),
               if (!widget.self)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _disabled,
                   onChanged: (v) => setState(() => _disabled = v),
-                  title: const Text('Disabled'),
-                  subtitle: Text('Cannot sign in; sessions and tokens stop working', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                  title: Text(s.acceDisabled),
+                  subtitle: Text(s.acceCannotSignInSessionsAnd, style: TextStyle(color: c.muted, fontSize: 12.5)),
                 ),
               const SizedBox(height: 10),
               const SectionLabel('Roles'),
               if (u.isOwner)
-                Text('Owners can do everything; roles do not change that.', style: TextStyle(color: c.muted))
+                Text(s.acceOwnersCanDoEverythingRoles, style: TextStyle(color: c.muted))
               else if (bindings == null || !roles.hasValue || !projects.hasValue)
                 const LinearProgressIndicator()
               else ...[
@@ -340,7 +346,7 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
                             key: ValueKey('role-$i-${bindings[i].roleId}'),
                             initialValue: roles.value!.any((r) => r.id == bindings[i].roleId) ? bindings[i].roleId : null,
                             isExpanded: true,
-                            decoration: const InputDecoration(labelText: 'Role', isDense: true),
+                            decoration: InputDecoration(labelText: s.acceRole, isDense: true),
                             items: [for (final r in roles.value!) DropdownMenuItem(value: r.id, child: Text(r.name))],
                             onChanged: (v) => setState(() => bindings[i] = RoleBindingInfo(roleId: v ?? bindings[i].roleId, roleName: '', projectId: bindings[i].projectId)),
                           ),
@@ -351,16 +357,16 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
                             key: ValueKey('scope-$i-${bindings[i].projectId}'),
                             initialValue: bindings[i].projectId ?? 0,
                             isExpanded: true,
-                            decoration: const InputDecoration(labelText: 'Where', isDense: true),
+                            decoration: InputDecoration(labelText: s.acceWhere, isDense: true),
                             items: [
-                              const DropdownMenuItem(value: 0, child: Text('Everywhere')),
+                              DropdownMenuItem(value: 0, child: Text(s.acceEverywhere)),
                               for (final p in projects.value!) DropdownMenuItem(value: p.id, child: Text(p.name)),
                             ],
                             onChanged: (v) => setState(
                                 () => bindings[i] = RoleBindingInfo(roleId: bindings[i].roleId, roleName: '', projectId: v == null || v == 0 ? null : v)),
                           ),
                         ),
-                        IconButton(tooltip: 'Remove', icon: const Icon(Icons.close_rounded, size: 18), onPressed: () => setState(() => bindings.removeAt(i))),
+                        IconButton(tooltip: s.backupRemove2, icon: const Icon(Icons.close_rounded, size: 18), onPressed: () => setState(() => bindings.removeAt(i))),
                       ],
                     ),
                   ),
@@ -372,10 +378,10 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
                         : () => setState(() => bindings.add(RoleBindingInfo(
                             roleId: (roles.value!.where((r) => r.builtinKey == 'viewer').firstOrNull ?? roles.value!.first).id, roleName: ''))),
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Add role'),
+                    label: Text(s.acceAddRole),
                   ),
                 ),
-                Text('You can only give or take away roles whose permissions you hold yourself.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                Text(s.acceYouCanOnlyGiveOr, style: TextStyle(color: c.muted, fontSize: 12.5)),
               ],
               const SizedBox(height: 14),
               Wrap(
@@ -388,7 +394,7 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
                           ? null
                           : () => _call(() => ref.read(apiProvider).delete('/users/${u.id}/mfa').then((_) {}), 'Two-factor authentication turned off for ${u.label}'),
                       icon: const Icon(Icons.phonelink_erase_rounded, size: 18),
-                      label: const Text('Reset 2FA'),
+                      label: Text(s.acceReset2fa),
                     ),
                   if (!widget.self)
                     OutlinedButton.icon(
@@ -400,28 +406,28 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
                                 if (link != null) await Clipboard.setData(ClipboardData(text: '$link'));
                               }, 'Invitation sent (or its link copied when email is off)'),
                       icon: const Icon(Icons.forward_to_inbox_rounded, size: 18),
-                      label: const Text('Send invitation / reset link'),
+                      label: Text(s.acceSendInvitationResetLink),
                     ),
                   if (!widget.self && (!u.isOwner || session.permissions.owner))
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(foregroundColor: c.failed),
                       onPressed: _busy ? null : _delete,
                       icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                      label: const Text('Delete'),
+                      label: Text(s.actionDelete),
                     ),
                 ],
               ),
               if (u.createdAt != null) ...[
                 const SizedBox(height: 10),
-                Text('Added ${timeAgo(u.createdAt)}', style: TextStyle(color: c.muted, fontSize: 12)),
+                Text(s.acceAdded(timeAgo(u.createdAt)), style: TextStyle(color: c.muted, fontSize: 12)),
               ],
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
+        FilledButton(onPressed: _busy ? null : _save, child: Text(s.actionSave)),
       ],
     );
   }

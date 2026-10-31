@@ -6,6 +6,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -20,10 +21,11 @@ class UpdatesPage extends ConsumerWidget {
   const UpdatesPage({super.key});
 
   Future<void> _check(BuildContext context, WidgetRef ref) async {
+    final s = S.of(context);
     try {
       await ref.read(apiProvider).post('/updates/check');
       ref.invalidate(updatesProvider);
-      if (context.mounted) showSnack(context, 'Checked for updates');
+      if (context.mounted) showSnack(context, s.updateCheckedForUpdates);
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
@@ -31,22 +33,23 @@ class UpdatesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     if (!session.can('server.view')) {
-      return const PageScaffold(
-        title: 'Updates',
-        children: [NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: 'No access', message: 'Your role does not include server.view.'))],
+      return PageScaffold(
+        title: s.updateUpdates,
+        children: [NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: s.noAccess, message: s.gatewayYourRoleDoesNotInclude))],
       );
     }
     final manage = session.can('server.manage');
     final data = ref.watch(updatesProvider);
     return PageScaffold(
-      title: 'Updates',
-      subtitle: 'The panel, nectar-gateway and k3s. Every update is backed up first, checked after the switch and rolled back when a check fails.',
+      title: s.updateUpdates,
+      subtitle: s.updateThePanelNectarGatewayAnd,
       onRefresh: () async => ref.invalidate(updatesProvider),
       actions: [
         if (manage)
-          OutlinedButton.icon(onPressed: () => _check(context, ref), icon: const Icon(Icons.refresh_rounded, size: 18), label: const Text('Check now')),
+          OutlinedButton.icon(onPressed: () => _check(context, ref), icon: const Icon(Icons.refresh_rounded, size: 18), label: Text(s.updateCheckNow)),
       ],
       children: [
         AsyncBlock(
@@ -78,10 +81,11 @@ class _Versions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final o = overview;
     return NCard(
-      title: 'Versions',
+      title: s.updateVersions,
       trailing: Text(
         o.checkedAt == null ? 'not checked yet' : 'checked ${timeAgo(o.checkedAt)}',
         style: TextStyle(color: c.muted, fontSize: 12.5),
@@ -120,7 +124,7 @@ class _Versions extends ConsumerWidget {
                           if (context.mounted) showSnack(context, describeError(err), error: true);
                         }
                       },
-                      child: const Text('Allow again'),
+                      child: Text(s.updateAllowAgain),
                     ),
                 ],
               ),
@@ -152,19 +156,19 @@ class _ComponentRow extends ConsumerWidget {
   }
 
   Future<void> _k3sUpdate(BuildContext context, WidgetRef ref) async {
+    final s = S.of(context);
     final v = state.available.first.version;
     if (!await confirmAction(
         context,
-        'Update k3s to $v?',
-        'The system-upgrade-controller upgrades one node at a time: each node is cordoned, k3s restarts with the new version '
-            'and the node is uncordoned. Pods on a node restart during its upgrade; on a single-node server apps are briefly unavailable.',
-        'Upgrade')) {
+        s.updateUpdateK3sTo(v),
+        s.updateTheSystemUpgradeControllerUpgrades,
+        s.updateUpgrade)) {
       return;
     }
     try {
       await ref.read(apiProvider).post('/updates/k3s', data: {'version': v});
       ref.invalidate(updatesProvider);
-      if (context.mounted) showSnack(context, 'k3s upgrade to $v started: node versions update here as it progresses');
+      if (context.mounted) showSnack(context, s.updateK3sUpgradeToStartedNode(v));
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
@@ -172,6 +176,7 @@ class _ComponentRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final tone = state.hasUpdate ? 'warning' : (state.error.isNotEmpty ? 'failed' : (state.latest != null ? 'running' : 'stopped'));
     final canUpdate = manage && state.hasUpdate && !busy && (component != 'k3s' || state.controller);
@@ -211,7 +216,7 @@ class _ComponentRow extends ConsumerWidget {
                     ),
                   ),
                 if (component == 'k3s' && !state.controller && policy != 'off')
-                  Text('Updating k3s from here needs the system-upgrade-controller: re-run install.sh with --k3s-upgrades.',
+                  Text(s.updateUpdatingK3sFromHereNeeds,
                       style: TextStyle(fontSize: 12.5, color: c.muted)),
               ],
             ),
@@ -219,7 +224,7 @@ class _ComponentRow extends ConsumerWidget {
           if (canUpdate)
             FilledButton(
               onPressed: () => component == 'k3s' ? _k3sUpdate(context, ref) : showUpdateDialog(context, ref, component: component, state: state),
-              child: const Text('Update…'),
+              child: Text(s.updateUpdate2),
             ),
         ],
       ),
@@ -268,11 +273,12 @@ class _ActiveRunState extends ConsumerState<_ActiveRun> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final run = widget.run;
     final panelStep = run.steps.any((s) => s.component == 'panel' && s.state == 'running');
     return NCard(
-      title: 'Updating · ${run.summary}',
+      title: l.updateUpdating(run.summary),
       trailing: StatusPill(status: 'deploying', label: runStateLabel(run.state)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -280,7 +286,7 @@ class _ActiveRunState extends ConsumerState<_ActiveRun> {
           for (final s in run.steps) RunStepRow(step: s),
           if (panelStep) ...[
             const SizedBox(height: 6),
-            Text('The panel restarts now: this page reconnects by itself in a few seconds.', style: TextStyle(color: c.muted, fontSize: 12.5)),
+            Text(l.updateThePanelRestartsNowThis, style: TextStyle(color: c.muted, fontSize: 12.5)),
           ],
           if (run.log.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -363,13 +369,14 @@ class _History extends ConsumerWidget {
   final bool manage;
 
   Future<void> _rollback(BuildContext context, WidgetRef ref, UpdateRunInfo run) async {
+    final l = S.of(context);
     final db = run.steps.where((s) => s.migrations && s.state == 'done').map((s) => componentNames[s.component]).join(' and ');
     final ok = await confirmAction(
       context,
-      'Roll back ${run.summary}?',
+      l.updateRollBack(run.summary),
       'Every component goes back to the version it had before this update.'
           '${db.isEmpty ? '' : ' The $db database is restored to its state before the update: changes made since then are lost.'}',
-      'Roll back',
+      l.updateRollBack2,
       danger: db.isNotEmpty,
     );
     if (!ok || !context.mounted) return;
@@ -384,13 +391,14 @@ class _History extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final runs = overview.runs.where((r) => !r.active).toList();
     final rollbackable = runs.where((r) => r.state == 'succeeded' && r.trigger != 'rollback').firstOrNull;
     return NCard(
-      title: 'History',
+      title: l.observeHistory,
       child: runs.isEmpty
-          ? Text('No update has run on this server yet.', style: TextStyle(color: c.muted))
+          ? Text(l.updateNoUpdateHasRunOn, style: TextStyle(color: c.muted))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -411,7 +419,7 @@ class _History extends ConsumerWidget {
                       style: TextStyle(fontSize: 12.5, color: r.state == 'succeeded' ? c.muted : c.warning),
                     ),
                     trailing: manage && identical(r, rollbackable) && overview.active == null
-                        ? TextButton(onPressed: () => _rollback(context, ref, r), child: const Text('Roll back'))
+                        ? TextButton(onPressed: () => _rollback(context, ref, r), child: Text(l.updateRollBack2))
                         : null,
                     childrenPadding: const EdgeInsets.only(left: 28, bottom: 12),
                     children: [

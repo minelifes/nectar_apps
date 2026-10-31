@@ -6,6 +6,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -24,18 +25,19 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final projects = ref.watch(projectsProvider);
     final canCreate = ref.watch(sessionProvider.select((s) => s.can('project.create')));
     return PageScaffold(
-      title: 'Projects',
-      subtitle: 'Each project has its own Kubernetes namespace and optional quota.',
+      title: l.navProjects,
+      subtitle: l.projectEachProjectHasItsOwn,
       onRefresh: () async => ref.invalidate(projectsProvider),
       actions: [
         if (canCreate)
           FilledButton.icon(
             onPressed: () => showNewProjectDialog(context, ref),
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('New project'),
+            label: Text(l.projectNewProject),
           ),
       ],
       children: [
@@ -47,7 +49,7 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
               return NCard(
                 child: EmptyState(
                   icon: Icons.folder_open_rounded,
-                  title: 'No projects yet',
+                  title: l.projectNoProjectsYet,
                   message: canCreate ? 'Create a project to start deploying apps.' : 'Ask an Owner to give you access to a project.',
                 ),
               );
@@ -65,7 +67,7 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
                     child: SizedBox(
                       width: 360,
                       child: TextField(
-                        decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded, size: 20), hintText: 'Search projects'),
+                        decoration: InputDecoration(prefixIcon: Icon(Icons.search_rounded, size: 20), hintText: l.projectSearchProjects),
                         onChanged: (v) => setState(() => _query = v.trim()),
                       ),
                     ),
@@ -91,6 +93,7 @@ class _ProjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final theme = Theme.of(context);
     final q = project.quota;
@@ -122,9 +125,9 @@ class _ProjectCard extends StatelessWidget {
                   ),
                 ),
                 if (project.adopted)
-                  const Tooltip(
-                    message: 'Adopted from an existing namespace: other workloads there are left alone.',
-                    child: Chip(label: Text('Adopted'), visualDensity: VisualDensity.compact),
+                  Tooltip(
+                    message: s.projectAdoptedFromAnExistingNamespace,
+                    child: Chip(label: Text(s.projectAdopted), visualDensity: VisualDensity.compact),
                   ),
               ],
             ),

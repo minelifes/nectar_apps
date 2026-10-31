@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../api/models.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 
@@ -106,6 +107,7 @@ class WebOptionsFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final hint = TextStyle(color: c.muted, fontSize: 12.5);
     return Column(
@@ -120,10 +122,10 @@ class WebOptionsFields extends StatelessWidget {
               runSpacing: 6,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                SizedBox(width: 120, child: TextField(controller: r.from, decoration: const InputDecoration(labelText: 'From', hintText: '/old', isDense: true))),
+                SizedBox(width: 120, child: TextField(controller: r.from, decoration: InputDecoration(labelText: s.updateFrom, hintText: '/old', isDense: true))),
                 SizedBox(
                   width: 190,
-                  child: TextField(controller: r.to, decoration: const InputDecoration(labelText: 'To', hintText: '/new or https://…', isDense: true)),
+                  child: TextField(controller: r.to, decoration: InputDecoration(labelText: s.backupTo, hintText: s.appNewOrHttps, isDense: true)),
                 ),
                 DropdownButton<int>(
                   value: r.code,
@@ -140,7 +142,7 @@ class WebOptionsFields extends StatelessWidget {
                   },
                 ),
                 Tooltip(
-                  message: 'Also redirect /from/… and keep the rest of the path',
+                  message: s.appAlsoRedirectFromAndKeep,
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Checkbox(
                       value: r.prefix,
@@ -154,7 +156,7 @@ class WebOptionsFields extends StatelessWidget {
                   ]),
                 ),
                 IconButton(
-                  tooltip: 'Remove rule',
+                  tooltip: s.appRemoveRule,
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.close_rounded, size: 18),
                   onPressed: () {
@@ -174,7 +176,7 @@ class WebOptionsFields extends StatelessWidget {
               onChanged();
             },
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Add redirect rule'),
+            label: Text(s.appAddRedirectRule),
           ),
         ),
         const SizedBox(height: 8),
@@ -183,27 +185,27 @@ class WebOptionsFields extends StatelessWidget {
           controller: form.allowIps,
           minLines: 1,
           maxLines: 4,
-          decoration: const InputDecoration(labelText: 'Allowed IPs', hintText: '203.0.113.0/24', isDense: true),
+          decoration: InputDecoration(labelText: s.appAllowedIps, hintText: '203.0.113.0/24', isDense: true),
         ),
         const SizedBox(height: 4),
-        Text('One IP or CIDR per line; everyone else gets 403. Empty = open to everyone.', style: hint),
+        Text(s.appOneIpOrCidrPer, style: hint),
         const SizedBox(height: 12),
         const SectionLabel('Headers'),
         TextField(
           controller: form.responseHeaders,
           minLines: 1,
           maxLines: 5,
-          decoration: const InputDecoration(labelText: 'Response headers', hintText: 'X-Frame-Options: DENY', isDense: true),
+          decoration: InputDecoration(labelText: s.appResponseHeaders, hintText: s.appXFrameOptionsDeny, isDense: true),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: form.requestHeaders,
           minLines: 1,
           maxLines: 4,
-          decoration: const InputDecoration(labelText: 'Request headers (to the app)', hintText: 'X-Env: staging', isDense: true),
+          decoration: InputDecoration(labelText: s.appRequestHeadersToTheApp, hintText: s.appXEnvStaging, isDense: true),
         ),
         const SizedBox(height: 4),
-        Text('"Name: value" per line; an empty value removes the header.', style: hint),
+        Text(s.appNameValuePerLineAn, style: hint),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           value: form.cors,
@@ -212,17 +214,17 @@ class WebOptionsFields extends StatelessWidget {
             onChanged();
           },
           title: const Text('CORS'),
-          subtitle: const Text('Let other sites call this domain from the browser'),
+          subtitle: Text(s.appLetOtherSitesCallThis),
         ),
         if (form.cors) ...[
           TextField(
             controller: form.corsOrigins,
             minLines: 1,
             maxLines: 4,
-            decoration: const InputDecoration(labelText: 'Allowed origins', hintText: 'https://app.example.com', isDense: true),
+            decoration: InputDecoration(labelText: s.appAllowedOrigins, hintText: 'https://app.example.com', isDense: true),
           ),
           const SizedBox(height: 4),
-          Text('One per line, or * for any site (then without credentials).', style: hint),
+          Text(s.appOnePerLineOrFor, style: hint),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
@@ -231,7 +233,7 @@ class WebOptionsFields extends StatelessWidget {
               form.corsCredentials = v ?? false;
               onChanged();
             },
-            title: const Text('Allow cookies / credentials'),
+            title: Text(s.appAllowCookiesCredentials),
           ),
         ],
         SwitchListTile(
@@ -241,19 +243,19 @@ class WebOptionsFields extends StatelessWidget {
             form.compress = v;
             onChanged();
           },
-          title: const Text('Compress text responses (gzip)'),
-          subtitle: const Text('HTML, CSS, JS, JSON … that the app does not compress itself'),
+          title: Text(s.appCompressTextResponsesGzip),
+          subtitle: Text(s.appHtmlCssJsJsonThat),
         ),
         DropdownButtonFormField<int>(
           initialValue: const [0, 300, 86400, 15768000, 31536000, 63072000].contains(form.hsts) ? form.hsts : 31536000,
-          decoration: const InputDecoration(labelText: 'HSTS (browsers only use HTTPS)', isDense: true),
-          items: const [
-            DropdownMenuItem(value: 0, child: Text('Off')),
-            DropdownMenuItem(value: 300, child: Text('5 minutes (testing)')),
-            DropdownMenuItem(value: 86400, child: Text('1 day')),
-            DropdownMenuItem(value: 15768000, child: Text('6 months')),
-            DropdownMenuItem(value: 31536000, child: Text('1 year')),
-            DropdownMenuItem(value: 63072000, child: Text('2 years')),
+          decoration: InputDecoration(labelText: s.appHstsBrowsersOnlyUseHttps, isDense: true),
+          items: [
+            DropdownMenuItem(value: 0, child: Text(s.appOff)),
+            DropdownMenuItem(value: 300, child: Text(s.app5MinutesTesting)),
+            DropdownMenuItem(value: 86400, child: Text(s.gateway1Day)),
+            DropdownMenuItem(value: 15768000, child: Text(s.app6Months)),
+            DropdownMenuItem(value: 31536000, child: Text(s.app1Year)),
+            DropdownMenuItem(value: 63072000, child: Text(s.app2Years)),
           ],
           onChanged: (v) {
             form.hsts = v ?? 0;
@@ -269,7 +271,7 @@ class WebOptionsFields extends StatelessWidget {
               form.hstsSubdomains = v ?? false;
               onChanged();
             },
-            title: const Text('Include subdomains'),
+            title: Text(s.appIncludeSubdomains),
           ),
         const SizedBox(height: NectarTokens.gap / 2),
       ],

@@ -9,6 +9,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -35,12 +36,13 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     if (!session.can('backup.manage')) {
-      return const PageScaffold(
-        title: 'Backups',
+      return PageScaffold(
+        title: s.navBackups,
         children: [
-          NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: 'No access', message: 'Your role does not include backup.manage.')),
+          NCard(child: EmptyState(icon: Icons.lock_outline_rounded, title: s.noAccess, message: s.backupYourRoleDoesNotInclude)),
         ],
       );
     }
@@ -51,8 +53,8 @@ class _BackupsPageState extends ConsumerState<BackupsPage> {
     ];
     final i = tabs.indexWhere((t) => t.$1 == _tab).clamp(0, tabs.length - 1);
     return PageScaffold(
-      title: 'Backups',
-      subtitle: 'Volumes, database dumps and the panel itself, encrypted with restic to S3, Backblaze B2, SFTP or a folder.',
+      title: s.navBackups,
+      subtitle: s.backupVolumesDatabaseDumpsAndThe,
       onRefresh: _refresh,
       children: [
         NTabs(index: i, labels: [for (final t in tabs) t.$1], onChanged: (n) => setState(() => _tab = tabs[n].$1)),
@@ -86,18 +88,20 @@ class _Plans extends ConsumerWidget {
   final bool canRestore;
 
   Future<void> _run(BuildContext context, WidgetRef ref, BackupPlan p) async {
+    final s = S.of(context);
     try {
       await ref.read(apiProvider).post('/backup/plans/${p.id}/run');
       ref.invalidate(backupRunsProvider);
       ref.invalidate(backupPlansProvider);
-      if (context.mounted) showSnack(context, 'Backup of ${p.subject} started');
+      if (context.mounted) showSnack(context, s.backupBackupOfStarted(p.subject));
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref, BackupPlan p) async {
-    if (!await confirmAction(context, 'Delete this plan?', 'No more backups of ${p.subject} to ${p.targetName}. Existing snapshots stay in the repository.', 'Delete',
+    final s = S.of(context);
+    if (!await confirmAction(context, s.backupDeleteThisPlan, s.backupNoMoreBackupsOfTo(p.subject, p.targetName), s.actionDelete,
         danger: true)) {
       return;
     }
@@ -111,34 +115,35 @@ class _Plans extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final plans = ref.watch(backupPlansProvider);
     final targets = ref.watch(backupTargetsProvider);
     ref.watch(backupRunsProvider); // keeps plans fresh while a run is in progress
     final c = NectarColors.of(context);
     final noTargets = targets.hasValue && targets.value!.isEmpty;
     return NCard(
-      title: 'What is backed up',
+      title: s.backupWhatIsBackedUp,
       trailing: FilledButton.icon(
         onPressed: noTargets || !targets.hasValue ? null : () => showPlanDialog(context, ref, targets: targets.value!),
         icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Add plan'),
+        label: Text(s.backupAddPlan),
       ),
       child: AsyncBlock(
         value: plans,
         onRetry: () => ref.invalidate(backupPlansProvider),
         data: (list) {
           if (noTargets) {
-            return const EmptyState(
+            return EmptyState(
               icon: Icons.cloud_upload_outlined,
-              title: 'Add a target first',
-              message: 'A target is where backups go: an S3 bucket (AWS, Backblaze B2, R2, MinIO), an SFTP server or a folder on this server.',
+              title: s.backupAddATargetFirst,
+              message: s.backupATargetIsWhereBackups,
             );
           }
           if (list.isEmpty) {
-            return const EmptyState(
+            return EmptyState(
               icon: Icons.backup_outlined,
-              title: 'Nothing is backed up yet',
-              message: 'Add a plan for the panel itself (needed to rebuild a lost server), for databases and for apps with volumes.',
+              title: s.backupNothingIsBackedUpYet,
+              message: s.backupAddAPlanForThe,
             );
           }
           return Column(
@@ -156,7 +161,7 @@ class _Plans extends ConsumerWidget {
               ],
               const SizedBox(height: 8),
               Text(
-                'Backups of volumes read files while the app runs; databases are dumped consistently. Times are UTC.',
+                s.backupBackupsOfVolumesReadFiles,
                 style: TextStyle(color: c.muted, fontSize: 12),
               ),
             ],
@@ -178,6 +183,7 @@ class _PlanRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final last = plan.lastRun;
     final keep = [
@@ -217,22 +223,22 @@ class _PlanRow extends StatelessWidget {
                     ],
                   )
                 else
-                  Text('Not backed up yet', style: TextStyle(fontSize: 12.5, color: c.warning)),
-                if (plan.nextRun != null) Text('Next: ${_when(plan.nextRun!)}', style: TextStyle(color: c.muted, fontSize: 12)),
+                  Text(s.backupNotBackedUpYet, style: TextStyle(fontSize: 12.5, color: c.warning)),
+                if (plan.nextRun != null) Text(s.backupNext(_when(plan.nextRun!)), style: TextStyle(color: c.muted, fontSize: 12)),
               ],
             ),
           ),
           Wrap(
             children: [
-              IconButton(tooltip: 'Back up now', icon: const Icon(Icons.play_arrow_rounded), onPressed: onRun),
+              IconButton(tooltip: s.backupBackUpNow, icon: const Icon(Icons.play_arrow_rounded), onPressed: onRun),
               if (plan.scope != 'panel')
                 IconButton(
                   tooltip: canRestore ? 'Snapshots and restore' : 'Snapshots',
                   icon: const Icon(Icons.history_rounded),
                   onPressed: () => showDialog<void>(context: context, builder: (_) => _SnapshotsDialog(plan: plan, canRestore: canRestore)),
                 ),
-              IconButton(tooltip: 'Edit', icon: const Icon(Icons.edit_outlined, size: 20), onPressed: onEdit),
-              IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline_rounded, size: 20), onPressed: onDelete),
+              IconButton(tooltip: s.backupEdit, icon: const Icon(Icons.edit_outlined, size: 20), onPressed: onEdit),
+              IconButton(tooltip: s.actionDelete, icon: const Icon(Icons.delete_outline_rounded, size: 20), onPressed: onDelete),
             ],
           ),
         ],
@@ -264,17 +270,18 @@ class _SnapshotsDialogState extends ConsumerState<_SnapshotsDialog> {
       listOf(await ref.read(apiProvider).get('/backup/plans/${widget.plan.id}/snapshots'), BackupSnapshot.fromJson);
 
   Future<void> _restore(BackupSnapshot s) async {
+        final l = S.of(context);
     final what = widget.plan.scope == 'app'
         ? 'The app is stopped, its volumes are replaced with the snapshot, and it starts again.'
         : 'The database is replaced with the dump in the snapshot.';
-    final ok = await confirmAction(context, 'Restore ${s.shortId}?', '$what Changes since then are lost.', 'Restore', danger: true);
+    final ok = await confirmAction(context, l.backupRestore(s.shortId), l.backupChangesSinceThenAreLost(what), l.backupRestore2, danger: true);
     if (!ok || !mounted) return;
     try {
       await ref.read(apiProvider).post('/backup/plans/${widget.plan.id}/restore', data: {'snapshot': s.id});
       ref.invalidate(backupRunsProvider);
       if (mounted) {
         Navigator.pop(context);
-        showSnack(context, 'Restore started: follow it under History');
+        showSnack(context, l.backupRestoreStartedFollowItUnder);
       }
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
@@ -283,9 +290,10 @@ class _SnapshotsDialogState extends ConsumerState<_SnapshotsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
-      title: Text('Snapshots · ${widget.plan.subject}'),
+      title: Text(l.backupSnapshots(widget.plan.subject)),
       content: SizedBox(
         width: 560,
         height: 380,
@@ -299,12 +307,12 @@ class _SnapshotsDialogState extends ConsumerState<_SnapshotsDialog> {
                 children: [
                   const CircularProgressIndicator(),
                   const SizedBox(height: 12),
-                  Text('Reading the repository…', style: TextStyle(color: c.muted)),
+                  Text(l.backupReadingTheRepository, style: TextStyle(color: c.muted)),
                 ],
               );
             }
             final list = snap.data!;
-            if (list.isEmpty) return const Center(child: Text('No snapshots yet.'));
+            if (list.isEmpty) return Center(child: Text(l.backupNoSnapshotsYet));
             return ListView(
               children: [
                 for (final s in list)
@@ -312,14 +320,14 @@ class _SnapshotsDialogState extends ConsumerState<_SnapshotsDialog> {
                     leading: const Icon(Icons.inventory_2_outlined),
                     title: Text(s.time == null ? s.shortId : '${timeAgo(s.time)} · ${s.shortId}'),
                     subtitle: Text(s.paths.join(', '), style: monoStyle(context, size: 11.5, color: c.muted)),
-                    trailing: widget.canRestore ? TextButton(onPressed: () => _restore(s), child: const Text('Restore')) : null,
+                    trailing: widget.canRestore ? TextButton(onPressed: () => _restore(s), child: Text(l.backupRestore2)) : null,
                   ),
               ],
             );
           },
         ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(l.actionClose))],
     );
   }
 }
@@ -330,7 +338,8 @@ class _Targets extends ConsumerWidget {
   const _Targets();
 
   Future<void> _check(BuildContext context, WidgetRef ref, BackupTarget t) async {
-    showSnack(context, 'Checking ${t.name}…');
+    final s = S.of(context);
+    showSnack(context, s.backupChecking(t.name));
     try {
       final res = await ref.read(apiProvider).post('/backup/targets/${t.id}/check');
       if (context.mounted) showSnack(context, '${t.name} works · ${(res as Map)['snapshots']} snapshots');
@@ -340,6 +349,7 @@ class _Targets extends ConsumerWidget {
   }
 
   Future<void> _kit(BuildContext context, WidgetRef ref, BackupTarget t) async {
+    final s = S.of(context);
     try {
       final kit = await ref.read(apiProvider).get('/backup/targets/${t.id}/recovery-kit');
       if (!context.mounted) return;
@@ -347,16 +357,15 @@ class _Targets extends ConsumerWidget {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Recovery kit'),
+          title: Text(s.backupRecoveryKit),
           content: SizedBox(
             width: 620,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Save this as nectar-recovery-kit.json somewhere safe, together with your master key. '
-                  'On a new server: install.sh --restore-kit nectar-recovery-kit.json --master-key <key>',
+                Text(
+                  s.backupSaveThisAsNectarRecovery,
                 ),
                 const SizedBox(height: 12),
                 Container(
@@ -366,7 +375,7 @@ class _Targets extends ConsumerWidget {
                   child: SingleChildScrollView(child: SelectableText(text, style: monoStyle(ctx, size: 12, color: const Color(0xFFD9DBE0)))),
                 ),
                 const SizedBox(height: 8),
-                Text('It holds the repository password and access keys: anyone with it and the master key can read your backups.',
+                Text(s.backupItHoldsTheRepositoryPassword,
                     style: TextStyle(color: NectarColors.of(ctx).warning, fontSize: 12.5)),
               ],
             ),
@@ -375,11 +384,11 @@ class _Targets extends ConsumerWidget {
             TextButton(
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: text));
-                showSnack(ctx, 'Copied');
+                showSnack(ctx, s.backupCopied);
               },
-              child: const Text('Copy'),
+              child: Text(s.backupCopy),
             ),
-            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
+            FilledButton(onPressed: () => Navigator.pop(ctx), child: Text(s.backupDone)),
           ],
         ),
       );
@@ -389,7 +398,8 @@ class _Targets extends ConsumerWidget {
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref, BackupTarget t) async {
-    if (!await confirmAction(context, 'Remove ${t.name}?', 'The panel forgets the target. The backups stay where they are.', 'Remove', danger: true)) return;
+    final s = S.of(context);
+    if (!await confirmAction(context, s.backupRemove(t.name), s.backupThePanelForgetsTheTarget, s.backupRemove2, danger: true)) return;
     try {
       await ref.read(apiProvider).delete('/backup/targets/${t.id}');
       ref.invalidate(backupTargetsProvider);
@@ -400,20 +410,21 @@ class _Targets extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final targets = ref.watch(backupTargetsProvider);
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Where backups go',
+      title: s.backupWhereBackupsGo,
       trailing: FilledButton.icon(
         onPressed: () => showTargetDialog(context, ref),
         icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('Add target'),
+        label: Text(s.backupAddTarget),
       ),
       child: AsyncBlock(
         value: targets,
         onRetry: () => ref.invalidate(backupTargetsProvider),
         data: (list) => list.isEmpty
-            ? Text('No target yet.', style: TextStyle(color: c.muted))
+            ? Text(s.backupNoTargetYet, style: TextStyle(color: c.muted))
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -425,10 +436,10 @@ class _Targets extends ConsumerWidget {
                       subtitle: Text('${t.repository} · ${t.plans} ${t.plans == 1 ? 'plan' : 'plans'}', style: monoStyle(context, size: 12, color: c.muted)),
                       trailing: Wrap(
                         children: [
-                          IconButton(tooltip: 'Check', icon: const Icon(Icons.fact_check_outlined, size: 20), onPressed: () => _check(context, ref, t)),
-                          IconButton(tooltip: 'Recovery kit', icon: const Icon(Icons.key_rounded, size: 20), onPressed: () => _kit(context, ref, t)),
-                          IconButton(tooltip: 'Edit', icon: const Icon(Icons.edit_outlined, size: 20), onPressed: () => showTargetDialog(context, ref, target: t)),
-                          IconButton(tooltip: 'Remove', icon: const Icon(Icons.delete_outline_rounded, size: 20), onPressed: () => _delete(context, ref, t)),
+                          IconButton(tooltip: s.backupCheck, icon: const Icon(Icons.fact_check_outlined, size: 20), onPressed: () => _check(context, ref, t)),
+                          IconButton(tooltip: s.backupRecoveryKit, icon: const Icon(Icons.key_rounded, size: 20), onPressed: () => _kit(context, ref, t)),
+                          IconButton(tooltip: s.backupEdit, icon: const Icon(Icons.edit_outlined, size: 20), onPressed: () => showTargetDialog(context, ref, target: t)),
+                          IconButton(tooltip: s.backupRemove2, icon: const Icon(Icons.delete_outline_rounded, size: 20), onPressed: () => _delete(context, ref, t)),
                         ],
                       ),
                     ),
@@ -446,6 +457,7 @@ class _History extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final runs = ref.watch(backupRunsProvider);
     final c = NectarColors.of(context);
     return NCard(
@@ -453,7 +465,7 @@ class _History extends ConsumerWidget {
         value: runs,
         onRetry: () => ref.invalidate(backupRunsProvider),
         data: (list) => list.isEmpty
-            ? Text('No backup has run yet.', style: TextStyle(color: c.muted))
+            ? Text(s.backupNoBackupHasRunYet, style: TextStyle(color: c.muted))
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

@@ -8,6 +8,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -21,12 +22,13 @@ class AddonPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final addon = ref.watch(addonProvider(id));
     Future<void> refresh() async => ref.invalidate(addonProvider(id));
     return addon.when(
       skipLoadingOnRefresh: true,
       loading: () => const LoadingBlock(height: 320),
-      error: (e, _) => PageScaffold(title: 'Database', children: [ErrorBlock(error: e, onRetry: refresh)]),
+      error: (e, _) => PageScaffold(title: s.addonDatabase, children: [ErrorBlock(error: e, onRetry: refresh)]),
       data: (a) => _Body(addon: a, onRefresh: refresh),
     );
   }
@@ -49,11 +51,12 @@ class _Body extends ConsumerWidget {
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final s = S.of(context);
     final ok = await confirmAction(
       context,
-      'Delete ${addon.name}?',
-      'The database and all its data are deleted for good. Linked apps lose their connection settings with their next deploy.',
-      'Delete database',
+      s.addonDelete(addon.name),
+      s.addonTheDatabaseAndAllIts,
+      s.addonDeleteDatabase,
       danger: true,
     );
     if (!ok || !context.mounted) return;
@@ -68,6 +71,7 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     bool can(String p) => session.can(p, projectId: addon.projectId);
     final c = NectarColors.of(context);
@@ -75,7 +79,7 @@ class _Body extends ConsumerWidget {
       title: addon.name,
       subtitle: '${addon.kindName} ${addon.version} · ${addon.slug}',
       leading: IconButton(
-        tooltip: 'Project',
+        tooltip: s.projectProject,
         icon: const Icon(Icons.arrow_back_rounded),
         onPressed: () => context.go('/projects/${addon.projectId}'),
       ),
@@ -84,7 +88,7 @@ class _Body extends ConsumerWidget {
         if (can('app.restart'))
           OutlinedButton(onPressed: () => _op(context, ref, addon.stopped ? 'start' : 'stop'), child: Text(addon.stopped ? 'Start' : 'Stop')),
         if (can('app.delete'))
-          IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline_rounded), onPressed: () => _delete(context, ref)),
+          IconButton(tooltip: s.actionDelete, icon: const Icon(Icons.delete_outline_rounded), onPressed: () => _delete(context, ref)),
       ],
       children: [
         Row(
@@ -131,6 +135,7 @@ class _ConnectionCardState extends ConsumerState<_ConnectionCard> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final a = widget.addon;
     final c = NectarColors.of(context);
     final creds = _creds;
@@ -144,9 +149,9 @@ class _ConnectionCardState extends ConsumerState<_ConnectionCard> {
         for (final k in env.keys.where((k) => k.endsWith('_URL'))) (k, '${env[k]}'),
     ];
     return NCard(
-      title: 'Connection',
+      title: s.addonConnection,
       trailing: creds == null && widget.canReveal
-          ? TextButton.icon(onPressed: _reveal, icon: const Icon(Icons.visibility_outlined, size: 18), label: const Text('Show credentials'))
+          ? TextButton.icon(onPressed: _reveal, icon: const Icon(Icons.visibility_outlined, size: 18), label: Text(s.addonShowCredentials))
           : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -159,11 +164,11 @@ class _ConnectionCardState extends ConsumerState<_ConnectionCard> {
                   SizedBox(width: 120, child: Text(k, style: TextStyle(color: c.muted, fontSize: 13))),
                   Expanded(child: SelectableText(v, style: monoStyle(context, size: 13))),
                   IconButton(
-                    tooltip: 'Copy',
+                    tooltip: s.backupCopy,
                     icon: const Icon(Icons.copy_rounded, size: 16),
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: v));
-                      showSnack(context, 'Copied');
+                      showSnack(context, s.backupCopied);
                     },
                   ),
                 ],
@@ -171,7 +176,7 @@ class _ConnectionCardState extends ConsumerState<_ConnectionCard> {
             ),
           const SizedBox(height: 6),
           Text(
-            'Reachable only from apps in the same project, at ${a.host}:${a.port}. Link an app below to give it these settings as variables.',
+            s.addonReachableOnlyFromAppsIn(a.host, a.port),
             style: TextStyle(color: c.muted, fontSize: 12.5),
           ),
         ],
@@ -187,10 +192,11 @@ class _LinksCard extends ConsumerWidget {
   final bool canEdit;
 
   Future<void> _link(BuildContext context, WidgetRef ref, List<App> apps) async {
+    final s = S.of(context);
     final linked = {for (final l in addon.links) l.$1};
     final candidates = apps.where((a) => !linked.contains(a.id)).toList();
     if (candidates.isEmpty) {
-      showSnack(context, 'Every app of the project is linked already');
+      showSnack(context, s.addonEveryAppOfTheProject);
       return;
     }
     App? app = candidates.first;
@@ -199,7 +205,7 @@ class _LinksCard extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: Text('Link ${addon.name} to an app'),
+          title: Text(s.addonLinkToAnApp(addon.name)),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -208,7 +214,7 @@ class _LinksCard extends ConsumerWidget {
               children: [
                 DropdownButtonFormField<App>(
                   initialValue: app,
-                  decoration: const InputDecoration(labelText: 'App'),
+                  decoration: InputDecoration(labelText: s.addonApp),
                   items: [for (final a in candidates) DropdownMenuItem(value: a, child: Text(a.name))],
                   onChanged: (v) => set(() => app = v),
                 ),
@@ -216,18 +222,18 @@ class _LinksCard extends ConsumerWidget {
                 TextField(
                   controller: prefix,
                   textCapitalization: TextCapitalization.characters,
-                  decoration: const InputDecoration(
-                    labelText: 'Variable prefix (optional)',
-                    hintText: 'CACHE_',
-                    helperText: 'For a second database: CACHE_ gives CACHE_DATABASE_URL',
+                  decoration: InputDecoration(
+                    labelText: s.addonVariablePrefixOptional,
+                    hintText: s.addonCache,
+                    helperText: s.addonForASecondDatabaseCache,
                   ),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Link')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.actionCancel)),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s.addonLink)),
           ],
         ),
       ),
@@ -239,7 +245,7 @@ class _LinksCard extends ConsumerWidget {
       await ref.read(apiProvider).post('/addons/${addon.id}/links', data: {'app_id': app!.id, 'prefix': p.isEmpty || p.endsWith('_') ? p : '${p}_'});
       ref.invalidate(addonProvider(addon.id));
       ref.invalidate(appAddonsProvider(app!.id));
-      if (context.mounted) showSnack(context, 'Linked. Redeploy ${app!.name} to apply.');
+      if (context.mounted) showSnack(context, s.addonLinkedRedeployToApply(app!.name));
     } on Object catch (e) {
       if (context.mounted) showSnack(context, describeError(e), error: true);
     }
@@ -257,18 +263,19 @@ class _LinksCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final apps = ref.watch(projectAppsProvider(addon.projectId));
     final byId = apps.hasValue ? {for (final a in apps.value!) a.id: a} : const <int, App>{};
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Linked apps',
+      title: s.addonLinkedApps,
       trailing: canEdit && apps.hasValue
-          ? TextButton.icon(onPressed: () => _link(context, ref, apps.value!), icon: const Icon(Icons.link_rounded, size: 18), label: const Text('Link an app'))
+          ? TextButton.icon(onPressed: () => _link(context, ref, apps.value!), icon: const Icon(Icons.link_rounded, size: 18), label: Text(s.addonLinkAnApp))
           : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (addon.links.isEmpty) Text('No app uses this database yet.', style: TextStyle(color: c.muted, fontSize: 13)),
+          if (addon.links.isEmpty) Text(s.addonNoAppUsesThisDatabase, style: TextStyle(color: c.muted, fontSize: 13)),
           for (final (appId, prefix) in addon.links)
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -277,7 +284,7 @@ class _LinksCard extends ConsumerWidget {
               subtitle: Text(addon.envNames.map((n) => '$prefix$n').join(', '), style: monoStyle(context, size: 11.5, color: c.muted)),
               onTap: () => context.go('/apps/$appId'),
               trailing: canEdit
-                  ? IconButton(tooltip: 'Unlink', icon: const Icon(Icons.link_off_rounded, size: 18), onPressed: () => _unlink(context, ref, appId))
+                  ? IconButton(tooltip: s.addonUnlink, icon: const Icon(Icons.link_off_rounded, size: 18), onPressed: () => _unlink(context, ref, appId))
                   : null,
             ),
         ],
@@ -311,6 +318,7 @@ class _ResourcesCardState extends ConsumerState<_ResourcesCard> {
   }
 
   Future<void> _save() async {
+    final s = S.of(context);
     setState(() => _saving = true);
     try {
       await ref.read(apiProvider).patch('/addons/${widget.addon.id}', data: {
@@ -319,7 +327,7 @@ class _ResourcesCardState extends ConsumerState<_ResourcesCard> {
         'cpu_millicores': int.tryParse(_cpu.text.trim()) ?? 0,
       });
       ref.invalidate(addonProvider(widget.addon.id));
-      if (mounted) showSnack(context, 'Saved; the database restarts with the new resources');
+      if (mounted) showSnack(context, s.addonSavedTheDatabaseRestartsWith);
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     } finally {
@@ -329,6 +337,7 @@ class _ResourcesCardState extends ConsumerState<_ResourcesCard> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final a = widget.addon;
     Widget num(TextEditingController ctl, String label, String help) => SizedBox(
           width: 180,
@@ -341,7 +350,7 @@ class _ResourcesCardState extends ConsumerState<_ResourcesCard> {
           ),
         );
     return NCard(
-      title: 'Resources',
+      title: s.projectResources,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -22,6 +25,16 @@ String buildTone(String s) => switch (s) {
     };
 
 /// Builds: the Git source (repository, branch, webhook) and the build history with logs.
+/// GET /apps/{id}/previews: the app's preview environments, or what this preview app previews.
+final previewsProvider = FutureProvider.autoDispose.family<({List<PreviewInfo> previews, PreviewInfo? of}), int>((ref, appId) async {
+  final v = await ref.watch(apiProvider).get('/apps/$appId/previews');
+  final m = v is Map ? v : const {};
+  return (
+    previews: [for (final p in (m['previews'] as List?) ?? const []) PreviewInfo.fromJson(p)],
+    of: m['preview_of'] == null ? null : PreviewInfo.fromJson(m['preview_of']),
+  );
+});
+
 class BuildsTab extends ConsumerWidget {
   const BuildsTab({super.key, required this.app, required this.source});
 
@@ -40,27 +53,58 @@ class BuildsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     final canBuild = session.can('app.deploy', projectId: app.projectId);
     final canEdit = session.can('app.edit', projectId: app.projectId);
     final builds = ref.watch(buildsProvider(app.id));
     final c = NectarColors.of(context);
     final busy = builds.value?.any((b) => b.running) ?? false;
+    final previews = ref.watch(previewsProvider(app.id)).value;
+    final of = previews?.of;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (of != null) ...[
+          NCard(
+            child: Row(
+              children: [
+                Icon(Icons.merge_type_rounded, color: c.muted),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(s.appPreviewOf(of.parent, of.number), style: const TextStyle(fontWeight: FontWeight.w600)),
+                      if (of.title.isNotEmpty) Text(of.title),
+                      const SizedBox(height: 4),
+                      Text(s.appPreviewOfHelp(of.parent), style: TextStyle(color: c.muted, fontSize: 12.5)),
+                    ],
+                  ),
+                ),
+                if (of.url.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => launchUrl(Uri.parse(of.url)),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: Text(s.appOpenPullRequest),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: NectarTokens.gap),
+        ],
         NCard(
-          title: 'Source',
+          title: s.appSource,
           trailing: Wrap(
             spacing: 8,
             children: [
               if (canEdit)
-                OutlinedButton(onPressed: () => showSourceDialog(context, appId: app.id, source: source), child: const Text('Edit')),
+                OutlinedButton(onPressed: () => showSourceDialog(context, appId: app.id, source: source), child: Text(s.backupEdit)),
               if (canBuild)
                 FilledButton.icon(
                   onPressed: busy ? null : () => _build(context, ref),
                   icon: const Icon(Icons.construction_rounded, size: 18),
-                  label: const Text('Build & deploy'),
+                  label: Text(s.appBuildDeploy),
                 ),
             ],
           ),
@@ -76,6 +120,7 @@ class BuildsTab extends ConsumerWidget {
                   source.dockerfile,
                   source.hasToken ? 'private (token saved)' : 'public',
                   source.autoDeploy ? 'pushes build and deploy' : 'build by hand',
+                  if (source.previews) s.appPreviewsSwitch.toLowerCase(),
                 ].join(' · '),
                 style: TextStyle(color: c.muted, fontSize: 12.5),
               ),
@@ -86,14 +131,18 @@ class BuildsTab extends ConsumerWidget {
             ],
           ),
         ),
+        if (source.previews && of == null) ...[
+          const SizedBox(height: NectarTokens.gap),
+          _PreviewsCard(app: app, previews: previews?.previews ?? const [], canDelete: canEdit),
+        ],
         const SizedBox(height: NectarTokens.gap),
         NCard(
-          title: 'Builds',
+          title: s.appBuilds,
           child: AsyncBlock(
             value: builds,
             onRetry: () => ref.invalidate(buildsProvider(app.id)),
             data: (list) => list.isEmpty
-                ? Text('No build yet.', style: TextStyle(color: c.muted))
+                ? Text(s.appNoBuildYet, style: TextStyle(color: c.muted))
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [for (final b in list) _BuildRow(app: app, info: b, canCancel: canBuild)],
@@ -113,17 +162,18 @@ class _WebhookBox extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     Widget row(String label, String value) => Row(
           children: [
             SizedBox(width: 70, child: Text(label, style: TextStyle(color: c.muted, fontSize: 12.5))),
             Expanded(child: SelectableText(value, maxLines: 1, style: monoStyle(context, size: 12.5))),
             IconButton(
-              tooltip: 'Copy',
+              tooltip: s.backupCopy,
               icon: const Icon(Icons.copy_rounded, size: 16),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: value));
-                showSnack(context, 'Copied');
+                showSnack(context, s.backupCopied);
               },
             ),
           ],
@@ -134,10 +184,9 @@ class _WebhookBox extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Push webhook', style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(s.appPushWebhook, style: const TextStyle(fontWeight: FontWeight.w600)),
           Text(
-            'GitHub: Settings → Webhooks → Add webhook, content type application/json, this secret. GitLab: Webhooks, '
-            'secret token = this secret, push events. Gitea/Forgejo: the same as GitHub.',
+            s.appGithubSettingsWebhooksAddWebhook,
             style: TextStyle(color: c.muted, fontSize: 12),
           ),
           const SizedBox(height: 6),
@@ -147,7 +196,7 @@ class _WebhookBox extends ConsumerWidget {
             alignment: Alignment.centerLeft,
             child: TextButton(
               onPressed: () async {
-                if (!await confirmAction(context, 'New webhook secret?', 'The old secret stops working: update it in your Git host.', 'Rotate')) return;
+                if (!await confirmAction(context, s.appNewWebhookSecret, s.appTheOldSecretStopsWorking, s.appRotate)) return;
                 try {
                   await ref.read(apiProvider).post('/apps/$appId/source/webhook-secret');
                   ref.invalidate(appSourceProvider(appId));
@@ -155,7 +204,7 @@ class _WebhookBox extends ConsumerWidget {
                   if (context.mounted) showSnack(context, describeError(e), error: true);
                 }
               },
-              child: const Text('New secret'),
+              child: Text(s.appNewSecret),
             ),
           ),
         ],
@@ -258,6 +307,7 @@ class _BuildLogDialogState extends ConsumerState<_BuildLogDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final b = _build;
     return AlertDialog(
       title: Text('Build #${widget.number}${b == null ? '' : ' · ${statusLabel(b.status)}'}'),
@@ -303,9 +353,9 @@ class _BuildLogDialogState extends ConsumerState<_BuildLogDialog> {
                 if (context.mounted) showSnack(context, describeError(e), error: true);
               }
             },
-            child: const Text('Cancel build'),
+            child: Text(s.appCancelBuild),
           ),
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionClose)),
       ],
     );
   }
@@ -332,6 +382,10 @@ class _SourceDialogState extends ConsumerState<_SourceDialog> {
   late final _dockerfile = TextEditingController(text: widget.source?.dockerfile ?? 'Dockerfile');
   final _token = TextEditingController();
   late bool _auto = widget.source?.autoDeploy ?? true;
+  late bool _previews = widget.source?.previews ?? false;
+  late bool _previewDbs = widget.source?.previewDatabases ?? false;
+  late bool _previewForks = widget.source?.previewForks ?? false;
+  late int _previewTtl = widget.source?.previewTtlDays ?? 14;
   bool _removeToken = false;
   bool _busy = false;
 
@@ -352,6 +406,10 @@ class _SourceDialogState extends ConsumerState<_SourceDialog> {
         'context_dir': _context.text.trim(),
         'dockerfile': _dockerfile.text.trim(),
         'auto_deploy': _auto,
+        'previews': _previews,
+        'preview_databases': _previewDbs,
+        'preview_forks': _previewForks,
+        'preview_ttl_days': _previewTtl,
         if (_token.text.trim().isNotEmpty) 'token': _token.text.trim() else if (_removeToken) 'token': '',
       });
       ref.invalidate(appSourceProvider(widget.appId));
@@ -365,6 +423,7 @@ class _SourceDialogState extends ConsumerState<_SourceDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
       title: Text(widget.source == null ? 'Build from Git' : 'Git source'),
@@ -382,21 +441,59 @@ class _SourceDialogState extends ConsumerState<_SourceDialog> {
                   controlAffinity: ListTileControlAffinity.leading,
                   value: _removeToken,
                   onChanged: (v) => setState(() => _removeToken = v ?? false),
-                  title: const Text('Remove the saved token (public repository)'),
+                  title: Text(s.appRemoveTheSavedTokenPublic),
                 ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _auto,
                 onChanged: (v) => setState(() => _auto = v),
-                title: const Text('Build and deploy on every push'),
-                subtitle: Text('Needs the push webhook in your Git host', style: TextStyle(color: c.muted, fontSize: 12.5)),
+                title: Text(s.appBuildAndDeployOnEvery),
+                subtitle: Text(s.appNeedsThePushWebhookIn, style: TextStyle(color: c.muted, fontSize: 12.5)),
               ),
+              const Divider(height: 24),
+              Text(s.appPreviewEnvironments, style: const TextStyle(fontWeight: FontWeight.w600)),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _previews,
+                onChanged: (v) => setState(() => _previews = v),
+                title: Text(s.appPreviewsSwitch),
+                subtitle: Text(s.appPreviewsHelp, style: TextStyle(color: c.muted, fontSize: 12.5)),
+              ),
+              if (_previews) ...[
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _previewDbs,
+                  onChanged: (v) => setState(() => _previewDbs = v),
+                  title: Text(s.appPreviewDatabases),
+                  subtitle: Text(s.appPreviewDatabasesHelp, style: TextStyle(color: c.muted, fontSize: 12.5)),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _previewForks,
+                  onChanged: (v) => setState(() => _previewForks = v),
+                  title: Text(s.appPreviewForks),
+                  subtitle: Text(s.appPreviewForksHelp, style: TextStyle(color: c.warning, fontSize: 12.5)),
+                ),
+                Row(
+                  children: [
+                    Expanded(child: Text(s.appPreviewTtl)),
+                    DropdownButton<int>(
+                      value: const [0, 3, 7, 14, 30].contains(_previewTtl) ? _previewTtl : 14,
+                      items: [
+                        for (final d in const [3, 7, 14, 30]) DropdownMenuItem(value: d, child: Text(s.appPreviewDays(d))),
+                        DropdownMenuItem(value: 0, child: Text(s.appPreviewTtlNever)),
+                      ],
+                      onChanged: (v) => setState(() => _previewTtl = v ?? 14),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
         FilledButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Checking the repository…' : 'Save')),
       ],
     );
@@ -424,6 +521,7 @@ class GitSourceFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -432,16 +530,16 @@ class GitSourceFields extends StatelessWidget {
           controller: repo,
           style: monoStyle(context, size: 13.5),
           autocorrect: false,
-          decoration: const InputDecoration(labelText: 'Repository', hintText: 'https://github.com/acme/api.git'),
+          decoration: InputDecoration(labelText: s.appRepository, hintText: 'https://github.com/acme/api.git'),
         ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 12,
           runSpacing: 10,
           children: [
-            SizedBox(width: 160, child: TextField(controller: branch, decoration: const InputDecoration(labelText: 'Branch', isDense: true))),
-            SizedBox(width: 160, child: TextField(controller: contextDir, decoration: const InputDecoration(labelText: 'Folder', hintText: '(root)', isDense: true))),
-            SizedBox(width: 160, child: TextField(controller: dockerfile, decoration: const InputDecoration(labelText: 'Dockerfile', isDense: true))),
+            SizedBox(width: 160, child: TextField(controller: branch, decoration: InputDecoration(labelText: s.appBranch, isDense: true))),
+            SizedBox(width: 160, child: TextField(controller: contextDir, decoration: InputDecoration(labelText: s.backupFolder, hintText: s.appRoot, isDense: true))),
+            SizedBox(width: 160, child: TextField(controller: dockerfile, decoration: InputDecoration(labelText: s.appDockerfile, isDense: true))),
           ],
         ),
         const SizedBox(height: 10),
@@ -450,13 +548,83 @@ class GitSourceFields extends StatelessWidget {
           obscureText: true,
           decoration: InputDecoration(
             labelText: hasToken ? 'Access token (saved; type to replace)' : 'Access token (private repositories)',
-            helperText: 'GitHub: a fine-grained token with Contents: read. GitLab: read_repository.',
+            helperText: s.appGithubAFineGrainedToken,
           ),
         ),
         const SizedBox(height: 6),
-        Text('The repository needs a Dockerfile. Images are built in the cluster with Kaniko and kept in the built-in registry.',
+        Text(s.appTheRepositoryNeedsADockerfile,
             style: TextStyle(color: c.muted, fontSize: 12.5)),
       ],
+    );
+  }
+}
+
+/// The open pull requests' previews of an app.
+class _PreviewsCard extends ConsumerWidget {
+  const _PreviewsCard({required this.app, required this.previews, required this.canDelete});
+
+  final App app;
+  final List<PreviewInfo> previews;
+  final bool canDelete;
+
+  Future<void> _delete(BuildContext context, WidgetRef ref, PreviewInfo p) async {
+    final s = S.of(context);
+    if (!await confirmAction(context, s.appDeletePreview(p.slug), s.appDeletePreviewHelp, s.actionDelete, danger: true)) return;
+    try {
+      await ref.read(apiProvider).delete('/apps/${p.appId}');
+      ref.invalidate(previewsProvider(app.id));
+    } on Object catch (e) {
+      if (context.mounted) showSnack(context, describeError(e), error: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
+    final c = NectarColors.of(context);
+    return NCard(
+      title: s.appPreviews,
+      child: previews.isEmpty
+          ? Text(s.appNoPreviews, style: TextStyle(color: c.muted))
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final p in previews)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: StatusDot(status: p.status),
+                    title: Text('#${p.number} ${p.title}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(
+                      [p.slug, if (p.author.isNotEmpty) p.author, if (p.commitSha.length >= 7) p.commitSha.substring(0, 7)].join(' · '),
+                      style: monoStyle(context, size: 12, color: c.muted),
+                    ),
+                    onTap: () => context.go('/apps/${p.appId}'),
+                    trailing: Wrap(
+                      spacing: 4,
+                      children: [
+                        if (p.liveUrl.isNotEmpty)
+                          IconButton(
+                            tooltip: s.appOpenPreview,
+                            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                            onPressed: () => launchUrl(Uri.parse(p.liveUrl)),
+                          ),
+                        if (p.url.isNotEmpty)
+                          IconButton(
+                            tooltip: s.appOpenPullRequest,
+                            icon: const Icon(Icons.merge_type_rounded, size: 18),
+                            onPressed: () => launchUrl(Uri.parse(p.url)),
+                          ),
+                        if (canDelete)
+                          IconButton(
+                            tooltip: s.actionDelete,
+                            icon: Icon(Icons.delete_outline_rounded, size: 18, color: c.failed),
+                            onPressed: () => _delete(context, ref, p),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }

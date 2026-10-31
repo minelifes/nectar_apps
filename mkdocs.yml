@@ -1,0 +1,53 @@
+site_name: Nectar Apps
+site_description: Deploy any app to your own server — a self-hosted panel on k3s with nectar-gateway in front.
+site_url: https://minelifes.github.io/nectar_apps/
+repo_url: https://github.com/minelifes/nectar_apps
+repo_name: minelifes/nectar_apps
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; TechBrain LLC · Nectar Source License
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: amber
+      accent: deep orange
+      toggle: { icon: material/weather-night, name: Dark mode }
+    - scheme: slate
+      primary: amber
+      accent: deep orange
+      toggle: { icon: material/weather-sunny, name: Light mode }
+  features: [navigation.sections, navigation.top, content.code.copy, search.highlight]
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.details
+nav:
+  - Overview: index.md
+  - Getting started:
+      - Install: install.md
+      - Existing k3s server (adopt): adopt.md
+      - First deploy: first-deploy.md
+  - Apps:
+      - Runtimes: runtimes.md
+      - Git builds and registries: git-builds.md
+      - Domains and HTTPS: domains.md
+      - Databases: databases.md
+      - Volumes and logs: volumes-logs.md
+      - nectar.yaml, one-click apps, compose: blueprints.md
+      - Environments and env groups: environments.md
+  - Operations:
+      - Several servers and edge nodes: nodes.md
+      - Alerts and push notifications: alerts.md
+      - Backups and recovery: backups.md
+      - Updates: updates.md
+      - Users, roles and sign-in: access.md
+      - Security: security.md
+  - Automation:
+      - CLI: cli.md
+      - CI / GitHub Actions: ci.md
+      - API reference: api.md
+  - Development: development.md

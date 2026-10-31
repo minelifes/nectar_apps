@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/models.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import 'app_actions.dart';
 
@@ -26,6 +27,7 @@ class _ScaleControlState extends ConsumerState<ScaleControl> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final n = widget.app.replicas;
     return Container(
@@ -41,7 +43,7 @@ class _ScaleControlState extends ConsumerState<ScaleControl> {
           ),
           SizedBox(width: 22, child: Text('$n', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600))),
           IconButton(
-            tooltip: 'More replicas',
+            tooltip: s.appMoreReplicas,
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.add_rounded, size: 16),
             onPressed: _busy || n >= 20 ? null : () => _scale(n + 1),
@@ -63,6 +65,7 @@ class PendingBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final what = [
       if (pending.contains('settings')) 'settings',
@@ -83,11 +86,11 @@ class PendingBanner extends ConsumerWidget {
           children: [
             const Icon(Icons.pending_actions_rounded, color: NectarTokens.amber, size: 20),
             const SizedBox(width: 12),
-            Expanded(child: Text('Changed $list are saved but not live yet.', style: TextStyle(color: c.text, fontSize: 13.5))),
+            Expanded(child: Text(s.appChangedAreSavedButNot(list), style: TextStyle(color: c.text, fontSize: 13.5))),
             if (canDeploy)
               FilledButton(
                 onPressed: () async => onStarted(await redeploy(context, ref, app)),
-                child: const Text('Redeploy'),
+                child: Text(s.appRedeploy),
               ),
           ],
         ),

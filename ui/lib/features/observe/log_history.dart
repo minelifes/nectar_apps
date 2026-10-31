@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -24,15 +25,17 @@ class _LogsPanelState extends State<LogsPanel> {
   bool _history = false;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    final l = S.of(context);
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Align(
             alignment: Alignment.centerLeft,
             child: SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('Live'), icon: Icon(Icons.podcasts_rounded, size: 16)),
-                ButtonSegment(value: true, label: Text('History'), icon: Icon(Icons.history_rounded, size: 16)),
+              segments: [
+                ButtonSegment(value: false, label: Text(l.observeLive), icon: Icon(Icons.podcasts_rounded, size: 16)),
+                ButtonSegment(value: true, label: Text(l.observeHistory), icon: Icon(Icons.history_rounded, size: 16)),
               ],
               selected: {_history},
               showSelectedIcon: false,
@@ -43,6 +46,7 @@ class _LogsPanelState extends State<LogsPanel> {
           if (_history) LogHistoryView(app: widget.app) else LogViewer(key: ValueKey('logs-${widget.app.id}'), app: widget.app),
         ],
       );
+  }
 }
 
 class _HLine {
@@ -129,6 +133,7 @@ class _LogHistoryViewState extends ConsumerState<LogHistoryView> {
 
   @override
   Widget build(BuildContext context) {
+        final s = S.of(context);
     final c = NectarColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -151,30 +156,30 @@ class _LogHistoryViewState extends ConsumerState<LogHistoryView> {
                 onSubmitted: (_) => _search(),
               ),
             ),
-            FilterChip(label: const Text('.* regex'), selected: _regex, onSelected: (v) => setState(() => _regex = v)),
+            FilterChip(label: Text(s.observeRegex), selected: _regex, onSelected: (v) => setState(() => _regex = v)),
             DropdownButton<String>(
               value: _range,
-              items: const [
-                DropdownMenuItem(value: '1h', child: Text('Last hour')),
-                DropdownMenuItem(value: '6h', child: Text('Last 6 hours')),
-                DropdownMenuItem(value: '24h', child: Text('Last 24 hours')),
-                DropdownMenuItem(value: '7d', child: Text('Last 7 days')),
-                DropdownMenuItem(value: 'all', child: Text('Everything kept')),
+              items: [
+                DropdownMenuItem(value: '1h', child: Text(s.observeLastHour)),
+                DropdownMenuItem(value: '6h', child: Text(s.observeLast6Hours)),
+                DropdownMenuItem(value: '24h', child: Text(s.observeLast24Hours)),
+                DropdownMenuItem(value: '7d', child: Text(s.observeLast7Days)),
+                DropdownMenuItem(value: 'all', child: Text(s.observeEverythingKept)),
               ],
               onChanged: (v) {
                 setState(() => _range = v ?? '24h');
                 _search();
               },
             ),
-            FilledButton(onPressed: _busy ? null : () => _search(), child: const Text('Search')),
+            FilledButton(onPressed: _busy ? null : () => _search(), child: Text(s.observeSearch)),
             IconButton(
-              tooltip: 'Copy shown lines',
+              tooltip: s.observeCopyShownLines,
               icon: const Icon(Icons.copy_rounded, size: 18),
               onPressed: _lines.isEmpty
                   ? null
                   : () {
                       Clipboard.setData(ClipboardData(text: _lines.map((l) => '${l.time.toIso8601String()} ${l.pod} ${l.line}').join('\n')));
-                      showSnack(context, 'Copied ${_lines.length} lines');
+                      showSnack(context, s.observeCopiedLines(_lines.length));
                     },
             ),
           ],
@@ -212,7 +217,7 @@ class _LogHistoryViewState extends ConsumerState<LogHistoryView> {
                 ),
         ),
         const SizedBox(height: 6),
-        Text('Newest first. Logs are kept on the panel for the days set under Server → Disk → Retention.', style: TextStyle(color: c.muted, fontSize: 12)),
+        Text(s.observeNewestFirstLogsAreKept, style: TextStyle(color: c.muted, fontSize: 12)),
       ],
     );
   }

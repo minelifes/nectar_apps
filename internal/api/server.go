@@ -30,10 +30,12 @@ import (
 	"nectar_apps/internal/kube"
 	"nectar_apps/internal/logstore"
 	"nectar_apps/internal/mail"
+	"nectar_apps/internal/push"
 	"nectar_apps/internal/registry"
 	"nectar_apps/internal/routing"
 	"nectar_apps/internal/runtimes"
 	"nectar_apps/internal/secretbox"
+	"nectar_apps/internal/sso"
 	"nectar_apps/internal/store"
 	"nectar_apps/internal/update"
 )
@@ -119,6 +121,12 @@ type Server struct {
 	access      allowlist
 	logs        *logstore.Store
 	mux         *http.ServeMux
+	ssoBox      *secretbox.Box
+	pushBox     *secretbox.Box // Firebase service account key
+	pushClient  *push.Client
+	ssoClient   *sso.Client
+	sso         ssoFlows
+	passkeys    passkeyFlows
 }
 
 // New creates the API server.
@@ -155,11 +163,17 @@ func New(d Deps) *Server {
 			d.Keeper.Kube = d.Kube
 		}
 	}
-	return &Server{cfg: d.Config, store: d.Store, kube: d.Kube, deployer: d.Deployer, catalog: d.Catalog,
+	ssoBox, _ := secretbox.New(d.Config.MasterKey, "sso")
+	pushBox, _ := secretbox.New(d.Config.MasterKey, "push")
+	srv := &Server{ssoBox: ssoBox, pushBox: pushBox, pushClient: &push.Client{}, ssoClient: &sso.Client{}, cfg: d.Config, store: d.Store, kube: d.Kube, deployer: d.Deployer, catalog: d.Catalog,
 		artifacts: d.Artifacts, artKey: d.ArtifactKey, envBox: d.EnvBox, gateway: d.Gateway, syncer: d.Syncer, ingSync: d.IngressSync,
 		cluster: d.Cluster, log: d.Log, limiter: newLoginLimiter(10, 15*time.Minute), web: d.Web,
 		alertBox: d.AlertBox, alertSender: d.AlertSender, keeper: d.Keeper, backups: d.Backups, mfaBox: d.MFABox, mailer: d.Mailer, updates: d.Updates,
 		builder: d.Builder, registry: d.Registry, registryBox: d.RegistryBox, logs: d.LogStore}
+	if d.Builder != nil {
+		d.Builder.OnFinish = srv.previewBuildFinished // commit status + the newest commit of a preview
+	}
+	return srv
 }
 
 // SyncBuiltinRoles writes the built-in roles from the authz catalog into the database.
@@ -193,6 +207,16 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/me", s.authed(s.me))
 	mux.Handle("GET /api/me/permissions", s.authed(s.myPermissions))
 	mux.Handle("GET /api/me/sessions", s.authed(s.mySessions))
+	mux.Handle("GET /api/me/passkeys", s.authed(s.listPasskeys))
+	mux.Handle("POST /api/me/passkeys/options", s.authed(s.passkeyOptions))
+	mux.Handle("POST /api/me/passkeys", s.authed(s.addPasskey))
+	mux.Handle("PATCH /api/me/passkeys/{pk}", s.authed(s.renamePasskey))
+	mux.Handle("DELETE /api/me/passkeys/{pk}", s.authed(s.deletePasskey))
+	mux.Handle("GET /api/me/push-devices", s.authed(s.listMyPushDevices))
+	mux.Handle("PUT /api/me/push-devices", s.authed(s.registerPushDevice))
+	mux.Handle("POST /api/me/push-devices/unregister", s.authed(s.unregisterPushDevice))
+	mux.Handle("DELETE /api/me/push-devices/{id}", s.authed(s.deleteMyPushDevice))
+	mux.Handle("GET /api/push/config", s.authed(s.pushConfig))
 	mux.Handle("DELETE /api/me/sessions/{id}", s.interactive(s.deleteMySession))
 	mux.Handle("GET /api/me/tokens", s.authed(s.listMyTokens))
 	mux.Handle("POST /api/me/tokens", s.interactive(s.createMyToken))
@@ -234,6 +258,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/server/metrics", s.can("server.view", s.serverMetrics))
 	mux.Handle("GET /api/server/join", s.can("server.manage", s.joinInfo))
 	mux.Handle("POST /api/server/nodes/{name}/{action}", s.can("server.manage", s.nodeAction))
+	mux.Handle("GET /api/server/edge", s.can("server.view", s.edgeStatus))
 	mux.Handle("DELETE /api/server/nodes/{name}", s.can("server.manage", s.deleteNode))
 	mux.Handle("GET /api/server/events", s.can("server.view", s.serverEvents))
 	mux.Handle("GET /api/server/disk", s.can("server.view", s.serverDisk))
@@ -254,6 +279,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("DELETE /api/apps/{id}/source", s.onApp("app.edit", s.deleteSource))
 	mux.Handle("POST /api/apps/{id}/source/webhook-secret", s.onApp("app.edit", s.rotateWebhookSecret))
 	mux.Handle("GET /api/apps/{id}/builds", s.onApp("app.view", s.listBuilds))
+	mux.Handle("GET /api/apps/{id}/previews", s.onApp("app.view", s.listPreviews))
 	mux.Handle("POST /api/apps/{id}/builds", s.onApp("app.deploy", s.startBuild))
 	mux.Handle("GET /api/apps/{id}/builds/{n}", s.onApp("app.logs", s.getBuild))
 	mux.Handle("POST /api/apps/{id}/builds/{n}/cancel", s.onApp("app.deploy", s.cancelBuild))
@@ -304,6 +330,16 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/projects/{pid}/templates/{tid}", s.inProject("app.create", s.installTemplate))
 	mux.Handle("POST /api/projects/{pid}/import/compose", s.inProject("app.create", s.importCompose))
 	mux.Handle("GET /api/templates", s.authed(s.listTemplates))
+	mux.Handle("GET /api/settings/sso", s.can("settings.manage", s.getSSO))
+	mux.Handle("PUT /api/settings/sso", s.can("settings.manage", s.putSSO))
+	mux.Handle("GET /api/settings/push", s.can("settings.manage", s.getPushSettings))
+	mux.Handle("PUT /api/settings/push", s.can("settings.manage", s.putPushSettings))
+	mux.Handle("POST /api/settings/push/test", s.can("settings.manage", s.testPush))
+	mux.HandleFunc("GET /api/auth/sso", s.listSSO)
+	mux.HandleFunc("POST /api/auth/passkey/options", s.passkeyLoginOptions)
+	mux.HandleFunc("POST /api/auth/passkey", s.passkeyLogin)
+	mux.HandleFunc("GET /api/auth/sso/{id}/start", s.startSSO)
+	mux.HandleFunc("GET /api/auth/sso/{id}/callback", s.callbackSSO)
 	mux.Handle("GET /api/projects/{pid}/env-groups", s.inProject("project.view", s.listEnvGroups))
 	mux.Handle("PUT /api/projects/{pid}/env-groups/{name}", s.inProject("env.edit", s.putEnvGroup))
 	mux.Handle("DELETE /api/projects/{pid}/env-groups/{name}", s.inProject("env.edit", s.deleteEnvGroup))

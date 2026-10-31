@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/client.dart';
-import '../core/locale.dart';
+import '../generated/l10n.dart';
 import '../theme/tokens.dart';
 import 'hex.dart';
 
@@ -152,6 +152,7 @@ class ErrorBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return Padding(
       padding: EdgeInsets.symmetric(vertical: compact ? 8 : 28),
@@ -170,7 +171,7 @@ class ErrorBlock extends StatelessWidget {
           ],
           if (onRetry != null) ...[
             const SizedBox(height: 12),
-            OutlinedButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded, size: 18), label: const Text('Retry')),
+            OutlinedButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded, size: 18), label: Text(s.widgetRetry)),
           ],
         ],
       ),
@@ -316,7 +317,7 @@ Future<bool> confirmAction(BuildContext context, String title, String message, S
         title: Text(title),
         content: SizedBox(width: 420, child: Text(message)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(ctx.l10n.actionCancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(S.of(ctx).actionCancel)),
           FilledButton(
             style: danger ? FilledButton.styleFrom(backgroundColor: NectarColors.of(ctx).failed, foregroundColor: Colors.white) : null,
             onPressed: () => Navigator.pop(ctx, true),
@@ -352,7 +353,9 @@ class _PromptDialogState extends State<_PromptDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return AlertDialog(
         title: Text(widget.title),
         content: SizedBox(
           width: 420,
@@ -364,8 +367,9 @@ class _PromptDialogState extends State<_PromptDialog> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, _ctl.text), child: const Text('OK')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, _ctl.text), child: Text(s.actionOk)),
         ],
       );
+  }
 }

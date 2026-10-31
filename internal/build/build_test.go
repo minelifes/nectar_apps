@@ -308,3 +308,34 @@ func TestBuilder(t *testing.T) {
 		t.Errorf("no registry: %v", err)
 	}
 }
+
+func TestParsePullRequests(t *testing.T) {
+	sign := func(body, secret string) string {
+		m := hmac.New(sha256.New, []byte(secret))
+		m.Write([]byte(body))
+		return hex.EncodeToString(m.Sum(nil))
+	}
+	gh := `{"action":"synchronize","number":12,"pull_request":{"title":"Fix","html_url":"https://github.com/acme/api/pull/12","user":{"login":"ann"},
+		"head":{"sha":"` + strings.Repeat("c", 40) + `","ref":"fix","repo":{"full_name":"ann/api"}},"base":{"ref":"main","repo":{"full_name":"acme/api"}}}}`
+	h := http.Header{"X-Github-Event": {"pull_request"}, "X-Hub-Signature-256": {"sha256=" + sign(gh, "s")}}
+	p, err := ParsePush(h, []byte(gh), "s")
+	if err != nil || p.PR == nil || p.PR.Action != PRUpdate || p.PR.HeadRef != "refs/pull/12/head" || !p.PR.Fork || p.PR.BaseBranch != "main" || p.Commit != strings.Repeat("c", 40) {
+		t.Fatalf("github: %v %+v", err, p.PR)
+	}
+	gl := `{"object_kind":"merge_request","user":{"username":"bob"},"object_attributes":{"iid":5,"title":"MR","url":"https://gitlab.com/acme/api/-/merge_requests/5",
+		"action":"update","target_branch":"main","source_project_id":1,"target_project_id":1,"last_commit":{"id":"` + strings.Repeat("d", 40) + `"}}}`
+	h = http.Header{"X-Gitlab-Event": {"Merge Request Hook"}, "X-Gitlab-Token": {"s"}}
+	if p, err = ParsePush(h, []byte(gl), "s"); err != nil || p.PR.Action != "" {
+		t.Fatalf("gitlab update without new commits: %v %+v", err, p.PR)
+	}
+	gl = strings.Replace(gl, `"action":"update"`, `"action":"merge"`, 1)
+	if p, err = ParsePush(h, []byte(gl), "s"); err != nil || p.PR.Action != PRClose || p.PR.HeadRef != "refs/merge-requests/5/head" || p.PR.Fork || p.PR.Author != "bob" {
+		t.Fatalf("gitlab merge: %v %+v", err, p.PR)
+	}
+	if _, err := ParsePush(h, []byte(gl), "wrong"); err != ErrSignature {
+		t.Fatalf("gitlab token: %v", err)
+	}
+	if ctx, _ := gitContext("https://github.com/acme/api.git", "refs/pull/12/head", "abc"); ctx != "git://github.com/acme/api.git#refs/pull/12/head#abc" {
+		t.Fatalf("git context: %s", ctx)
+	}
+}

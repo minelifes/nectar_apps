@@ -15,6 +15,7 @@ import (
 
 	"nectar_apps/internal/auth"
 	"nectar_apps/internal/gateway"
+	"nectar_apps/internal/kube"
 	"nectar_apps/internal/runtimes"
 	"nectar_apps/internal/store"
 )
@@ -80,7 +81,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request, p *principa
 	}
 	old := s.loadSettings(r.Context())
 	if in.DNSAuto && !old.DNSAuto && !s.dnsAvailable(r.Context()) {
-		writeError(w, http.StatusConflict, "automatic DNS records need a DNS provider in nectar-gateway (Gateway → Certificates → DNS provider, gateway 1.3 or newer)")
+		writeError(w, http.StatusConflict, "automatic DNS records need a DNS provider in nectar-gateway (Gateway → Certificates → DNS provider, the latest nectar-gateway)")
 		return
 	}
 	var dns map[string]any
@@ -121,7 +122,12 @@ func (s *Server) serverIPs(ctx context.Context, st Settings) []string {
 	if err != nil {
 		return out
 	}
+	// with edge nodes, DNS points to them only (the gateway runs there); otherwise to every node
+	edgeOnly := slices.ContainsFunc(nodes, func(n kube.Node) bool { return n.Edge || n.EdgeReplica })
 	for _, n := range nodes {
+		if edgeOnly && !n.Edge && !n.EdgeReplica {
+			continue
+		}
 		if n.ExternalIP != "" {
 			out = append(out, n.ExternalIP)
 		} else if n.InternalIP != "" {

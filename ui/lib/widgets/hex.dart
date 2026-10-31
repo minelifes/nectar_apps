@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../generated/l10n.dart';
 import '../theme/tokens.dart';
 
 /// Path of a pointy-top hexagon that fits [rect] (height-limited, centered).
@@ -171,9 +172,10 @@ class _HexLoaderState extends State<HexLoader> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final colors = NectarColors.of(context);
     return Semantics(
-      label: 'Loading',
+      label: s.widgetLoading,
       child: SizedBox(
         width: widget.size * math.sqrt(3) / 2,
         height: widget.size,

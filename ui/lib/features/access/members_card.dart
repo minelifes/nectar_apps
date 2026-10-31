@@ -5,6 +5,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 
@@ -16,14 +17,15 @@ class MembersCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final members = ref.watch(projectMembersProvider(projectId));
     final canEdit = ref.watch(sessionProvider.select((s) => s.can('project.members', projectId: projectId)));
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Members',
+      title: l.acceMembers,
       trailing: canEdit
           ? IconButton(
-              tooltip: 'Add member',
+              tooltip: l.acceAddMember,
               icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
               onPressed: () => showDialog<void>(context: context, builder: (_) => _MemberDialog(projectId: projectId)),
             )
@@ -101,6 +103,7 @@ class _MemberDialogState extends ConsumerState<_MemberDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final roles = ref.watch(rolesProvider);
     final m = widget.member;
@@ -121,7 +124,7 @@ class _MemberDialogState extends ConsumerState<_MemberDialog> {
                   data: (users) => DropdownButtonFormField<int>(
                     initialValue: _user,
                     isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'User'),
+                    decoration: InputDecoration(labelText: s.acceUser),
                     items: [for (final u in users) DropdownMenuItem(value: u.id, child: Text('${u.label} · ${u.email}', overflow: TextOverflow.ellipsis))],
                     onChanged: (v) => setState(() => _user = v),
                   ),
@@ -151,7 +154,7 @@ class _MemberDialogState extends ConsumerState<_MemberDialog> {
                   ],
                 ),
               ),
-              Text('You can only give roles whose permissions you hold in this project.', style: TextStyle(color: c.muted, fontSize: 12)),
+              Text(s.acceYouCanOnlyGiveRoles, style: TextStyle(color: c.muted, fontSize: 12)),
             ],
           ),
         ),
@@ -161,10 +164,10 @@ class _MemberDialogState extends ConsumerState<_MemberDialog> {
           TextButton(
             onPressed: _busy ? null : () => _save(remove: true),
             style: TextButton.styleFrom(foregroundColor: c.failed),
-            child: const Text('Remove from project'),
+            child: Text(s.acceRemoveFromProject),
           ),
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: _busy || (m == null && _user == null) ? null : _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
+        FilledButton(onPressed: _busy || (m == null && _user == null) ? null : _save, child: Text(s.actionSave)),
       ],
     );
   }

@@ -49,6 +49,9 @@ type Builder struct {
 	Image     string        // Kaniko executor image, default KanikoImage
 	Poll      time.Duration // default 3 s
 	Timeout   time.Duration // default 1 h
+	// OnFinish is called after a build finished (succeeded, failed or canceled), e.g. to report a preview's
+	// commit status to the Git host.
+	OnFinish func(ctx context.Context, bl store.Build)
 
 	mu      sync.Mutex
 	running sync.WaitGroup
@@ -158,7 +161,7 @@ func gitContext(repoURL, branch, commit string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	return "git://" + u.Host + u.Path + "#refs/heads/" + branch + "#" + commit, u.Scheme == "http"
+	return "git://" + u.Host + u.Path + "#" + fullRef(branch) + "#" + commit, u.Scheme == "http"
 }
 
 func (b *Builder) ensureNamespace(ctx context.Context) error {
@@ -291,6 +294,7 @@ func (b *Builder) wait(ctx context.Context, id int64) {
 			_ = b.Kube.Delete(ctx, "Job", ns, name)
 			_ = b.Kube.Delete(ctx, "Secret", ns, name)
 			_ = b.Store.FinishBuild(ctx, id, store.BuildCanceled, "canceled", logs, nil)
+			b.notify(ctx, id)
 			return
 		}
 		var job kube.Object
@@ -316,11 +320,13 @@ func (b *Builder) wait(ctx context.Context, id int64) {
 				logs := b.logs(ctx, id)
 				_ = b.Kube.Delete(ctx, "Job", ns, name)
 				_ = b.Store.FinishBuild(ctx, id, store.BuildFailed, msg, logs, nil)
+				b.notify(ctx, id)
 				return
 			}
 		}
 		if time.Now().After(deadline) {
 			_ = b.Store.FinishBuild(ctx, id, store.BuildFailed, "the build did not finish in time", b.logs(ctx, id), nil)
+			b.notify(ctx, id)
 			return
 		}
 		time.Sleep(b.poll())
@@ -378,6 +384,7 @@ func (b *Builder) Cancel(id int64) {
 
 // finish records the outcome, switches the app to the new image and deploys it.
 func (b *Builder) finish(ctx context.Context, id int64, ok bool) {
+	defer b.notify(ctx, id)
 	logs := b.logs(ctx, id)
 	ns, name := b.ns(), JobName(id)
 	_ = b.Kube.Delete(ctx, "Secret", ns, name) // the Job (and its logs) stay a day for kubectl debugging
@@ -415,6 +422,15 @@ func (b *Builder) finish(ctx context.Context, id int64, ok bool) {
 	}
 	_ = b.Store.FinishBuild(ctx, id, store.BuildSucceeded, msg, logs, release)
 	b.prune(ctx, app)
+}
+
+func (b *Builder) notify(ctx context.Context, id int64) {
+	if b.OnFinish == nil {
+		return
+	}
+	if bl, err := b.Store.GetBuild(ctx, id); err == nil {
+		b.OnFinish(ctx, bl)
+	}
 }
 
 // failureReason picks the most useful line of a failed Kaniko log.

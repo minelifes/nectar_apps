@@ -10,6 +10,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -170,6 +171,7 @@ class _LogViewerState extends ConsumerState<LogViewer> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final visible = _visible;
     final api = ref.watch(apiProvider);
@@ -192,7 +194,7 @@ class _LogViewerState extends ConsumerState<LogViewer> {
               value: _pods.any((p) => p.name == _pod) ? _pod : null,
               underline: const SizedBox.shrink(),
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('All pods')),
+                DropdownMenuItem<String?>(value: null, child: Text(s.observeAllPods)),
                 for (final p in _pods)
                   DropdownMenuItem<String?>(
                     value: p.name,
@@ -204,7 +206,7 @@ class _LogViewerState extends ConsumerState<LogViewer> {
             SizedBox(
               width: 220,
               child: TextField(
-                decoration: const InputDecoration(isDense: true, prefixIcon: Icon(Icons.search_rounded, size: 18), hintText: 'Filter'),
+                decoration: InputDecoration(isDense: true, prefixIcon: Icon(Icons.search_rounded, size: 18), hintText: s.observeFilter),
                 onChanged: (v) => setState(() => _filter = v.trim()),
               ),
             ),
@@ -219,25 +221,25 @@ class _LogViewerState extends ConsumerState<LogViewer> {
               onPressed: () => setState(() => _wrap = !_wrap),
             ),
             IconButton(
-              tooltip: 'Copy shown lines',
+              tooltip: s.observeCopyShownLines,
               icon: const Icon(Icons.copy_rounded, size: 18),
               onPressed: visible.isEmpty
                   ? null
                   : () {
                       Clipboard.setData(ClipboardData(text: _asText(visible)));
-                      showSnack(context, 'Copied ${visible.length} lines');
+                      showSnack(context, s.observeCopiedLines2(visible.length));
                     },
             ),
             if (!api.useTokens) // the web build served by the panel: a plain download with the session cookie
               IconButton(
-                tooltip: 'Download (last 5000 lines)',
+                tooltip: s.observeDownloadLast5000Lines,
                 icon: const Icon(Icons.download_rounded, size: 20),
                 onPressed: () => launchUrl(Uri.parse(
                   '${api.baseUrl}/api/apps/${widget.app.id}/logs?format=text&tail=5000${_pod == null ? '' : '&pod=$_pod'}',
                 )),
               ),
             IconButton(
-              tooltip: 'Clear',
+              tooltip: s.observeClear,
               icon: const Icon(Icons.clear_all_rounded, size: 20),
               onPressed: () => setState(() {
                 _lines.clear();
@@ -323,7 +325,7 @@ class _LogViewerState extends ConsumerState<LogViewer> {
 Future<void> showCrashLog(BuildContext context, WidgetRef ref, App app, String pod) => showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Before the last restart · $pod'),
+        title: Text(S.of(context).observeBeforeTheLastRestart(pod)),
         content: SizedBox(
           width: 760,
           height: 440,
@@ -335,7 +337,7 @@ Future<void> showCrashLog(BuildContext context, WidgetRef ref, App app, String p
               if (snap.hasError) return ErrorBlock(error: snap.error!);
               if (!snap.hasData) return const LoadingBlock();
               final lines = snap.data!;
-              if (lines.isEmpty) return const Center(child: Text('The previous container wrote nothing.'));
+              if (lines.isEmpty) return Center(child: Text(S.of(context).observeThePreviousContainerWroteNothing));
               return Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: const Color(0xFF0A0B0D), borderRadius: BorderRadius.circular(NectarTokens.radius)),
@@ -350,6 +352,6 @@ Future<void> showCrashLog(BuildContext context, WidgetRef ref, App app, String p
             },
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(S.of(context).actionClose))],
       ),
     );

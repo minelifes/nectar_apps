@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
 import '../../api/session.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -21,9 +22,10 @@ class _AddNodeDialogState extends ConsumerState<AddNodeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
-      title: const Text('Add a node'),
+      title: Text(s.serverAddANode),
       content: SizedBox(
         width: 680,
         child: FutureBuilder<Map<String, dynamic>>(
@@ -37,7 +39,7 @@ class _AddNodeDialogState extends ConsumerState<AddNodeDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Run this as root on the new machine (Linux, a fresh install):'),
+                Text(s.serverRunThisAsRootOn),
                 const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.all(10),
@@ -58,7 +60,7 @@ class _AddNodeDialogState extends ConsumerState<AddNodeDialog> {
                     ),
                   ),
                 const SizedBox(height: 6),
-                Text('The command contains the cluster join token: treat it like a password.', style: TextStyle(color: c.warning, fontSize: 12.5)),
+                Text(s.serverTheCommandContainsTheCluster, style: TextStyle(color: c.warning, fontSize: 12.5)),
               ],
             );
           },
@@ -71,13 +73,13 @@ class _AddNodeDialogState extends ConsumerState<AddNodeDialog> {
             onPressed: snap.hasData
                 ? () {
                     Clipboard.setData(ClipboardData(text: '${snap.data!['command']}'));
-                    showSnack(context, 'Copied');
+                    showSnack(context, s.backupCopied);
                   }
                 : null,
-            child: const Text('Copy command'),
+            child: Text(s.serverCopyCommand),
           ),
         ),
-        FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+        FilledButton(onPressed: () => Navigator.pop(context), child: Text(s.backupDone)),
       ],
     );
   }

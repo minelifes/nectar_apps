@@ -147,7 +147,7 @@ func (s *Server) createDomainDNS(w http.ResponseWriter, r *http.Request, p *prin
 		return
 	}
 	if !s.dnsAvailable(r.Context()) {
-		writeError(w, http.StatusConflict, "nectar-gateway has no DNS provider: set one under Gateway → Certificates → DNS provider (needs gateway 1.3 or newer)")
+		writeError(w, http.StatusConflict, "nectar-gateway has no DNS provider: set one under Gateway → Certificates → DNS provider (needs the latest nectar-gateway)")
 		return
 	}
 	st := s.loadSettings(r.Context())

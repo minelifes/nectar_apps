@@ -8,6 +8,7 @@ import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/status.dart';
@@ -23,6 +24,7 @@ class AddonsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final addons = ref.watch(projectAddonsProvider(projectId));
     final c = NectarColors.of(context);
     return Column(
@@ -34,7 +36,7 @@ class AddonsSection extends ConsumerWidget {
               ? TextButton.icon(
                   onPressed: () => showCreateAddon(context, ref, projectId),
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Add database'),
+                  label: Text(s.addonAddDatabase),
                 )
               : null,
         ),
@@ -46,7 +48,7 @@ class AddonsSection extends ConsumerWidget {
             if (list.isEmpty) {
               return NCard(
                 child: Text(
-                  'PostgreSQL, MySQL, MariaDB or Redis with a persistent volume. Link it to an app and it gets DATABASE_URL (or REDIS_URL).',
+                  s.addonPostgresqlMysqlMariadbOrRedis,
                   style: TextStyle(color: c.muted, fontSize: 13),
                 ),
               );
@@ -147,10 +149,11 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final kinds = ref.watch(addonKindsProvider);
     final c = NectarColors.of(context);
     return AlertDialog(
-      title: const Text('Add a database'),
+      title: Text(s.addonAddADatabase),
       content: SizedBox(
         width: 480,
         child: AsyncBlock(
@@ -182,7 +185,7 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
                     Expanded(
                       child: TextField(
                         controller: _slug,
-                        decoration: const InputDecoration(labelText: 'Name (also the host name)', helperText: 'Lowercase letters, digits, dashes'),
+                        decoration: InputDecoration(labelText: s.addonNameAlsoTheHostName, helperText: s.addonLowercaseLettersDigitsDashes),
                         onChanged: (_) => _slugTouched = true,
                       ),
                     ),
@@ -205,7 +208,7 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
                         controller: _size,
                         keyboardType: TextInputType.number,
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: const InputDecoration(labelText: 'Storage (MiB)'),
+                        decoration: InputDecoration(labelText: s.addonStorageMib),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -214,7 +217,7 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
                         controller: _mem,
                         keyboardType: TextInputType.number,
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        decoration: InputDecoration(labelText: 'Memory (MiB)', helperText: 'At least ${k.minMemoryMb}'),
+                        decoration: InputDecoration(labelText: s.addonMemoryMib, helperText: s.addonAtLeast(k.minMemoryMb)),
                       ),
                     ),
                   ],
@@ -226,7 +229,7 @@ class _CreateAddonDialogState extends ConsumerState<_CreateAddonDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
         FilledButton(onPressed: _saving ? null : _create, child: Text(_saving ? 'Creating…' : 'Create')),
       ],
     );

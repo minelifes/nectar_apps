@@ -2,12 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../l10n/app_localizations.dart';
-
-/// Short access to the translations: `context.l10n.navProjects`.
-extension L10nContext on BuildContext {
-  AppLocalizations get l10n => AppLocalizations.of(this);
-}
 
 /// The interface language chosen on this device (null = follow the system).
 final localeProvider = NotifierProvider<LocaleController, Locale?>(LocaleController.new);

@@ -6,6 +6,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 
@@ -66,11 +67,12 @@ class _CloneAppDialogState extends ConsumerState<_CloneAppDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final session = ref.watch(sessionProvider);
     return AlertDialog(
-      title: Text('Copy ${widget.app.name}'),
+      title: Text(s.projectCopy(widget.app.name)),
       content: SizedBox(
         width: 460,
         child: Column(
@@ -79,7 +81,7 @@ class _CloneAppDialogState extends ConsumerState<_CloneAppDialog> {
           children: [
             DropdownButtonFormField<int>(
               initialValue: _project,
-              decoration: const InputDecoration(labelText: 'Into project'),
+              decoration: InputDecoration(labelText: s.projectIntoProject),
               items: [
                 for (final p in projects)
                   if (session.can('app.create', projectId: p.id)) DropdownMenuItem(value: p.id, child: Text(envLabel(p))),
@@ -87,17 +89,17 @@ class _CloneAppDialogState extends ConsumerState<_CloneAppDialog> {
               onChanged: (v) => setState(() => _project = v ?? _project),
             ),
             const SizedBox(height: 10),
-            TextField(controller: _slug, decoration: const InputDecoration(labelText: 'Slug')),
+            TextField(controller: _slug, decoration: InputDecoration(labelText: s.projectSlug)),
             const SizedBox(height: 10),
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name')),
+            TextField(controller: _name, decoration: InputDecoration(labelText: s.backupName)),
             const SizedBox(height: 10),
-            Text('Copies the settings, variables (secrets too), config files and env groups. Volumes start empty; nothing is deployed.',
+            Text(s.projectCopiesTheSettingsVariablesSecrets,
                 style: TextStyle(color: c.muted, fontSize: 12.5)),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
         FilledButton(onPressed: _busy ? null : _copy, child: Text(_busy ? 'Copying…' : 'Copy')),
       ],
     );
@@ -156,9 +158,10 @@ class _CloneProjectDialogState extends ConsumerState<_CloneProjectDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return AlertDialog(
-      title: const Text('New environment'),
+      title: Text(s.projectNewEnvironment),
       content: SizedBox(
         width: 460,
         child: Column(
@@ -167,24 +170,23 @@ class _CloneProjectDialogState extends ConsumerState<_CloneProjectDialog> {
           children: [
             TextField(
               controller: _env,
-              decoration: const InputDecoration(labelText: 'Environment of the copy', hintText: 'staging'),
+              decoration: InputDecoration(labelText: s.projectEnvironmentOfTheCopy, hintText: 'staging'),
               onChanged: (v) => _slug.text = '${widget.project.slug}-${v.trim()}',
             ),
             const SizedBox(height: 10),
-            TextField(controller: _slug, decoration: const InputDecoration(labelText: 'Project slug of the copy')),
+            TextField(controller: _slug, decoration: InputDecoration(labelText: s.projectProjectSlugOfTheCopy)),
             const SizedBox(height: 10),
-            TextField(controller: _sourceEnv, decoration: InputDecoration(labelText: 'Environment of ${widget.project.slug}')),
+            TextField(controller: _sourceEnv, decoration: InputDecoration(labelText: s.projectEnvironmentOf(widget.project.slug))),
             const SizedBox(height: 10),
             Text(
-              'Copies the env groups, the databases (new and empty, with new passwords) and the apps with their settings, variables '
-              'and config files. Nothing is deployed. Later, "Promote" deploys the live build of an app to the same app in the other environment.',
+              s.projectCopiesTheEnvGroupsThe,
               style: TextStyle(color: c.muted, fontSize: 12.5),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
         FilledButton(onPressed: _busy ? null : _copy, child: Text(_busy ? 'Copying…' : 'Create')),
       ],
     );
@@ -193,8 +195,9 @@ class _CloneProjectDialogState extends ConsumerState<_CloneProjectDialog> {
 
 /// Deploys the app's live build to the app of the same name in [target].
 Future<void> promoteApp(BuildContext context, WidgetRef ref, App app, Project target) async {
-  if (!await confirmAction(context, 'Promote ${app.name} to ${envLabel(target)}?',
-      'The live build of ${app.slug} (its image or uploaded file) is deployed to ${target.slug}/${app.slug}. Its settings and variables there stay as they are.', 'Promote')) {
+  final s = S.of(context);
+  if (!await confirmAction(context, s.projectPromoteTo(app.name, envLabel(target)),
+      s.projectTheLiveBuildOfIts(app.slug, target.slug, app.slug), s.projectPromote)) {
     return;
   }
   try {

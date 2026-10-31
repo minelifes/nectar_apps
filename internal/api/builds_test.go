@@ -37,6 +37,7 @@ func withBuilds(t *testing.T, e *testEnv) {
 	reg := &registry.Registry{Kube: e.kube, Namespace: "nectar-system", Password: "pw", APIBase: "http://127.0.0.1:1"}
 	e.api.registry = reg
 	e.api.builder = &build.Builder{Store: e.api.store, Kube: e.kube, Registry: reg, Deployer: e.dep, Box: box, Poll: 5 * time.Millisecond}
+	e.api.builder.OnFinish = e.api.previewBuildFinished
 }
 
 func TestGitBuildsAPI(t *testing.T) {

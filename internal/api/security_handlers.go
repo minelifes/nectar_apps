@@ -296,6 +296,7 @@ func (s *Server) resetUserMFA(w http.ResponseWriter, r *http.Request, p *princip
 		s.serverError(w, r, err)
 		return
 	}
+	_, _ = s.store.DeletePasskeys(r.Context(), u.ID, 0) // a lost phone usually held the passkeys too
 	_ = s.store.DeleteUserSessions(r.Context(), u.ID, 0)
 	s.audit(r, p, "user.mfa_reset", u.Email, nil)
 	w.WriteHeader(http.StatusNoContent)

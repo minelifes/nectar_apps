@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/models.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/chart.dart';
@@ -26,6 +27,7 @@ class _AppMetricsState extends ConsumerState<AppMetrics> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final id = widget.app.id;
     final usage = ref.watch(appUsageProvider((id, _range)));
     final c = NectarColors.of(context);
@@ -33,7 +35,7 @@ class _AppMetricsState extends ConsumerState<AppMetrics> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         NCard(
-          title: 'Resources',
+          title: s.projectResources,
           trailing: RangePicker(value: _range, options: usageRanges, onChanged: (r) => setState(() => _range = r)),
           child: AsyncBlock(
             value: usage,
@@ -44,17 +46,17 @@ class _AppMetricsState extends ConsumerState<AppMetrics> {
               final cpu = TimeSeriesChart(
                 formatY: (v) => formatCpu(v.round()),
                 series: [
-                  ChartSeries(label: 'CPU', color: NectarTokens.amber, fill: true, points: [for (final p in pts) (p.t, p.cpuM.toDouble())]),
+                  ChartSeries(label: s.serverCpu, color: NectarTokens.amber, fill: true, points: [for (final p in pts) (p.t, p.cpuM.toDouble())]),
                   if (u.requestCpuM > 0)
-                    ChartSeries(label: 'Requested', color: c.muted, dashed: true, points: flat(u.requestCpuM.toDouble())),
+                    ChartSeries(label: s.observeRequested, color: c.muted, dashed: true, points: flat(u.requestCpuM.toDouble())),
                 ],
               );
               final mem = TimeSeriesChart(
                 formatY: (v) => formatBytes(v.round()),
                 series: [
-                  ChartSeries(label: 'Memory', color: c.deploying, fill: true, points: [for (final p in pts) (p.t, p.memB.toDouble())]),
+                  ChartSeries(label: s.serverMemory, color: c.deploying, fill: true, points: [for (final p in pts) (p.t, p.memB.toDouble())]),
                   if (u.requestMemB > 0)
-                    ChartSeries(label: 'Requested', color: c.muted, dashed: true, points: flat(u.requestMemB.toDouble())),
+                    ChartSeries(label: s.observeRequested, color: c.muted, dashed: true, points: flat(u.requestMemB.toDouble())),
                 ],
               );
               return Column(
@@ -65,7 +67,7 @@ class _AppMetricsState extends ConsumerState<AppMetrics> {
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
-                        'Totals across ${u.replicas} replicas; the dashed line is what all of them requested together.',
+                        s.observeTotalsAcrossReplicasTheDashed(u.replicas),
                         style: TextStyle(color: c.muted, fontSize: 12.5),
                       ),
                     ),
@@ -122,12 +124,13 @@ class _Traffic extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final traffic = ref.watch(appTrafficProvider(app.id));
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Traffic · last hour',
+      title: s.observeTrafficLastHour,
       trailing: IconButton(
-        tooltip: 'Refresh',
+        tooltip: s.actionRefresh,
         icon: const Icon(Icons.refresh_rounded, size: 18),
         onPressed: () => ref.invalidate(appTrafficProvider(app.id)),
       ),
@@ -138,7 +141,7 @@ class _Traffic extends ConsumerWidget {
         data: (domains) {
           if (domains.isEmpty) {
             return Text(
-              'No requests yet. Traffic appears once the app has a domain and the gateway routes requests to it.',
+              s.observeNoRequestsYetTrafficAppears,
               style: TextStyle(color: c.muted, fontSize: 13.5),
             );
           }
@@ -152,10 +155,10 @@ class _Traffic extends ConsumerWidget {
                   spacing: 28,
                   runSpacing: 10,
                   children: [
-                    _Stat(label: 'Requests', value: '${d.requests}'),
-                    _Stat(label: 'Per second', value: d.rps.toStringAsFixed(d.rps < 10 ? 2 : 1)),
+                    _Stat(label: s.observeRequests, value: '${d.requests}'),
+                    _Stat(label: s.observePerSecond, value: d.rps.toStringAsFixed(d.rps < 10 ? 2 : 1)),
                     _Stat(
-                      label: 'Errors (5xx)',
+                      label: s.observeErrors5xx,
                       value: '${(d.errorRate * 100).toStringAsFixed(1)}%',
                       color: d.errorRate >= 0.05 ? c.failed : (d.errorRate > 0 ? c.warning : null),
                     ),
@@ -180,7 +183,7 @@ class _Traffic extends ConsumerWidget {
                         height: 130,
                         formatY: (v) => v.round().toString(),
                         series: [
-                          ChartSeries(label: 'Requests', color: NectarTokens.amber, fill: true, points: [for (final p in d.series) (p.$1, p.$2.toDouble())]),
+                          ChartSeries(label: s.observeRequests, color: NectarTokens.amber, fill: true, points: [for (final p in d.series) (p.$1, p.$2.toDouble())]),
                           ChartSeries(label: '5xx', color: c.failed, points: [for (final p in d.series) (p.$1, p.$3.toDouble())]),
                         ],
                       ),
@@ -236,12 +239,13 @@ class _AccessLog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final log = ref.watch(appAccessLogProvider(app.id));
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Latest requests',
+      title: s.gatewayLatestRequests,
       trailing: IconButton(
-        tooltip: 'Refresh',
+        tooltip: s.actionRefresh,
         icon: const Icon(Icons.refresh_rounded, size: 18),
         onPressed: () => ref.invalidate(appAccessLogProvider(app.id)),
       ),
@@ -249,7 +253,7 @@ class _AccessLog extends ConsumerWidget {
         value: log,
         loadingHeight: 100,
         data: (entries) {
-          if (entries.isEmpty) return Text('No requests yet.', style: TextStyle(color: c.muted, fontSize: 13.5));
+          if (entries.isEmpty) return Text(s.observeNoRequestsYet, style: TextStyle(color: c.muted, fontSize: 13.5));
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -279,7 +283,7 @@ class _AccessLog extends ConsumerWidget {
                       ),
                       SizedBox(
                         width: 70,
-                        child: Text('${e.ms} ms', textAlign: TextAlign.right, style: TextStyle(color: c.muted, fontSize: 12)),
+                        child: Text(s.gatewayMs(e.ms), textAlign: TextAlign.right, style: TextStyle(color: c.muted, fontSize: 12)),
                       ),
                       SizedBox(
                         width: 120,

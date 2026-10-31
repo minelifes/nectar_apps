@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../api/models.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import 'resources.dart';
@@ -19,11 +20,12 @@ class EnvEditor extends StatelessWidget {
   }
 
   Future<void> _paste(BuildContext context) async {
+    final s = S.of(context);
     final ctl = TextEditingController();
     final text = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Paste a .env file'),
+        title: Text(s.appPasteAEnvFile),
         content: SizedBox(
           width: 520,
           child: TextField(
@@ -32,12 +34,12 @@ class EnvEditor extends StatelessWidget {
             maxLines: 12,
             minLines: 8,
             style: monoStyle(ctx, size: 13),
-            decoration: const InputDecoration(hintText: 'DATABASE_URL=postgres://…\nLOG_LEVEL=info'),
+            decoration: InputDecoration(hintText: s.appDatabaseUrlPostgresLogLevel),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, ctl.text), child: const Text('Add variables')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(s.actionCancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, ctl.text), child: Text(s.appAddVariables)),
         ],
       ),
     );
@@ -57,6 +59,7 @@ class EnvEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -64,7 +67,7 @@ class EnvEditor extends StatelessWidget {
         if (vars.isEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text('No variables. Every app also gets PORT and APP_ARGS.', style: TextStyle(color: c.muted, fontSize: 13)),
+            child: Text(s.appNoVariablesEveryAppAlso, style: TextStyle(color: c.muted, fontSize: 13)),
           ),
         for (final v in vars)
           _EnvRow(
@@ -80,11 +83,11 @@ class EnvEditor extends StatelessWidget {
         Wrap(
           spacing: 8,
           children: [
-            TextButton.icon(onPressed: _add, icon: const Icon(Icons.add_rounded, size: 18), label: const Text('Add variable')),
+            TextButton.icon(onPressed: _add, icon: const Icon(Icons.add_rounded, size: 18), label: Text(s.appAddVariable)),
             TextButton.icon(
               onPressed: () => _paste(context),
               icon: const Icon(Icons.content_paste_rounded, size: 18),
-              label: const Text('Paste .env'),
+              label: Text(s.appPasteEnv),
             ),
           ],
         ),
@@ -126,6 +129,7 @@ class _EnvRowState extends State<_EnvRow> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final v = widget.v;
     final kept = v.secret && v.value == null;
     final c = NectarColors.of(context);
@@ -138,7 +142,7 @@ class _EnvRowState extends State<_EnvRow> {
             child: TextField(
               controller: _key,
               style: monoStyle(context, size: 13.5),
-              decoration: const InputDecoration(hintText: 'KEY', isDense: true),
+              decoration: InputDecoration(hintText: s.appKey, isDense: true),
               onChanged: (t) {
                 v.key = t.trim();
                 widget.onChanged();
@@ -180,7 +184,7 @@ class _EnvRowState extends State<_EnvRow> {
               },
             ),
           ),
-          IconButton(tooltip: 'Remove', icon: const Icon(Icons.close_rounded, size: 18), onPressed: widget.onRemove),
+          IconButton(tooltip: s.backupRemove2, icon: const Icon(Icons.close_rounded, size: 18), onPressed: widget.onRemove),
         ],
       ),
     );

@@ -5,6 +5,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -20,16 +21,17 @@ class EnvGroupsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final groups = ref.watch(envGroupsProvider(projectId));
     final canEdit = ref.watch(sessionProvider.select((s) => s.can('env.edit', projectId: projectId)));
     return NCard(
-      title: 'Env groups',
+      title: l.projectEnvGroups,
       trailing: canEdit
           ? TextButton.icon(
               onPressed: () => showEnvGroupDialog(context, projectId, null),
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('New group'),
+              label: Text(l.projectNewGroup),
             )
           : null,
       child: AsyncBlock(
@@ -37,7 +39,7 @@ class EnvGroupsCard extends ConsumerWidget {
         loadingHeight: 60,
         onRetry: () => ref.invalidate(envGroupsProvider(projectId)),
         data: (list) => list.isEmpty
-            ? Text('Variables several apps share (a region, an API endpoint, a Sentry DSN). Apps choose their groups on the Environment tab.',
+            ? Text(l.projectVariablesSeveralAppsShareA,
                 style: TextStyle(color: c.muted, fontSize: 12.5))
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -87,10 +89,11 @@ class _EnvGroupDialogState extends ConsumerState<_EnvGroupDialog> {
   }
 
   Future<void> _save() async {
+    final s = S.of(context);
     final vars = _vars.where((v) => v.key.isNotEmpty || (v.value ?? '').isNotEmpty).toList();
     for (final v in vars) {
       if (!envKeyRe.hasMatch(v.key)) {
-        showSnack(context, 'Invalid variable name "${v.key}": use letters, digits and _', error: true);
+        showSnack(context, s.projectInvalidVariableNameUseLetters(v.key), error: true);
         return;
       }
     }
@@ -100,7 +103,7 @@ class _EnvGroupDialogState extends ConsumerState<_EnvGroupDialog> {
       ref.invalidate(envGroupsProvider(widget.projectId));
       if (mounted) {
         Navigator.pop(context);
-        showSnack(context, widget.group?.apps.isNotEmpty ?? false ? 'Saved. Redeploy ${widget.group!.apps.join(', ')} to apply.' : 'Saved');
+        showSnack(context, widget.group?.apps.isNotEmpty ?? false ? 'Saved. Redeploy ${widget.group!.apps.join(', ')} to apply.' : s.projectSaved);
       }
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
@@ -110,8 +113,9 @@ class _EnvGroupDialogState extends ConsumerState<_EnvGroupDialog> {
   }
 
   Future<void> _delete() async {
+    final s = S.of(context);
     final g = widget.group!;
-    if (!await confirmAction(context, 'Delete the group ${g.name}?', 'Its variables are deleted.', 'Delete', danger: true)) return;
+    if (!await confirmAction(context, s.projectDeleteTheGroup(g.name), s.projectItsVariablesAreDeleted, s.actionDelete, danger: true)) return;
     try {
       await ref.read(apiProvider).delete('/projects/${widget.projectId}/env-groups/${g.name}');
       ref.invalidate(envGroupsProvider(widget.projectId));
@@ -140,6 +144,7 @@ class _EnvGroupDialogState extends ConsumerState<_EnvGroupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final g = widget.group;
     return AlertDialog(
@@ -152,12 +157,12 @@ class _EnvGroupDialogState extends ConsumerState<_EnvGroupDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (g == null) ...[
-                TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name', hintText: 'shared')),
+                TextField(controller: _name, decoration: InputDecoration(labelText: s.backupName, hintText: 'shared')),
                 const SizedBox(height: 12),
               ],
               EnvEditor(key: ValueKey(_gen), vars: _vars, onChanged: () => setState(() {})),
               if (_vars.any((v) => v.secret && v.value == null))
-                Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: _reveal, child: const Text('Show secret values'))),
+                Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: _reveal, child: Text(s.projectShowSecretValues))),
               const SizedBox(height: 8),
               Text(
                 g == null || g.apps.isEmpty
@@ -170,8 +175,8 @@ class _EnvGroupDialogState extends ConsumerState<_EnvGroupDialog> {
         ),
       ),
       actions: [
-        if (g != null) TextButton(onPressed: _busy ? null : _delete, style: TextButton.styleFrom(foregroundColor: c.failed), child: const Text('Delete')),
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        if (g != null) TextButton(onPressed: _busy ? null : _delete, style: TextButton.styleFrom(foregroundColor: c.failed), child: Text(s.actionDelete)),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(s.actionCancel)),
         FilledButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Saving…' : 'Save')),
       ],
     );
@@ -194,6 +199,7 @@ class _AppEnvGroupsState extends ConsumerState<AppEnvGroups> {
   bool _busy = false;
 
   Future<void> _toggle(String name, bool on) async {
+    final s = S.of(context);
     final next = on ? [..._chosen, name] : _chosen.where((n) => n != name).toList();
     setState(() => _busy = true);
     try {
@@ -202,7 +208,7 @@ class _AppEnvGroupsState extends ConsumerState<AppEnvGroups> {
       ref.invalidate(appProvider(widget.app.id));
       ref.invalidate(appLiveProvider(widget.app.id));
       ref.invalidate(envGroupsProvider(widget.app.projectId));
-      if (mounted) showSnack(context, 'Saved. Redeploy the app to apply.');
+      if (mounted) showSnack(context, s.savedRedeploy);
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     } finally {
@@ -212,15 +218,16 @@ class _AppEnvGroupsState extends ConsumerState<AppEnvGroups> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final groups = ref.watch(envGroupsProvider(widget.app.projectId));
     return NCard(
-      title: 'Shared env groups',
+      title: s.projectSharedEnvGroups,
       child: AsyncBlock(
         value: groups,
         loadingHeight: 40,
         data: (list) => list.isEmpty
-            ? Text('This project has no env groups yet (project page → Env groups).', style: TextStyle(color: c.muted, fontSize: 12.5))
+            ? Text(s.projectThisProjectHasNoEnv, style: TextStyle(color: c.muted, fontSize: 12.5))
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -237,7 +244,7 @@ class _AppEnvGroupsState extends ConsumerState<AppEnvGroups> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('The app gets every variable of the chosen groups; its own variables win.', style: TextStyle(color: c.muted, fontSize: 12)),
+                  Text(s.projectTheAppGetsEveryVariable, style: TextStyle(color: c.muted, fontSize: 12)),
                 ],
               ),
       ),

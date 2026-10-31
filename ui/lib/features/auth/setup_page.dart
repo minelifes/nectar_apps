@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
 import '../../api/session.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import 'auth_frame.dart';
@@ -58,11 +59,12 @@ class _SetupPageState extends ConsumerState<SetupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = S.of(context);
     final session = ref.watch(sessionProvider);
     final c = NectarColors.of(context);
     final hasToken = (widget.token ?? '').isNotEmpty;
     return AuthFrame(
-      title: 'Welcome to Nectar Apps',
+      title: s.authWelcomeToNectarApps,
       subtitle: 'Create the Owner account for ${session.serverHost.isEmpty ? 'this panel' : session.serverHost}.',
       children: [
         Form(
@@ -76,20 +78,20 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                   TextFormField(
                     controller: _token,
                     style: monoStyle(context),
-                    decoration: const InputDecoration(labelText: 'Setup token'),
+                    decoration: InputDecoration(labelText: s.authSetupToken),
                     validator: (v) => (v ?? '').trim().isEmpty ? 'Paste the setup token' : null,
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 6, bottom: 14),
                     child: Text(
-                      'The installer printed it together with the setup link.',
+                      s.authTheInstallerPrintedItTogether,
                       style: TextStyle(color: c.muted, fontSize: 12.5),
                     ),
                   ),
                 ],
                 TextFormField(
                   controller: _name,
-                  decoration: const InputDecoration(labelText: 'Your name'),
+                  decoration: InputDecoration(labelText: s.authYourName),
                   autofillHints: const [AutofillHints.name],
                   textInputAction: TextInputAction.next,
                   validator: (v) => (v ?? '').trim().isEmpty ? 'Enter your name' : null,
@@ -97,7 +99,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _email,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: InputDecoration(labelText: s.loginEmail),
                   keyboardType: TextInputType.emailAddress,
                   autofillHints: const [AutofillHints.email],
                   textInputAction: TextInputAction.next,
@@ -106,7 +108,7 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _password,
-                  decoration: const InputDecoration(labelText: 'Password', helperText: 'At least 10 characters'),
+                  decoration: InputDecoration(labelText: s.loginPassword, helperText: s.authAtLeast10Characters),
                   obscureText: true,
                   autofillHints: const [AutofillHints.newPassword],
                   textInputAction: TextInputAction.next,
@@ -115,14 +117,14 @@ class _SetupPageState extends ConsumerState<SetupPage> {
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _confirm,
-                  decoration: const InputDecoration(labelText: 'Repeat password'),
+                  decoration: InputDecoration(labelText: s.authRepeatPassword),
                   obscureText: true,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _submit(),
                   validator: (v) => v == _password.text ? null : 'The passwords do not match',
                 ),
                 const SizedBox(height: 22),
-                BusyButton(label: 'Create Owner account', busy: _busy, onPressed: _submit),
+                BusyButton(label: s.authCreateOwnerAccount, busy: _busy, onPressed: _submit),
               ],
             ),
           ),

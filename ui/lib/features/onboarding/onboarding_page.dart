@@ -7,6 +7,7 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
@@ -138,6 +139,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   @override
   Widget build(BuildContext context) {
+        final s = S.of(context);
     final state = ref.watch(onboardingProvider);
     final theme = Theme.of(context);
     final c = NectarColors.of(context);
@@ -155,8 +157,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                   if (d == null) {
                     return EmptyState(
                       icon: Icons.lock_outline_rounded,
-                      title: 'Only an Owner can set up the panel',
-                      action: FilledButton(onPressed: () => context.go('/'), child: const Text('Go to the dashboard')),
+                      title: s.onboardingOnlyAnOwnerCanSet,
+                      action: FilledButton(onPressed: () => context.go('/'), child: Text(s.goToDashboard)),
                     );
                   }
                   _load(d);
@@ -165,10 +167,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     children: [
                       const Center(child: NectarMark(size: 52)),
                       const SizedBox(height: 14),
-                      Text('Set up Nectar Apps', textAlign: TextAlign.center, style: theme.textTheme.headlineSmall),
+                      Text(s.onboardingSetUpNectarApps, textAlign: TextAlign.center, style: theme.textTheme.headlineSmall),
                       const SizedBox(height: 6),
                       Text(
-                        'Three short steps. You can change everything later in Settings.',
+                        s.onboardingThreeShortStepsYouCan,
                         textAlign: TextAlign.center,
                         style: TextStyle(color: c.muted),
                       ),
@@ -194,7 +196,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                       ),
                       const SizedBox(height: 12),
                       if (_step != _Step.done)
-                        TextButton(onPressed: _busy ? null : _finish, child: const Text('Skip setup for now')),
+                        TextButton(onPressed: _busy ? null : _finish, child: Text(s.onboardingSkipSetupForNow)),
                     ],
                   );
                 },
@@ -222,6 +224,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 
   Widget _domainStep() {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final base = _base.text.trim().isEmpty ? 'apps.example.com' : _base.text.trim();
     final ip = _publicIps.isNotEmpty ? _publicIps.first : (_serverIps.isNotEmpty ? _serverIps.first : '<your server IP>');
@@ -233,11 +236,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         TextField(
           controller: _base,
           style: monoStyle(context, size: 14),
-          decoration: const InputDecoration(labelText: 'Base domain', hintText: 'apps.example.com'),
+          decoration: InputDecoration(labelText: s.onboardingBaseDomain, hintText: 'apps.example.com'),
           onChanged: (_) => setState(() => _dns = null),
         ),
         const SizedBox(height: 16),
-        Text('At your DNS provider, add one record:', style: TextStyle(color: c.muted, fontSize: 13)),
+        Text(s.onboardingAtYourDnsProviderAdd, style: TextStyle(color: c.muted, fontSize: 13)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(12),
@@ -276,9 +279,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           ),
         Row(
           children: [
-            OutlinedButton(onPressed: _busy || _base.text.trim().isEmpty ? null : _checkDns, child: const Text('Check DNS')),
+            OutlinedButton(onPressed: _busy || _base.text.trim().isEmpty ? null : _checkDns, child: Text(s.domainCheckDns)),
             const Spacer(),
-            SizedBox(width: 140, child: BusyButton(label: 'Continue', busy: _busy, onPressed: _base.text.trim().isEmpty ? null : _saveDomain)),
+            SizedBox(width: 140, child: BusyButton(label: s.onboardingContinue, busy: _busy, onPressed: _base.text.trim().isEmpty ? null : _saveDomain)),
           ],
         ),
       ],
@@ -286,6 +289,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 
   Widget _httpsStep() {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     if (_ingress || !_gatewayOk) {
       return Column(
@@ -296,7 +300,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               : 'The gateway is not reachable right now, so the certificate email cannot be set here. You can set it later in Settings.'),
           Align(
             alignment: Alignment.centerRight,
-            child: FilledButton(onPressed: () => setState(() => _step = _Step.sample), child: const Text('Continue')),
+            child: FilledButton(onPressed: () => setState(() => _step = _Step.sample), child: Text(l.onboardingContinue)),
           ),
         ],
       );
@@ -308,25 +312,26 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         TextField(
           controller: _email,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(labelText: 'Email for Let\'s Encrypt', helperText: 'Only used for expiry warnings'),
+          decoration: InputDecoration(labelText: l.onboardingEmailForLetSEncrypt, helperText: l.onboardingOnlyUsedForExpiryWarnings),
         ),
         const SizedBox(height: 18),
         Row(
           children: [
-            TextButton(onPressed: () => setState(() => _step = _Step.domain), child: const Text('Back')),
+            TextButton(onPressed: () => setState(() => _step = _Step.domain), child: Text(l.projectBack)),
             const Spacer(),
-            SizedBox(width: 140, child: BusyButton(label: 'Continue', busy: _busy, onPressed: _saveEmail)),
+            SizedBox(width: 140, child: BusyButton(label: l.onboardingContinue, busy: _busy, onPressed: _saveEmail)),
           ],
         ),
         Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: Text('Leave it empty to register without an email.', style: TextStyle(color: c.muted, fontSize: 12)),
+          child: Text(l.onboardingLeaveItEmptyToRegister, style: TextStyle(color: c.muted, fontSize: 12)),
         ),
       ],
     );
   }
 
   Widget _sampleStep() {
+    final s = S.of(context);
     final c = NectarColors.of(context);
     final app = _sample;
     final rel = _sampleRelease;
@@ -348,7 +353,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               padding: const EdgeInsets.only(top: 12),
               child: Align(
                 alignment: Alignment.centerRight,
-                child: FilledButton(onPressed: () => setState(() => _step = _Step.done), child: const Text('Continue')),
+                child: FilledButton(onPressed: () => setState(() => _step = _Step.done), child: Text(s.onboardingContinue)),
               ),
             ),
         ],
@@ -358,13 +363,13 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _title('Try it with a sample app', 'Deploys a small "Hello world" web app so you can see the whole path: image, start, health check, domain.'),
-        Text('Image: $sampleImage · 50m CPU · 64 MB', style: monoStyle(context, size: 12.5, color: c.muted)),
+        Text(s.onboardingImage50mCpu64Mb(sampleImage), style: monoStyle(context, size: 12.5, color: c.muted)),
         const SizedBox(height: 18),
         Row(
           children: [
-            TextButton(onPressed: () => setState(() => _step = _Step.done), child: const Text('Skip')),
+            TextButton(onPressed: () => setState(() => _step = _Step.done), child: Text(s.onboardingSkip)),
             const Spacer(),
-            SizedBox(width: 170, child: BusyButton(label: 'Deploy sample', busy: _busy, onPressed: _deploySample)),
+            SizedBox(width: 170, child: BusyButton(label: s.onboardingDeploySample, busy: _busy, onPressed: _deploySample)),
           ],
         ),
       ],

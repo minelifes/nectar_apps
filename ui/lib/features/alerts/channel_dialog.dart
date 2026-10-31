@@ -5,12 +5,14 @@ import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 
 IconData channelIcon(String kind) => switch (kind) {
       'ntfy' => Icons.notifications_active_outlined,
       'telegram' => Icons.send_outlined,
       'email' => Icons.mail_outline_rounded,
+      'push' => Icons.phone_iphone_rounded,
       _ => Icons.webhook_rounded,
     };
 
@@ -19,6 +21,7 @@ String channelLabel(String kind) => switch (kind) {
       'telegram' => 'Telegram',
       'email' => 'Email',
       'webhook' => 'Webhook',
+      'push' => 'Mobile app',
       _ => kind,
     };
 
@@ -58,6 +61,11 @@ const _fields = <String, List<_Field>>{
   'webhook': [
     _Field('url', 'URL', hint: 'https://example.com/hooks/nectar', help: 'Receives a JSON POST for every alert'),
     _Field('secret', 'Signing secret (optional)', help: 'Signs the body: X-Nectar-Signature: sha256=<HMAC>', secret: true),
+  ],
+  'push': [
+    _Field('to', 'Users (optional)',
+        hint: 'me@example.com, ops@example.com',
+        help: 'Comma-separated emails. Empty: everyone who can see the server. Needs Settings → Push notifications and the Nectar app on the phone.'),
   ],
 };
 
@@ -132,6 +140,7 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = S.of(context);
     final c = NectarColors.of(context);
     final editing = widget.channel != null;
     return AlertDialog(
@@ -144,24 +153,27 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (!editing) ...[
-                SegmentedButton<String>(
-                  segments: [
-                    for (final k in _fields.keys) ButtonSegment(value: k, icon: Icon(channelIcon(k), size: 16), label: Text(channelLabel(k))),
-                  ],
-                  selected: {_kind},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (s) => setState(() => _kind = s.first),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SegmentedButton<String>(
+                    segments: [
+                      for (final k in _fields.keys) ButtonSegment(value: k, icon: Icon(channelIcon(k), size: 16), label: Text(channelLabel(k))),
+                    ],
+                    selected: {_kind},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (s) => setState(() => _kind = s.first),
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
-              TextField(controller: _name, decoration: InputDecoration(labelText: 'Name', hintText: channelLabel(_kind))),
+              TextField(controller: _name, decoration: InputDecoration(labelText: l.backupName, hintText: channelLabel(_kind))),
               if (_kind == 'email')
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _panelSmtp,
                   onChanged: (v) => setState(() => _panelSmtp = v),
-                  title: const Text('Send with the panel\'s email settings'),
-                  subtitle: const Text('Settings → Email; turn off to use another SMTP server'),
+                  title: Text(l.alertSendWithThePanelS),
+                  subtitle: Text(l.alertSettingsEmailTurnOffTo),
                 ),
               for (final f in _fields[_kind]!.where(_shown)) ...[
                 const SizedBox(height: 12),
@@ -182,14 +194,14 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Text('Encryption'),
+                    Text(l.alertEncryption),
                     const SizedBox(width: 12),
                     DropdownButton<String>(
                       value: _security,
-                      items: const [
-                        DropdownMenuItem(value: 'starttls', child: Text('STARTTLS (port 587)')),
-                        DropdownMenuItem(value: 'tls', child: Text('TLS (port 465)')),
-                        DropdownMenuItem(value: 'none', child: Text('None (port 25, local relays only)')),
+                      items: [
+                        DropdownMenuItem(value: 'starttls', child: Text(l.alertStarttlsPort587)),
+                        DropdownMenuItem(value: 'tls', child: Text(l.alertTlsPort465)),
+                        DropdownMenuItem(value: 'none', child: Text(l.alertNonePort25LocalRelays)),
                       ],
                       onChanged: (v) => setState(() => _security = v ?? 'starttls'),
                     ),
@@ -203,7 +215,7 @@ class _ChannelDialogState extends ConsumerState<_ChannelDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.actionCancel)),
         FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
       ],
     );

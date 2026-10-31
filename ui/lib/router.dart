@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'api/session.dart';
-import 'core/locale.dart';
 import 'features/addons/addon_page.dart';
 import 'features/alerts/alerts_page.dart';
 import 'features/apps/app_page.dart';
@@ -26,6 +25,7 @@ import 'features/access/users_page.dart';
 import 'features/gateway/gateway_page.dart';
 import 'features/settings/settings_page.dart';
 import 'features/updates/updates_page.dart';
+import 'generated/l10n.dart';
 import 'shell/app_shell.dart';
 import 'widgets/common.dart';
 
@@ -91,9 +91,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       body: Center(
         child: EmptyState(
           icon: Icons.explore_off_rounded,
-          title: context.l10n.pageNotFound,
+          title: S.of(context).pageNotFound,
           message: state.uri.path,
-          action: FilledButton(onPressed: () => context.go('/'), child: Text(context.l10n.goToDashboard)),
+          action: FilledButton(onPressed: () => context.go('/'), child: Text(S.of(context).goToDashboard)),
         ),
       ),
     ),

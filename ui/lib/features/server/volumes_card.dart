@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../api/models.dart';
 import '../../core/format.dart';
 import '../../data/providers.dart';
+import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gauge.dart';
@@ -15,12 +16,13 @@ class VolumesCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
     final vols = ref.watch(serverVolumesProvider);
     final c = NectarColors.of(context);
     return NCard(
-      title: 'Volumes',
+      title: s.serverVolumes,
       trailing: IconButton(
-        tooltip: 'Refresh',
+        tooltip: s.actionRefresh,
         icon: const Icon(Icons.refresh_rounded, size: 18),
         onPressed: () => ref.invalidate(serverVolumesProvider),
       ),
@@ -29,7 +31,7 @@ class VolumesCard extends ConsumerWidget {
         loadingHeight: 80,
         onRetry: () => ref.invalidate(serverVolumesProvider),
         data: (list) {
-          if (list.isEmpty) return Text('No volumes yet. Apps get one under Settings → Volumes; databases have their own.', style: TextStyle(color: c.muted));
+          if (list.isEmpty) return Text(s.serverNoVolumesYetAppsGet, style: TextStyle(color: c.muted));
           final sorted = [...list]..sort((a, b) => _share(b).compareTo(_share(a)));
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -52,7 +54,7 @@ class VolumesCard extends ConsumerWidget {
                                 '${v.availableBytes >= 0 ? ' · ${formatBytes(v.availableBytes)} free on ${v.node.isEmpty ? 'the disk' : v.node}' : ''}',
                           )
                         else
-                          Text('${formatBytes(v.requestedBytes)} · usage shows while the app or database runs', style: TextStyle(color: c.muted, fontSize: 12)),
+                          Text(s.serverUsageShowsWhileTheApp(formatBytes(v.requestedBytes)), style: TextStyle(color: c.muted, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -61,8 +63,7 @@ class VolumesCard extends ConsumerWidget {
               ],
               const SizedBox(height: 8),
               Text(
-                'On local-path storage (the k3s default) a size is not enforced: a volume can grow past it until the node\'s disk is full. '
-                'The "Volume almost full" alert warns at 90 %.',
+                s.serverOnLocalPathStorageThe,
                 style: TextStyle(color: c.muted, fontSize: 12),
               ),
             ],

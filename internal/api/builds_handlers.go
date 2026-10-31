@@ -28,6 +28,11 @@ type sourceInput struct {
 	AutoDeploy  *bool   `json:"auto_deploy"`
 	BuildCPU    int64   `json:"build_cpu_millicores"`
 	BuildMemory int64   `json:"build_memory_mb"`
+	// preview environments per pull request
+	Previews         *bool `json:"previews"`
+	PreviewDatabases *bool `json:"preview_databases"`
+	PreviewForks     *bool `json:"preview_forks"`
+	PreviewTTLDays   *int  `json:"preview_ttl_days"`
 }
 
 type sourceView struct {
@@ -81,6 +86,20 @@ func (s *Server) applySource(ctx context.Context, in sourceInput, src *store.App
 	}
 	if src.BuildMemory == 0 {
 		src.BuildMemory = 2048
+	}
+	for _, f := range []struct {
+		in  *bool
+		out *bool
+	}{{in.Previews, &src.Previews}, {in.PreviewDatabases, &src.PreviewDatabases}, {in.PreviewForks, &src.PreviewForks}} {
+		if f.in != nil {
+			*f.out = *f.in
+		}
+	}
+	if in.PreviewTTLDays != nil {
+		if *in.PreviewTTLDays < 0 || *in.PreviewTTLDays > 365 {
+			return "preview_ttl_days: 0 (never) to 365", http.StatusBadRequest
+		}
+		src.PreviewTTLDays = *in.PreviewTTLDays
 	}
 	if src.BuildCPU < 250 || src.BuildCPU > 16000 || src.BuildMemory < 512 || src.BuildMemory > 32768 {
 		return "build resources: 250–16000 millicores and 512–32768 MB", http.StatusBadRequest
@@ -331,9 +350,22 @@ func (s *Server) gitWebhook(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if push.PR != nil {
+		parent, err := s.store.GetApp(ctx, id)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "not found")
+			return
+		}
+		if _, err := s.store.GetPreview(ctx, id); err == nil {
+			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "note": "this app is a preview; the webhook belongs to its parent app"})
+			return
+		}
+		s.handlePullRequest(w, r, parent, src, push)
+		return
+	}
 	switch {
 	case push.Ping:
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "note": "event ignored (only pushes start builds)"})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "note": "event ignored (only pushes and pull requests start builds)"})
 		return
 	case push.Deleted || push.Branch == "" || push.Branch != src.Branch:
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "note": "not the branch " + src.Branch})

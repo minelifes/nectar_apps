@@ -28,10 +28,13 @@ const (
 	Telegram = "telegram"
 	Email    = "email"
 	Webhook  = "webhook"
+	// Push sends native notifications to the Nectar app (Firebase; Settings → Push notifications). To limits
+	// the recipients to these users (emails); empty = every user who can see the server.
+	Push = "push"
 )
 
 // Kinds lists the supported channel kinds.
-var Kinds = []string{Ntfy, Telegram, Email, Webhook}
+var Kinds = []string{Ntfy, Telegram, Email, Webhook, Push}
 
 // ChannelConfig is the configuration of a channel; which fields matter depends on the kind.
 type ChannelConfig struct {
@@ -92,6 +95,12 @@ func (c ChannelConfig) KeepSecrets(old ChannelConfig) ChannelConfig {
 // Validate checks the config of a channel kind and fills in defaults.
 func (c *ChannelConfig) Validate(kind string) error {
 	switch kind {
+	case Push:
+		for _, to := range c.recipients() {
+			if _, err := mail.ParseAddress(to); err != nil {
+				return fmt.Errorf("invalid user email %q", to)
+			}
+		}
 	case Ntfy:
 		if c.URL == "" {
 			c.URL = "https://ntfy.sh"
@@ -197,6 +206,8 @@ type Sender struct {
 	TelegramAPI string // default https://api.telegram.org
 	// SMTPDial is used instead of net.Dial in tests.
 	SMTPDial func(ctx context.Context, addr string) (net.Conn, error)
+	// Push delivers push channels (set by the panel; nil = push is not available).
+	Push func(ctx context.Context, c ChannelConfig, n Notification) error
 }
 
 func (s *Sender) client() *http.Client {
@@ -217,6 +228,11 @@ func (s *Sender) Send(ctx context.Context, kind string, c ChannelConfig, n Notif
 		return s.email(ctx, c, n)
 	case Webhook:
 		return s.webhook(ctx, c, n)
+	case Push:
+		if s.Push == nil {
+			return errors.New("push notifications are not available")
+		}
+		return s.Push(ctx, c, n)
 	}
 	return fmt.Errorf("unknown channel kind %q", kind)
 }
@@ -396,3 +412,6 @@ func (s *Sender) email(ctx context.Context, c ChannelConfig, n Notification) err
 
 // mimeHeader encodes non-ASCII subjects (RFC 2047).
 func mimeHeader(s string) string { return mime.BEncoding.Encode("utf-8", headerSafe(s)) }
+
+// Recipients returns the comma-separated To list (email recipients, push users).
+func (c ChannelConfig) Recipients() []string { return c.recipients() }
