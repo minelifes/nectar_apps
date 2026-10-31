@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.4",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:5476d2a56061cc449ddf9083c876baa9b50aed8042250fa7b8be1c9cad065967",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- Per-route custom redirects, IP allowlist, headers, CORS. OIDC SSO. Environments (staging/production). i18n. Docs site. Passkeys. Preview environments per PR.",
+          "previous": "1.0.3",
+          "published_at": "2026-10-31T15:54:45+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.3",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:223faf070922b80da96b8eab64d9be58c14a982bda19cc53362b4b4c86f6197e",
@@ -85,6 +105,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.4",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:5476d2a56061cc449ddf9083c876baa9b50aed8042250fa7b8be1c9cad065967",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- Per-route custom redirects, IP allowlist, headers, CORS. OIDC SSO. Environments (staging/production). i18n. Docs site. Passkeys. Preview environments per PR.",
+          "previous": "1.0.3",
+          "published_at": "2026-10-31T15:54:45+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.3",
@@ -168,5 +208,5 @@
       ]
     }
   },
-  "updated_at": "2026-10-30T22:46:03+00:00"
+  "updated_at": "2026-10-31T15:54:45+00:00"
 }
