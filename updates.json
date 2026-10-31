@@ -7,7 +7,7 @@
           "component": "panel",
           "version": "1.0.5",
           "channel": "stable",
-          "image": "ghcr.io/minelifes/nectar-apps@sha256:356f474ab9d5b1c8789c953f2e1a3f0f6ee5267d02fc72fa7a2fb5a31093d013",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:f9f779b83bf237e3ed070b2b9843e7c3192651e8e37805d1a52f0722dbb4c95e",
           "kind": "patch",
           "security": false,
           "breaking": false,
@@ -21,7 +21,7 @@
           "migrations": true,
           "notes": "- fix hook\n- fix ui bug\n- Bug fixes. New addons",
           "previous": "1.0.4",
-          "published_at": "2026-10-31T20:12:48+00:00"
+          "published_at": "2026-10-31T20:14:52+00:00"
         },
         {
           "component": "panel",
@@ -129,7 +129,7 @@
           "component": "panel",
           "version": "1.0.5",
           "channel": "stable",
-          "image": "ghcr.io/minelifes/nectar-apps@sha256:356f474ab9d5b1c8789c953f2e1a3f0f6ee5267d02fc72fa7a2fb5a31093d013",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:f9f779b83bf237e3ed070b2b9843e7c3192651e8e37805d1a52f0722dbb4c95e",
           "kind": "patch",
           "security": false,
           "breaking": false,
@@ -143,7 +143,7 @@
           "migrations": true,
           "notes": "- fix hook\n- fix ui bug\n- Bug fixes. New addons",
           "previous": "1.0.4",
-          "published_at": "2026-10-31T20:12:48+00:00"
+          "published_at": "2026-10-31T20:14:52+00:00"
         },
         {
           "component": "panel",
@@ -248,5 +248,5 @@
       ]
     }
   },
-  "updated_at": "2026-10-31T20:12:48+00:00"
+  "updated_at": "2026-10-31T20:14:52+00:00"
 }
