@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.5",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:356f474ab9d5b1c8789c953f2e1a3f0f6ee5267d02fc72fa7a2fb5a31093d013",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- fix hook\n- fix ui bug\n- Bug fixes. New addons",
+          "previous": "1.0.4",
+          "published_at": "2026-10-31T20:12:48+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.4",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:5476d2a56061cc449ddf9083c876baa9b50aed8042250fa7b8be1c9cad065967",
@@ -105,6 +125,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.5",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:356f474ab9d5b1c8789c953f2e1a3f0f6ee5267d02fc72fa7a2fb5a31093d013",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- fix hook\n- fix ui bug\n- Bug fixes. New addons",
+          "previous": "1.0.4",
+          "published_at": "2026-10-31T20:12:48+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.4",
@@ -208,5 +248,5 @@
       ]
     }
   },
-  "updated_at": "2026-10-31T15:54:45+00:00"
+  "updated_at": "2026-10-31T20:12:48+00:00"
 }
