@@ -1926,6 +1926,7 @@ class Addon {
     this.ready,
     this.problem = '',
     this.restarts = 0,
+    this.usedBytes = -1,
     this.shared = false,
     this.sharedPrefix = '',
   });
@@ -1958,6 +1959,9 @@ class Addon {
   final bool? ready;
   final String problem;
   final int restarts;
+
+  /// Size of the data on disk (-1 = not measured yet).
+  final int usedBytes;
 
   /// running | starting | stopped | failed (for StatusDot/StatusPill)
   String get liveStatus {
@@ -1994,6 +1998,9 @@ class Addon {
       ready: live == null ? null : _bool(live['ready']),
       problem: live == null ? '' : _str(live['problem']),
       restarts: live == null ? 0 : _int(live['restarts']),
+      usedBytes: live == null || live['used_bytes'] == null
+          ? -1
+          : _int(live['used_bytes']),
       shared: _bool(m['shared']),
       sharedPrefix: _str(m['shared_prefix']),
     );

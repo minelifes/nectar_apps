@@ -39,6 +39,12 @@ func TestDatabaseAddons(t *testing.T) {
 		kube.Str(kube.Slice(ss, "spec", "volumeClaimTemplates")[0], "spec", "resources", "requests", "storage") != "1024Mi" {
 		t.Fatalf("statefulset: %v", ss)
 	}
+	// a slow first start (small CPU limit) is not restarted halfway: startup probe first, liveness after
+	if c := kube.Slice(ss, "spec", "template", "spec", "containers")[0]; kube.Int(c, "startupProbe", "failureThreshold") != 60 ||
+		kube.Int(c, "livenessProbe", "initialDelaySeconds") != 0 || kube.Str(c, "readinessProbe", "tcpSocket", "port") != "db" ||
+		kube.Field(c, "readinessProbe", "exec") != nil {
+		t.Fatalf("probes: %v", c)
+	}
 	if !e.kube.Has("Service", "prj-web", "db") || !e.kube.Has("Secret", "prj-web", "db-credentials") {
 		t.Fatal("service or secret missing")
 	}

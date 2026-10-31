@@ -242,13 +242,22 @@ func (b *Builder) createJob(ctx context.Context, bl store.Build, req Request, sr
 			"activeDeadlineSeconds":   int64(b.timeout() / time.Second),
 			"ttlSecondsAfterFinished": 86400,
 			"template": map[string]any{
-				"metadata": map[string]any{"labels": labels},
+				"metadata": map[string]any{"labels": labels,
+					// AppArmor: Kaniko SIGKILLs what is left in a RUN's process group after it ends (e.g. the
+					// zombie esbuild leaves behind a vite build); the runtime profile of newer kernels refuses
+					// that signal and the build fails with "failed to execute command: permission denied".
+					// The annotation covers Kubernetes before 1.30, securityContext.appArmorProfile newer ones.
+					"annotations": map[string]any{"container.apparmor.security.beta.kubernetes.io/kaniko": "unconfined"}},
 				"spec": map[string]any{
 					"restartPolicy":                "Never",
 					"automountServiceAccountToken": false,
+					// the pod's pause process is PID 1 and reaps orphaned build processes, so no zombie is
+					// left in the RUN's process group for Kaniko to signal
+					"shareProcessNamespace": true,
 					"containers": []any{map[string]any{
 						"name": "kaniko", "image": b.image(), "args": args, "env": env,
-						"volumeMounts": []any{map[string]any{"name": "docker", "mountPath": "/kaniko/.docker", "readOnly": true}},
+						"securityContext": map[string]any{"appArmorProfile": map[string]any{"type": "Unconfined"}},
+						"volumeMounts":    []any{map[string]any{"name": "docker", "mountPath": "/kaniko/.docker", "readOnly": true}},
 						"resources": map[string]any{ // small request: a build must fit next to the apps; the limit lets it use what is free
 							"requests": map[string]any{"cpu": "100m", "memory": "512Mi"},
 							"limits":   map[string]any{"cpu": fmt.Sprintf("%dm", cpu), "memory": fmt.Sprintf("%dMi", mem)},

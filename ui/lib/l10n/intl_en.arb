@@ -1584,5 +1584,9 @@
   "appSharedWithProject": "shared with the project",
   "projectOpenTheDatabase": "Open the database",
   "projectSearchTemplates": "Search: MQTT, Kafka, Redis, search…",
-  "projectAllTemplates": "All"
+  "projectAllTemplates": "All",
+  "appStartCommandOptional": "Start command (optional)",
+  "appStartCommandHelp": "Runs with sh -c instead of the image's own command. Leave empty for the default.",
+  "appBaseImageStopsRightAway": "This is a base OS image: its default command is a shell that exits at once, so the app would keep restarting. Give it a long-running command, or deploy an image that runs a server.",
+  "appUseSleepInfinity": "Use sleep infinity"
 }

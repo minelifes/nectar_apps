@@ -567,6 +567,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "appBackToTheProject": MessageLookupByLibrary.simpleMessage(
       "Назад до проєкту",
     ),
+    "appBaseImageStopsRightAway": MessageLookupByLibrary.simpleMessage(
+      "Це базовий образ ОС: його типова команда — оболонка, яка одразу завершується, тож застосунок постійно перезапускатиметься. Задайте довготривалу команду або розгорніть образ, що запускає сервер.",
+    ),
     "appBranch": MessageLookupByLibrary.simpleMessage("Гілка"),
     "appBuildAndDeployOnEvery": MessageLookupByLibrary.simpleMessage(
       "Збирати й розгортати після кожного push",
@@ -913,6 +916,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "appSpringProfilesActiveProd": MessageLookupByLibrary.simpleMessage(
       "--spring.profiles.active=prod",
     ),
+    "appStartCommandHelp": MessageLookupByLibrary.simpleMessage(
+      "Виконується через sh -c замість власної команди образу. Залиште порожнім для типової.",
+    ),
+    "appStartCommandOptional": MessageLookupByLibrary.simpleMessage(
+      "Команда запуску (необов\'язково)",
+    ),
     "appStepOf": m37,
     "appStorage": MessageLookupByLibrary.simpleMessage("Сховище"),
     "appTcp": MessageLookupByLibrary.simpleMessage("TCP"),
@@ -957,6 +966,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "appUploadedAndChecked": m40,
     "appUploading": m41,
     "appUse": m42,
+    "appUseSleepInfinity": MessageLookupByLibrary.simpleMessage(
+      "Використати sleep infinity",
+    ),
     "appUsed": MessageLookupByLibrary.simpleMessage("Використано"),
     "appUsedInKubernetesNamesAnd": MessageLookupByLibrary.simpleMessage(
       "Використовується в іменах Kubernetes і типовому домені",

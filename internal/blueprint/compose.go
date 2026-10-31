@@ -197,7 +197,7 @@ func FromCompose(data []byte) (Blueprint, []string, error) {
 			case target == "":
 				continue
 			case strings.HasPrefix(src, ".") || strings.HasPrefix(src, "/") || strings.HasPrefix(src, "~"):
-				note("%s: the bind mount %s → %s is not imported — upload the files to a volume (Volumes → Files) or use config files", name, src, target)
+				note("%s: the bind mount %s → %s is not imported — upload the files to a volume (app → Settings → Volumes → Files) or use config files", name, src, target)
 				continue
 			}
 			vname := composeSlug(src)

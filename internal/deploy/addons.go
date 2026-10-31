@@ -80,9 +80,20 @@ type AddonCredentials struct {
 	RootPass string `json:"root_password,omitempty"`
 }
 
+// reservedDatabases are system databases of MySQL/MariaDB and PostgreSQL. An add-on named like one of
+// them (slug "mysql" is the default of the MySQL template) must not get it as its app database: the app
+// user would own MySQL's grant tables, or share PostgreSQL's maintenance database.
+var reservedDatabases = map[string]bool{
+	"mysql": true, "information_schema": true, "performance_schema": true, "sys": true,
+	"postgres": true, "template0": true, "template1": true,
+}
+
 // NewAddonCredentials generates credentials for a kind.
 func NewAddonCredentials(kind, slug string) AddonCredentials {
 	db := sanitizeIdent(slug)
+	if reservedDatabases[db] {
+		db = "app"
+	}
 	switch kind {
 	case "redis":
 		return AddonCredentials{Password: randomSecret()}
@@ -169,24 +180,21 @@ func AddonObjects(s addonSpec) []obj {
 	a, ns, labels := s.Addon, s.Project.Namespace, s.labels()
 	env := map[string]string{}
 	var args []any
-	var probe []any
 	switch a.Kind {
 	case "postgres":
 		env["POSTGRES_USER"], env["POSTGRES_PASSWORD"], env["POSTGRES_DB"] = s.Creds.User, s.Creds.Password, s.Creds.Database
 		env["PGDATA"] = s.Kind.DataPath + "/pgdata" // a subfolder: the volume root may hold lost+found
-		probe = []any{"sh", "-c", `pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" -h 127.0.0.1`}
 	case "mysql", "mariadb":
 		env["MYSQL_USER"], env["MYSQL_PASSWORD"], env["MYSQL_DATABASE"], env["MYSQL_ROOT_PASSWORD"] = s.Creds.User, s.Creds.Password, s.Creds.Database, s.Creds.RootPass
+		// the first start loads the time zone tables (slow on a small CPU limit); apps use UTC offsets
+		env["MYSQL_INITDB_SKIP_TZINFO"] = "1"
 		if a.Kind == "mariadb" {
 			env["MARIADB_AUTO_UPGRADE"] = "1"
-			probe = []any{"sh", "-c", `mariadb-admin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent`}
-		} else {
-			probe = []any{"sh", "-c", `mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent`}
+			env["MARIADB_INITDB_SKIP_TZINFO"] = "1"
 		}
 	case "redis":
 		env["REDIS_PASSWORD"] = s.Creds.Password
 		args = []any{"redis-server", "--requirepass", "$(REDIS_PASSWORD)", "--appendonly", "yes", "--dir", "/data"}
-		probe = []any{"sh", "-c", `redis-cli -a "$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG`}
 	}
 	data := map[string]any{}
 	for k, v := range env {
@@ -204,8 +212,15 @@ func AddonObjects(s addonSpec) []obj {
 		"ports":           []any{map[string]any{"name": "db", "containerPort": s.Kind.Port, "protocol": "TCP"}},
 		"resources":       resourcesFor(store.Resources{CPUMillicores: a.CPUMillicores, MemoryMB: a.MemoryMB}),
 		"volumeMounts":    []any{map[string]any{"name": "data", "mountPath": s.Kind.DataPath}},
-		"readinessProbe":  map[string]any{"exec": map[string]any{"command": probe}, "periodSeconds": 5, "timeoutSeconds": 5, "failureThreshold": 3},
-		"livenessProbe":   map[string]any{"exec": map[string]any{"command": probe}, "initialDelaySeconds": 60, "periodSeconds": 20, "timeoutSeconds": 10, "failureThreshold": 6},
+		// Probes are TCP checks of the database port, run by the kubelet: every image initializes its data
+		// directory with networking off (the port opens once the server takes connections), and a TCP check
+		// needs nothing inside the container. Exec probes (pg_isready, mariadb-admin) failed on hosts where
+		// the container runtime refuses exec'd processes, and they ate the 250m CPU limit of small databases.
+		// The first start can take minutes on a small CPU limit: the startup probe allows 10 minutes and the
+		// liveness probe only begins after it passed (a restart halfway would never finish).
+		"startupProbe":   map[string]any{"tcpSocket": map[string]any{"port": "db"}, "periodSeconds": 10, "timeoutSeconds": 5, "failureThreshold": 60},
+		"readinessProbe": map[string]any{"tcpSocket": map[string]any{"port": "db"}, "periodSeconds": 5, "timeoutSeconds": 3, "failureThreshold": 3},
+		"livenessProbe":  map[string]any{"tcpSocket": map[string]any{"port": "db"}, "periodSeconds": 20, "timeoutSeconds": 5, "failureThreshold": 6},
 	}
 	if len(args) > 0 {
 		if a.Kind == "redis" {
@@ -321,11 +336,15 @@ type AddonLive struct {
 	Restarts int64  `json:"restarts"`
 	Problem  string `json:"problem,omitempty"`
 	Volume   string `json:"volume,omitempty"` // PVC name
+	UsedB    int64  `json:"used_bytes"`       // size of the data, -1 = not measured yet
 }
 
 // AddonStatus reads the live state.
 func (d *Deployer) AddonStatus(ctx context.Context, a store.Addon, p store.Project) (AddonLive, error) {
-	live := AddonLive{Volume: "data-" + a.Slug + "-0"}
+	live := AddonLive{Volume: "data-" + a.Slug + "-0", UsedB: -1}
+	if b, ok := d.measuredUsage(p.Namespace + "/" + live.Volume); ok {
+		live.UsedB = b
+	}
 	var ss kube.Object
 	if err := d.kube.GetObject(ctx, "StatefulSet", p.Namespace, a.Slug, &ss); err != nil {
 		if kube.IsNotFound(err) {

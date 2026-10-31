@@ -2,7 +2,6 @@ package deploy
 
 import (
 	"context"
-	"net/url"
 	"sort"
 	"strconv"
 
@@ -60,36 +59,21 @@ func (d *Deployer) AllVolumes(ctx context.Context) ([]VolumeUse, error) {
 		if err == nil {
 			for _, n := range nodes {
 				node := kube.Str(n, "metadata", "name")
-				var sum struct {
-					Pods []struct {
-						Volume []struct {
-							UsedBytes      *int64 `json:"usedBytes"`
-							AvailableBytes *int64 `json:"availableBytes"`
-							PVCRef         *struct {
-								Name      string `json:"name"`
-								Namespace string `json:"namespace"`
-							} `json:"pvcRef"`
-						} `json:"volume"`
-					} `json:"pods"`
-				}
-				if rg.Get(ctx, "/api/v1/nodes/"+url.PathEscape(node)+"/proxy/stats/summary", &sum) != nil {
-					continue
-				}
-				for _, p := range sum.Pods {
-					for _, vol := range p.Volume {
-						if vol.PVCRef == nil || vol.UsedBytes == nil {
-							continue
-						}
-						v, ok := byKey[vol.PVCRef.Namespace+"/"+vol.PVCRef.Name]
-						if !ok || *vol.UsedBytes < v.UsedB {
-							continue
-						}
-						v.UsedB, v.Node = *vol.UsedBytes, node
-						if vol.AvailableBytes != nil {
-							v.AvailableB = *vol.AvailableBytes
-						}
+				for key, st := range nodePVCStats(ctx, rg, node) {
+					v, ok := byKey[key]
+					if !ok || (st.UsedB < v.UsedB && v.Node != "") {
+						continue
 					}
+					v.UsedB, v.AvailableB, v.Node = st.UsedB, st.AvailableB, node
 				}
+			}
+		}
+	}
+	// node-local folders (k3s local-path): the kubelet cannot tell their size, the volume meter measures them
+	for _, v := range out {
+		if v.UsedB < 0 {
+			if b, ok := d.measuredUsage(v.Namespace + "/" + v.Claim); ok {
+				v.UsedB = b
 			}
 		}
 	}

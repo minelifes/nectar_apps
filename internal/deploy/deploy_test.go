@@ -306,3 +306,57 @@ func TestArtifactSignature(t *testing.T) {
 		t.Fatal("signature verification broken")
 	}
 }
+
+// A container whose command just finishes (alpine's sh) restarts forever: the message says why and what to do.
+func TestPodProblemExplainsExitCodes(t *testing.T) {
+	pod := func(code int) kube.Object {
+		return kube.Object{"status": map[string]any{"containerStatuses": []any{map[string]any{"name": "app",
+			"state":     map[string]any{"waiting": map[string]any{"reason": "CrashLoopBackOff"}},
+			"lastState": map[string]any{"terminated": map[string]any{"reason": "Completed", "exitCode": code}}}}}}
+	}
+	if got := podProblem(pod(0)); !strings.Contains(got, "code 0") || !strings.Contains(got, "sleep infinity") {
+		t.Fatalf("exit 0: %q", got)
+	}
+	if got := podProblem(pod(127)); !strings.Contains(got, "not found") {
+		t.Fatalf("exit 127: %q", got)
+	}
+	if got := podProblem(pod(1)); strings.Contains(got, "—") {
+		t.Fatalf("exit 1 has no generic hint: %q", got)
+	}
+}
+
+// An add-on named after a system database (the MySQL template's default slug "mysql") gets "app" instead.
+func TestAddonDatabaseAvoidsSystemNames(t *testing.T) {
+	for _, c := range []struct{ kind, slug, want string }{
+		{"mysql", "mysql", "app"}, {"mariadb", "information_schema", "app"}, {"postgres", "postgres", "app"},
+		{"postgres", "template1", "app"}, {"mysql", "shop-db", "shop_db"}, {"postgres", "orders", "orders"},
+	} {
+		if got := NewAddonCredentials(c.kind, c.slug).Database; got != c.want {
+			t.Errorf("%s %s: database %q, want %q", c.kind, c.slug, got, c.want)
+		}
+	}
+}
+
+// k3s local-path volumes are folders on the node's disk: the kubelet reports the whole filesystem for them,
+// which must not count as the volume's usage (false "volume full" alerts: 5.8 GiB of 2 GiB).
+func TestPVCStatsIgnoresWholeDiskNumbers(t *testing.T) {
+	raw := `{"node":{"fs":{"capacityBytes":40000000000,"usedBytes":6200000000},"runtime":{"imageFs":{"capacityBytes":40000000000}}},
+	 "pods":[{"volume":[
+	  {"pvcRef":{"namespace":"prj-a","name":"data-mysql-0"},"capacityBytes":40000000000,"usedBytes":6200000000,"availableBytes":33800000000},
+	  {"pvcRef":{"namespace":"prj-a","name":"web-files"},"capacityBytes":2147483648,"usedBytes":1073741824,"availableBytes":1073741824},
+	  {"name":"kube-api-access","capacityBytes":40000000000,"usedBytes":12}]}]}`
+	var sum kubeletSummary
+	if err := json.Unmarshal([]byte(raw), &sum); err != nil {
+		t.Fatal(err)
+	}
+	st := pvcStats(sum)
+	if v := st["prj-a/data-mysql-0"]; v.UsedB != -1 || v.AvailableB != 33800000000 {
+		t.Fatalf("local-path volume: %+v", v)
+	}
+	if v := st["prj-a/web-files"]; v.UsedB != 1073741824 {
+		t.Fatalf("real volume: %+v", v)
+	}
+	if len(st) != 2 {
+		t.Fatalf("non-PVC volumes counted: %v", st)
+	}
+}
