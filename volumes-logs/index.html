@@ -1083,9 +1083,12 @@
   edit text files, create folders, rename and delete — also while the app is stopped and for images without a
   shell. A small helper pod mounts the volume while the dialog is open (an hour at most). Needs the
   <code>volume.manage</code> permission; every change is audited.</li>
-<li><strong>Usage:</strong> Server → Volumes lists every volume with its usage; the <strong>Volume almost full</strong> alert (90 % by
-  default) warns early. On the default local-path storage sizes are not enforced: a volume grows until the
-  node's disk is full (covered by the "Disk almost full" alert).</li>
+<li><strong>Usage:</strong> each volume shows how much it holds: the app's Settings → Volumes, the database page and
+  Server → Volumes. The <strong>Volume almost full</strong> alert (90 % by default) warns early. On the default
+  local-path storage a volume is a folder on the server's disk. Kubernetes cannot tell a folder's size, so the
+  panel measures these folders itself every 10 minutes, with a short read-only <code>du</code> pod per node. The numbers
+  appear a few minutes after the panel starts. Sizes are not enforced on local-path: a volume can grow past
+  its size until the node's disk is full, which is why the alert matters.</li>
 <li><strong>Storage classes:</strong> local-path (one node) by default; <code>install.sh --longhorn</code> adds Longhorn (replicated
   across nodes), <code>install.sh --nfs 10.0.0.5:/srv/nectar</code> an <code>nfs</code> class whose volumes several replicas on
   several nodes can share (<strong>shared</strong> volumes, ReadWriteMany). The class is chosen per volume and fixed
