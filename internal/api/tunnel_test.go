@@ -102,7 +102,9 @@ func TestDatabaseTunnel(t *testing.T) {
 		t.Fatalf("stopped: %v", err)
 	}
 	e.do(o, "POST", "/api/addons/"+itoa(float64(id))+"/start", nil, auth...)
-	e.api.tunnelDial = func(context.Context, string, string) (net.Conn, error) { return nil, &net.OpError{Op: "dial", Err: io.ErrUnexpectedEOF} }
+	e.api.tunnelDial = func(context.Context, string, string) (net.Conn, error) {
+		return nil, &net.OpError{Op: "dial", Err: io.ErrUnexpectedEOF}
+	}
 	if _, err := c.OpenTunnel(t.Context(), id); err == nil || !strings.Contains(err.Error(), "cannot reach the database") {
 		t.Fatalf("unreachable: %v", err)
 	}
