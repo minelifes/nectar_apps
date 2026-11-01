@@ -1823,6 +1823,17 @@ paths:
       x-permission: app.logs
       responses:
         "101": { description: Switching protocols }
+  /addons/{aid}/tunnel:
+    parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [addons]
+      summary: "WebSocket: a TCP connection to the database, raw bytes in binary messages (used by `nectar db connect`)"
+      x-permission: env.secrets.view
+      responses:
+        "101": { description: Switching protocols }
+        "400": { description: Not a WebSocket request }
+        "409": { description: The database is stopped }
+        "502": { description: The panel cannot reach the database }
   /addons/{aid}/exec/ws:
     parameters: [{ name: aid, in: path, required: true, schema: { type: integer } }]
     get:

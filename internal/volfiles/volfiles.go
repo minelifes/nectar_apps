@@ -208,7 +208,7 @@ func helperPod(namespace, name, claim, image string) kube.Object {
 				"command": []any{"sleep", strconv.Itoa(int(Lifetime.Seconds()))},
 				// root without extra capabilities: reads and writes every file of the volume
 				"securityContext": map[string]any{"allowPrivilegeEscalation": false,
-					"capabilities": map[string]any{"drop": []any{"ALL"}, "add": []any{"CHOWN", "DAC_OVERRIDE", "FOWNER", "DAC_READ_SEARCH"}}},
+					"capabilities": map[string]any{"drop": []any{"ALL"}, "add": []any{"CHOWN", "DAC_OVERRIDE", "FOWNER"}}},
 				"resources":    map[string]any{"requests": map[string]any{"cpu": "10m", "memory": "16Mi"}, "limits": map[string]any{"memory": "128Mi"}},
 				"volumeMounts": []any{map[string]any{"name": "data", "mountPath": Root}},
 			}},

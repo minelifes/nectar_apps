@@ -109,6 +109,8 @@ type Server struct {
 
 	alertBox    *secretbox.Box
 	alertSender *alerts.Sender
+	// tunnelDial connects database tunnels (tests replace it; nil = net.Dialer)
+	tunnelDial  func(ctx context.Context, network, addr string) (net.Conn, error)
 	keeper      *housekeep.Keeper
 	backups     *backup.Manager
 	mfaBox      *secretbox.Box
@@ -410,6 +412,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/addons/{aid}/logs", s.onAddon("app.logs", s.addonLogs))
 	mux.Handle("GET /api/addons/{aid}/logs/ws", s.onAddon("app.logs", s.addonLogsWS))
 	mux.Handle("GET /api/addons/{aid}/exec/ws", s.onAddon("app.exec", s.addonExecWS))
+	mux.Handle("GET /api/addons/{aid}/tunnel", s.onAddon("env.secrets.view", s.addonTunnel)) // nectar db connect
 	mux.Handle("GET /api/apps/{id}/files", s.onApp("env.view", s.getFiles))
 	mux.Handle("PUT /api/apps/{id}/files", s.onApp("env.edit", s.putFiles))
 
