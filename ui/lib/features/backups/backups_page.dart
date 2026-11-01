@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
@@ -13,6 +12,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 import '../../widgets/status.dart';
 import 'plan_dialog.dart';
 import 'target_dialog.dart';
@@ -531,8 +531,7 @@ class _Targets extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () {
-                Clipboard.setData(ClipboardData(text: text));
-                showSnack(ctx, s.backupCopied);
+                copyText(ctx, text, done: s.backupCopied);
               },
               child: Text(s.backupCopy),
             ),

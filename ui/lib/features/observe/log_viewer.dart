@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -14,6 +13,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 
 const _maxLines = 5000;
 
@@ -274,8 +274,11 @@ class _LogViewerState extends ConsumerState<LogViewer> {
               onPressed: visible.isEmpty
                   ? null
                   : () {
-                      Clipboard.setData(ClipboardData(text: _asText(visible)));
-                      showSnack(context, s.observeCopiedLines2(visible.length));
+                      copyText(
+                        context,
+                        _asText(visible),
+                        done: s.observeCopiedLines2(visible.length),
+                      );
                     },
             ),
             if (!api

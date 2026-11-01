@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
@@ -9,6 +8,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 
 /// A configured sign-in provider as GET /settings/sso returns it.
 class SsoProvider {
@@ -307,8 +307,7 @@ class _SsoDialogState extends ConsumerState<_SsoDialog> {
                   IconButton(
                     tooltip: s.backupCopy,
                     icon: const Icon(Icons.copy_rounded, size: 18),
-                    onPressed: () =>
-                        Clipboard.setData(ClipboardData(text: callback)),
+                    onPressed: () => copyText(context, callback),
                   ),
                 ],
               ),

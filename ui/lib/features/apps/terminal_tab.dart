@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:xterm/xterm.dart';
@@ -233,14 +234,24 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
             borderRadius: BorderRadius.circular(NectarTokens.radius),
             border: Border.all(color: c.border),
           ),
-          child: TerminalView(
-            _terminal,
-            controller: _controller,
-            autofocus: true,
-            backgroundOpacity: 0,
-            textStyle: const TerminalStyle(
-              fontSize: 13,
-              fontFamily: NectarTokens.fontMono,
+          // Space is "scroll / activate" for the app's default shortcuts (browsers especially), which took
+          // it before the terminal saw it: let it through as typed text like a text field does
+          child: Shortcuts(
+            shortcuts: const {
+              SingleActivator(LogicalKeyboardKey.space):
+                  DoNothingAndStopPropagationTextIntent(),
+              SingleActivator(LogicalKeyboardKey.space, shift: true):
+                  DoNothingAndStopPropagationTextIntent(),
+            },
+            child: TerminalView(
+              _terminal,
+              controller: _controller,
+              autofocus: true,
+              backgroundOpacity: 0,
+              textStyle: const TerminalStyle(
+                fontSize: 13,
+                fontFamily: NectarTokens.fontMono,
+              ),
             ),
           ),
         ),

@@ -27,6 +27,11 @@ type AddonKind struct {
 	DataPath string `json:"-"`
 	// MinMemoryMB is the smallest sensible memory limit.
 	MinMemoryMB int64 `json:"min_memory_mb"`
+	// RunAs is the image's own database user (uid = gid). The container starts as that user instead of root:
+	// the entrypoints then skip their root → user switch (gosu), which hangs forever on hosts whose
+	// AppArmor refuses signals inside containers (Ubuntu 26.04 + k3s 1.36: gosu signals its own threads
+	// while switching). 0 = start as the image says (Redis: the panel runs redis-server directly).
+	RunAs int64 `json:"-"`
 }
 
 // AddonVersion is an offered version with its image.
@@ -38,13 +43,13 @@ type AddonVersion struct {
 
 // AddonKinds is the add-on catalog.
 var AddonKinds = []AddonKind{
-	{ID: "postgres", Name: "PostgreSQL", Port: 5432, DataPath: "/var/lib/postgresql/data", MinMemoryMB: 128, Versions: []AddonVersion{
+	{ID: "postgres", Name: "PostgreSQL", Port: 5432, DataPath: "/var/lib/postgresql/data", MinMemoryMB: 128, RunAs: 70, Versions: []AddonVersion{
 		{ID: "17", Image: "postgres:17-alpine", Default: true}, {ID: "16", Image: "postgres:16-alpine"}, {ID: "15", Image: "postgres:15-alpine"},
 	}},
-	{ID: "mysql", Name: "MySQL", Port: 3306, DataPath: "/var/lib/mysql", MinMemoryMB: 384, Versions: []AddonVersion{
+	{ID: "mysql", Name: "MySQL", Port: 3306, DataPath: "/var/lib/mysql", MinMemoryMB: 384, RunAs: 999, Versions: []AddonVersion{
 		{ID: "8.4", Image: "mysql:8.4", Default: true}, {ID: "8.0", Image: "mysql:8.0"},
 	}},
-	{ID: "mariadb", Name: "MariaDB", Port: 3306, DataPath: "/var/lib/mysql", MinMemoryMB: 256, Versions: []AddonVersion{
+	{ID: "mariadb", Name: "MariaDB", Port: 3306, DataPath: "/var/lib/mysql", MinMemoryMB: 256, RunAs: 999, Versions: []AddonVersion{
 		{ID: "11.4", Image: "mariadb:11.4", Default: true}, {ID: "10.11", Image: "mariadb:10.11"},
 	}},
 	{ID: "redis", Name: "Redis", Port: 6379, DataPath: "/data", MinMemoryMB: 64, Versions: []AddonVersion{
@@ -192,6 +197,14 @@ func AddonObjects(s addonSpec) []obj {
 			env["MARIADB_AUTO_UPGRADE"] = "1"
 			env["MARIADB_INITDB_SKIP_TZINFO"] = "1"
 		}
+		// Newer container runtimes give containers an open-files limit of ~1 billion; MySQL's start (and
+		// MariaDB's) then spins at full CPU for minutes right after "Switching to dedicated user 'mysql'"
+		// and never opens its port. Lower the limit to a sane 1M, then run the image's own entrypoint.
+		server := "mysqld"
+		if a.Kind == "mariadb" {
+			server = "mariadbd"
+		}
+		args = []any{"sh", "-c", nofileWrapper, "db", server}
 	case "redis":
 		env["REDIS_PASSWORD"] = s.Creds.Password
 		args = []any{"redis-server", "--requirepass", "$(REDIS_PASSWORD)", "--appendonly", "yes", "--dir", "/data"}
@@ -223,12 +236,21 @@ func AddonObjects(s addonSpec) []obj {
 		"livenessProbe":  map[string]any{"tcpSocket": map[string]any{"port": "db"}, "periodSeconds": 20, "timeoutSeconds": 5, "failureThreshold": 6},
 	}
 	if len(args) > 0 {
-		if a.Kind == "redis" {
+		switch a.Kind {
+		case "redis":
 			c["command"] = args[:1]
 			c["args"] = args[1:]
-		} else {
+		case "mysql", "mariadb":
+			c["command"] = args
+		default:
 			c["args"] = args
 		}
+	}
+	podSec := map[string]any{"seccompProfile": map[string]any{"type": "RuntimeDefault"}}
+	if u := s.Kind.RunAs; u > 0 {
+		podSec["runAsUser"], podSec["runAsGroup"], podSec["fsGroup"], podSec["runAsNonRoot"] = u, u, u, true
+		podSec["fsGroupChangePolicy"] = "OnRootMismatch" // network storage: chown the volume once, not every start
+		c["securityContext"] = map[string]any{"allowPrivilegeEscalation": false, "capabilities": map[string]any{"drop": []any{"ALL"}}}
 	}
 	tmplLabels := merge(labels, map[string]any{})
 	return []obj{
@@ -259,7 +281,7 @@ func AddonObjects(s addonSpec) []obj {
 						"automountServiceAccountToken":  false,
 						"enableServiceLinks":            false,
 						"terminationGracePeriodSeconds": 60,
-						"securityContext":               map[string]any{"seccompProfile": map[string]any{"type": "RuntimeDefault"}},
+						"securityContext":               podSec,
 						"containers":                    []any{c},
 					},
 				},
@@ -417,3 +439,7 @@ func (d *Deployer) LinkedEnv(ctx context.Context, appID int64) (map[string]strin
 	}
 	return out, nil
 }
+
+// nofileWrapper lowers the open-files limit when it is above 1M (or unlimited) and runs the image's entrypoint
+// with the server command ($@). Used for MySQL/MariaDB (see AddonObjects).
+const nofileWrapper = `n=$(ulimit -n); if [ "$n" = unlimited ] || [ "$n" -gt 1048576 ]; then ulimit -n 1048576; fi; exec docker-entrypoint.sh "$@"`

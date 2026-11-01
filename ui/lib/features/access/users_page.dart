@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
@@ -10,6 +9,7 @@ import '../../data/providers.dart';
 import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 import '../../widgets/hex.dart';
 
 /// Settings → Users: invite people, give them roles (everywhere or per project), disable, reset 2FA.
@@ -242,8 +242,7 @@ class _NewUserDialogState extends ConsumerState<_NewUserDialog> {
         actions: [
           TextButton(
             onPressed: () {
-              Clipboard.setData(ClipboardData(text: _link!));
-              showSnack(context, s.backupCopied);
+              copyText(context, _link!, done: s.backupCopied);
             },
             child: Text(s.backupCopy),
           ),
@@ -572,10 +571,8 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
                                 final link = res is Map
                                     ? res['invite_url']
                                     : null;
-                                if (link != null) {
-                                  await Clipboard.setData(
-                                    ClipboardData(text: '$link'),
-                                  );
+                                if (link != null && context.mounted) {
+                                  await copyText(context, '$link', quiet: true);
                                 }
                               },
                               'Invitation sent (or its link copied when email is off)',

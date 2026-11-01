@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,6 +14,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 import '../../widgets/status.dart';
 
 String buildTone(String s) => switch (s) {
@@ -217,8 +217,7 @@ class _WebhookBox extends ConsumerWidget {
           tooltip: s.backupCopy,
           icon: const Icon(Icons.copy_rounded, size: 16),
           onPressed: () {
-            Clipboard.setData(ClipboardData(text: value));
-            showSnack(context, s.backupCopied);
+            copyText(context, value, done: s.backupCopied);
           },
         ),
       ],

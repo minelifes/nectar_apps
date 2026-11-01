@@ -167,8 +167,11 @@ func gitContext(repoURL, branch, commit string) (string, bool) {
 func (b *Builder) ensureNamespace(ctx context.Context) error {
 	ns := b.ns()
 	labels := map[string]any{"app.kubernetes.io/part-of": "nectar", "app.kubernetes.io/managed-by": "nectar-apps",
-		// Kaniko runs as root but needs no privileges: baseline is enough
-		"pod-security.kubernetes.io/enforce": "baseline"}
+		// Only the panel's Kaniko jobs run here (no privileged containers, no host access). Baseline would
+		// reject their AppArmor "unconfined": Kaniko kills what a RUN leaves behind, which the runtime
+		// profile refuses on some hosts (Ubuntu 26.04 + k3s 1.36). Baseline stays as a warning.
+		"pod-security.kubernetes.io/enforce": "privileged",
+		"pod-security.kubernetes.io/warn":    "baseline"}
 	if _, err := b.Kube.Apply(ctx, kube.Object{"apiVersion": "v1", "kind": "Namespace", "metadata": map[string]any{"name": ns, "labels": labels}}); err != nil {
 		return err
 	}

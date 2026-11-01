@@ -12,6 +12,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 
 // ------------------------------------------------------------------- 2FA --
 
@@ -205,8 +206,7 @@ Future<void> showRecoveryCodes(BuildContext context, List<String> codes) =>
         actions: [
           TextButton(
             onPressed: () {
-              Clipboard.setData(ClipboardData(text: codes.join('\n')));
-              showSnack(ctx, S.of(context).backupCopied);
+              copyText(ctx, codes.join('\n'), done: S.of(context).backupCopied);
             },
             child: Text(S.of(context).backupCopy),
           ),

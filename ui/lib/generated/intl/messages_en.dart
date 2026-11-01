@@ -1114,6 +1114,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "backupYourRoleDoesNotInclude": MessageLookupByLibrary.simpleMessage(
       "Your role does not include backup.manage.",
     ),
+    "copyBrowserBlocksClipboard": MessageLookupByLibrary.simpleMessage(
+      "Your browser only lets pages copy on HTTPS, and the panel is open over plain HTTP. The text below is selected: press Ctrl+C (⌘C on a Mac). Opening the panel at its HTTPS domain makes the copy buttons work directly.",
+    ),
+    "copyPressToCopy": MessageLookupByLibrary.simpleMessage(
+      "Press Ctrl+C (⌘C) to copy",
+    ),
     "countApps": m54,
     "dashboardAProjectIsASpace": MessageLookupByLibrary.simpleMessage(
       "A project is a space for related apps with its own quota. Create one, then add your first app.",

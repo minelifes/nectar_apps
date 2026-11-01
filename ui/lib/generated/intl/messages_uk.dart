@@ -1167,6 +1167,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "backupYourRoleDoesNotInclude": MessageLookupByLibrary.simpleMessage(
       "Ваша роль не має дозволу backup.manage.",
     ),
+    "copyBrowserBlocksClipboard": MessageLookupByLibrary.simpleMessage(
+      "Браузер дозволяє сторінкам копіювати лише через HTTPS, а панель відкрито через звичайний HTTP. Текст нижче виділено: натисніть Ctrl+C (⌘C на Mac). Якщо відкрити панель за її HTTPS-доменом, кнопки копіювання працюватимуть напряму.",
+    ),
+    "copyPressToCopy": MessageLookupByLibrary.simpleMessage(
+      "Натисніть Ctrl+C (⌘C), щоб скопіювати",
+    ),
     "countApps": m54,
     "dashboardAProjectIsASpace": MessageLookupByLibrary.simpleMessage(
       "Проєкт — це простір для пов\'язаних застосунків із власною квотою. Створіть проєкт, а потім додайте перший застосунок.",
