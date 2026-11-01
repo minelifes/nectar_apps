@@ -46,6 +46,7 @@ nav:
       - Updates: updates.md
       - Users, roles and sign-in: access.md
       - Security: security.md
+      - Troubleshooting: troubleshooting.md
   - Automation:
       - CLI: cli.md
       - CI / GitHub Actions: ci.md

@@ -46,6 +46,7 @@ PURGE_K3S=0
 RESTORE_KIT=""                            # disaster recovery: recovery kit JSON from the old panel
 RESTORE_MASTER_KEY=""                     # … and the master key printed by the first install
 K3S_UPGRADES=0                            # install Rancher's system-upgrade-controller (k3s updates from the panel)
+APPARMOR_FIX="auto"                       # auto | 1 | 0: allow signals inside containers (Ubuntu 25.10+, see fix_apparmor_signals)
 REGISTRY="auto"                           # built-in image registry for Git builds: auto (new installs) | 1 | 0
 REGISTRY_HOST="registry.nectar.local"     # the name nodes pull built images from (a k3s mirror)
 REGISTRY_NODEPORT=30500
@@ -99,6 +100,9 @@ Usage: install.sh [options]
   --manifests DIR        use local manifests instead of downloading (development)
   --skip-firewall        do not configure ufw/firewalld
   --k3s-upgrades         install Rancher's system-upgrade-controller so the panel can update k3s
+  --apparmor-fix         always install the container AppArmor profile that allows signals inside containers
+                         (default: only on Ubuntu 25.10+ or when the kernel log shows those denials)
+  --no-apparmor-fix      never install it
                          (Settings → Updates → k3s; off until you choose a policy there)
   --registry             set up the built-in image registry for Git builds (default on new installs;
                          on an existing server this restarts k3s once to load the registry mirror)
@@ -154,6 +158,8 @@ while [ $# -gt 0 ]; do
 		--manifests) MANIFESTS_DIR="${2:?}"; shift 2 ;;
 		--skip-firewall) SKIP_FIREWALL=1; shift ;;
 		--k3s-upgrades) K3S_UPGRADES=1; shift ;;
+		--apparmor-fix) APPARMOR_FIX=1; shift ;;
+		--no-apparmor-fix) APPARMOR_FIX=0; shift ;;
 		--registry) REGISTRY=1; shift ;;
 		--no-registry) REGISTRY=0; shift ;;
 		--registry-password) REGISTRY_PASSWORD="${2:?}"; shift 2 ;;
@@ -502,6 +508,86 @@ configure_firewall() {
 	else
 		warn "No ufw/firewalld found. Make sure only SSH ($sp), 80 and 443 are reachable from the internet;"
 		warn "the Kubernetes API (6443) and kubelet (10250) must NOT be exposed."
+	fi
+}
+
+# fix_apparmor_signals — on Ubuntu 26.04 with k3s 1.36, processes in a container can carry the stacked
+# AppArmor label "cri-containerd.apparmor.d//&unconfined", and k3s's container profile only lets the plain
+# label signal. Every signal inside a container is then denied: gosu (root → user switch in official
+# database images) spins forever, databases hang when stopping their own threads, Kaniko cannot clean up a
+# RUN step. The profile below is containerd's own, plus one rule that treats the stacked label like the
+# plain one. Installed in /etc/apparmor.d (loaded at boot before k3s; containerd keeps a loaded profile)
+# and loaded now: running containers get it at once.
+APPARMOR_PROFILE=/etc/apparmor.d/cri-containerd.apparmor.d
+fix_apparmor_signals() {
+	[ "$APPARMOR_FIX" = 0 ] && return 0
+	grep -qs Y /sys/module/apparmor/parameters/enabled || return 0
+	if ! have apparmor_parser; then
+		[ "$APPARMOR_FIX" = 1 ] && warn "apparmor_parser not found: cannot install the container AppArmor profile"
+		return 0
+	fi
+	if [ "$APPARMOR_FIX" = auto ]; then
+		need=0
+		if [ "${DISTRO_ID:-}" = ubuntu ] && [ "$(printf '%s\n%s\n' "${VERSION_ID:-0}" 25.10 | sort -V | head -1)" = 25.10 ]; then
+			need=1
+		fi
+		if have journalctl && journalctl -k -q --since "-7 days" 2>/dev/null | grep -q 'operation="signal".*peer="cri-containerd.apparmor.d//&'; then
+			need=1
+		fi
+		[ "$need" -eq 1 ] || return 0
+	fi
+	info "Installing the container AppArmor profile that allows signals inside containers ($APPARMOR_PROFILE)"
+	if [ "$DRY_RUN" -eq 1 ]; then
+		run apparmor_parser -r "$APPARMOR_PROFILE"
+		return 0
+	fi
+	cat >"$APPARMOR_PROFILE" <<'APPARMOR'
+#include <tunables/global>
+
+profile cri-containerd.apparmor.d flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  network,
+  capability,
+  file,
+  umount,
+  # Host (privileged) processes may send signals to container processes.
+  signal (receive) peer=unconfined,
+  # Manager may send signals to container processes.
+  signal (receive) peer=cri-containerd.apparmor.d,
+  # Container processes may send signals amongst themselves.
+  signal (send,receive) peer=cri-containerd.apparmor.d,
+  # Nectar: on newer Ubuntu (26.04) container processes can carry the stacked label
+  # "cri-containerd.apparmor.d//&unconfined"; signals to and from them were denied (gosu, database
+  # shutdown, Kaniko). Allow them like the plain label above.
+  signal (send,receive) peer="cri-containerd.apparmor.d//&unconfined",
+
+  deny @{PROC}/* w,   # deny write for all files directly in /proc (not in a subdir)
+  # deny write to files not in /proc/<number>/** or /proc/sys/**
+  deny @{PROC}/{[^1-9],[^1-9][^0-9],[^1-9s][^0-9y][^0-9s],[^1-9][^0-9][^0-9][^0-9/]*}/** w,
+  deny @{PROC}/sys/[^k]** w,  # deny /proc/sys except /proc/sys/k* (effectively /proc/sys/kernel)
+  deny @{PROC}/sys/kernel/{?,??,[^s][^h][^m]**} w,  # deny everything except shm* in /proc/sys/kernel/
+  deny @{PROC}/sysrq-trigger rwklx,
+  deny @{PROC}/kcore rwklx,
+
+  deny mount,
+
+  deny /sys/[^f]*/** wklx,
+  deny /sys/f[^s]*/** wklx,
+  deny /sys/fs/[^c]*/** wklx,
+  deny /sys/fs/c[^g]*/** wklx,
+  deny /sys/fs/cg[^r]*/** wklx,
+  deny /sys/firmware/** rwklx,
+  deny /sys/kernel/security/** rwklx,
+
+  # suppress ptrace denials when using 'docker ps' or using 'ps' inside a container
+  ptrace (trace,read,tracedby,readby) peer=cri-containerd.apparmor.d,
+}
+APPARMOR
+	if apparmor_parser -r "$APPARMOR_PROFILE"; then
+		ok "Container AppArmor profile loaded (signals inside containers allowed)"
+	else
+		warn "could not load $APPARMOR_PROFILE — databases may hang on start (see docs/troubleshooting)"
 	fi
 }
 
@@ -1021,6 +1107,7 @@ do_install() {
 	if k3s_present && [ -f "$STATE_DIR/adopt/state.json" ]; then
 		# re-run on an adopted server: update the stack, keep its ports/routing
 		install_prerequisites
+		fix_apparmor_signals
 		keep_existing_settings
 		setup_registry
 		deploy_stack
@@ -1041,6 +1128,7 @@ do_install() {
 	configure_firewall
 	setup_registry
 	install_k3s
+	fix_apparmor_signals
 	keep_existing_settings
 	deploy_stack
 	setup_storage
