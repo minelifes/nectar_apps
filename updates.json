@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.8",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:cba6d1cb6cd1fc50c3f3c46ecc85018732df4233d95a68ef0774977a7348c5b8",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- fix tests\n- Fix volumes. Add db tunel\n- fix db launch",
+          "previous": "1.0.7",
+          "published_at": "2026-11-01T22:40:51+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.7",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:122d15939d06a32c21f6fac1614bee1eda534a25c178641ab863c64ae8e9d50f",
@@ -165,6 +185,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.8",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:cba6d1cb6cd1fc50c3f3c46ecc85018732df4233d95a68ef0774977a7348c5b8",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- fix tests\n- Fix volumes. Add db tunel\n- fix db launch",
+          "previous": "1.0.7",
+          "published_at": "2026-11-01T22:40:51+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.7",
@@ -328,5 +368,5 @@
       ]
     }
   },
-  "updated_at": "2026-11-01T20:30:08+00:00"
+  "updated_at": "2026-11-01T22:40:51+00:00"
 }
