@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.7",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:122d15939d06a32c21f6fac1614bee1eda534a25c178641ab863c64ae8e9d50f",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- Fix DB running. Fix copy on http.",
+          "previous": "1.0.6",
+          "published_at": "2026-11-01T20:30:08+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.6",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:d21f25d084bf27aab7eb95c3dd3259e71ed77dd2acc8abd3d9275c64f6173f2e",
@@ -145,6 +165,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.7",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:122d15939d06a32c21f6fac1614bee1eda534a25c178641ab863c64ae8e9d50f",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- Fix DB running. Fix copy on http.",
+          "previous": "1.0.6",
+          "published_at": "2026-11-01T20:30:08+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.6",
@@ -288,5 +328,5 @@
       ]
     }
   },
-  "updated_at": "2026-10-31T22:00:56+00:00"
+  "updated_at": "2026-11-01T20:30:08+00:00"
 }
