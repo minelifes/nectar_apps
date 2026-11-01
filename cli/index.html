@@ -875,6 +875,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    CLI
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -886,6 +899,34 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#connecting-to-a-database-from-your-computer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Connecting to a database from your computer
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -987,6 +1028,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#connecting-to-a-database-from-your-computer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Connecting to a database from your computer
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1070,6 +1128,14 @@ nectar<span class="w"> </span>rollback<span class="w"> </span>shop/api<span clas
 <td>convert a compose file</td>
 </tr>
 <tr>
+<td><code>nectar db list [--project SLUG]</code></td>
+<td>the project's databases</td>
+</tr>
+<tr>
+<td><code>nectar db connect DB [--project SLUG] [--port N] [--show-password]</code></td>
+<td>open a database on <code>127.0.0.1</code> through the panel</td>
+</tr>
+<tr>
 <td><code>nectar templates</code></td>
 <td>one-click apps</td>
 </tr>
@@ -1083,6 +1149,20 @@ nectar<span class="w"> </span>rollback<span class="w"> </span>shop/api<span clas
 </tr>
 </tbody>
 </table>
+<h2 id="connecting-to-a-database-from-your-computer">Connecting to a database from your computer<a class="headerlink" href="#connecting-to-a-database-from-your-computer" title="Permanent link">&para;</a></h2>
+<p>Databases are only reachable from inside their project. <code>nectar db connect</code> opens one on your computer
+through the panel, with no SSH or open port needed:</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>nectar<span class="w"> </span>db<span class="w"> </span>connect<span class="w"> </span>vps/mysql
+vps/mysql<span class="w"> </span><span class="o">(</span>MySQL<span class="w"> </span><span class="m">8</span>.4<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>on<span class="w"> </span><span class="m">127</span>.0.0.1:3306<span class="w"> </span>—<span class="w"> </span>press<span class="w"> </span>Ctrl+C<span class="w"> </span>to<span class="w"> </span>close
+<span class="w">  </span>user<span class="w">      </span>app
+<span class="w">  </span>database<span class="w">  </span>app
+<span class="w">  </span>password<span class="w">  </span><span class="o">(</span>add<span class="w"> </span>--show-password,<span class="w"> </span>or<span class="w"> </span>Show<span class="w"> </span>credentials<span class="w"> </span>on<span class="w"> </span>the<span class="w"> </span>database<span class="w"> </span>page<span class="o">)</span>
+<span class="w">  </span>connect<span class="w">   </span>mysql<span class="w"> </span>-h<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>-P<span class="w"> </span><span class="m">3306</span><span class="w"> </span>-u<span class="w"> </span>app<span class="w"> </span>-p<span class="w"> </span>app
+</code></pre></div>
+<p>Point any client at that address: <code>psql</code>, <code>mysql</code>, <code>redis-cli</code>, TablePlus, DBeaver or DataGrip. It uses the
+database's usual port when it is free, otherwise a free one (<code>--port</code> picks one). Each connection your client
+makes gets its own tunnel. It needs the permission to see the database's credentials, every tunnel is in the
+audit log, and the client still logs in with the database password.</p>
 <p><code>APP</code> is the app id or <code>project/app</code>. <code>NECTAR_URL</code> and <code>NECTAR_TOKEN</code> override the saved login (that is what
 CI uses). A rollback brings back the code and settings of that release; the app keeps its current number of
 replicas and its volumes.</p>
