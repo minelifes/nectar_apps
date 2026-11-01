@@ -40,6 +40,9 @@ Usage:
   nectar export --project SLUG [> nectar.yaml]                    the project's apps, databases, variables, volumes
   nectar apply -f nectar.yaml --project SLUG [--no-deploy]        create what is missing, update what exists (never deletes)
   nectar import-compose -f docker-compose.yml --project SLUG [--dry-run] [--no-deploy]
+  nectar db list [--project SLUG]                                 databases of a project
+  nectar db connect DB [--project SLUG] [--port N] [--show-password]
+                                                                  open DB on 127.0.0.1 through the panel (any client: psql, mysql, TablePlus…)
   nectar templates                                                one-click apps
   nectar install TEMPLATE --project SLUG [--name NAME] [--set key=value]…
   nectar version
@@ -421,6 +424,9 @@ func run(ctx context.Context, cmd string, args []string, env Env) error {
 			return fmt.Errorf("%d steps failed", res.Failed)
 		}
 		return nil
+
+	case "db":
+		return dbCommand(ctx, c, args, env)
 
 	case "templates":
 		var ts []struct {

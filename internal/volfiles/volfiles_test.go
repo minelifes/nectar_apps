@@ -2,6 +2,8 @@ package volfiles
 
 import (
 	"testing"
+
+	"nectar_apps/internal/kube"
 )
 
 func TestClean(t *testing.T) {
@@ -34,5 +36,21 @@ func TestParseList(t *testing.T) {
 	if len(list) != 4 || list[0].Name != "logs" || list[0].Type != "dir" || list[1].Name != "b.txt" || list[1].Size != 12 ||
 		list[2].Type != "link" || list[3].Type != "file" || list[3].Owner != "1000:1000" || list[1].Modified.Unix() != 1700000000 {
 		t.Fatalf("parsed: %+v", list)
+	}
+}
+
+// Project namespaces enforce PodSecurity "baseline": a container may only add capabilities of the default
+// set, or the API server rejects the pod ("non-default capabilities"). DAC_READ_SEARCH was one of those.
+func TestHelperPodFitsBaseline(t *testing.T) {
+	baseline := map[string]bool{"AUDIT_WRITE": true, "CHOWN": true, "DAC_OVERRIDE": true, "FOWNER": true, "FSETID": true, "KILL": true,
+		"MKNOD": true, "NET_BIND_SERVICE": true, "SETFCAP": true, "SETGID": true, "SETPCAP": true, "SETUID": true, "SYS_CHROOT": true}
+	pod := helperPod("prj-a", "nectar-files-x", "x", "busybox:1.37")
+	for _, c := range kube.Slice(pod, "spec", "containers") {
+		adds, _ := kube.Field(c, "securityContext", "capabilities", "add").([]any)
+		for _, a := range adds {
+			if !baseline[a.(string)] {
+				t.Errorf("container %s adds %v, which baseline rejects", kube.Str(c, "name"), a)
+			}
+		}
 	}
 }

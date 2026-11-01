@@ -24,4 +24,7 @@ The database page has the same tabs as an app:
 Change CPU, memory and storage on the Overview tab. Storage can only grow. **Restart** restarts the pod;
 **Stop** frees its CPU and memory and keeps the data.
 
+**From your computer:** `nectar db connect project/db` opens the database on `127.0.0.1` through the panel,
+for any client (`psql`, `mysql`, TablePlus, DBeaver…). See [CLI](cli.md#connecting-to-a-database-from-your-computer).
+
 Databases can be backed up (a dump on a schedule) and restored from the panel — see [Backups](backups.md).

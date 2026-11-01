@@ -205,6 +205,9 @@ func AddonObjects(s addonSpec) []obj {
 			server = "mariadbd"
 		}
 		args = []any{"sh", "-c", nofileWrapper, "db", server}
+		if a.Kind == "mysql" {
+			args = append(args, mysqlTuning(a.MemoryMB)...)
+		}
 	case "redis":
 		env["REDIS_PASSWORD"] = s.Creds.Password
 		args = []any{"redis-server", "--requirepass", "$(REDIS_PASSWORD)", "--appendonly", "yes", "--dir", "/data"}
@@ -443,3 +446,16 @@ func (d *Deployer) LinkedEnv(ctx context.Context, appID int64) (map[string]strin
 // nofileWrapper lowers the open-files limit when it is above 1M (or unlimited) and runs the image's entrypoint
 // with the server command ($@). Used for MySQL/MariaDB (see AddonObjects).
 const nofileWrapper = `n=$(ulimit -n); if [ "$n" = unlimited ] || [ "$n" -gt 1048576 ]; then ulimit -n 1048576; fi; exec docker-entrypoint.sh "$@"`
+
+// mysqlTuning are the InnoDB settings of MySQL add-ons: no native AIO (io_uring/libaio are often refused in
+// containers), O_DSYNC writes, a small redo log and a buffer pool that fits the memory limit: 256M, or less
+// when the limit leaves no room for the server's own ~250 MB (min 128M).
+func mysqlTuning(memoryMB int64) []any {
+	pool := min(int64(256), max(int64(128), memoryMB-256))
+	return []any{
+		"--innodb_use_native_aio=0",
+		"--innodb_flush_method=O_DSYNC",
+		fmt.Sprintf("--innodb_buffer_pool_size=%dM", pool),
+		"--innodb_log_file_size=64M",
+	}
+}

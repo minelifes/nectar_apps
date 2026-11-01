@@ -375,6 +375,12 @@ func TestAddonMySQLLowersOpenFilesLimit(t *testing.T) {
 			}
 		}
 		cmd, _ := kube.Field(c, "command").([]any)
+		if kind == "mysql" { // server flags after the server command
+			if len(cmd) != 9 || cmd[5] != "--innodb_use_native_aio=0" || cmd[7] != "--innodb_buffer_pool_size=256M" || cmd[8] != "--innodb_log_file_size=64M" {
+				t.Fatalf("mysql flags: %v", cmd)
+			}
+			cmd = cmd[:5]
+		}
 		if len(cmd) != 5 || cmd[0] != "sh" || cmd[4] != server || !strings.Contains(cmd[2].(string), "ulimit -n 1048576") ||
 			!strings.Contains(cmd[2].(string), "exec docker-entrypoint.sh") || kube.Field(c, "args") != nil {
 			t.Fatalf("%s command: %v", kind, cmd)
@@ -400,6 +406,14 @@ func TestAddonsRunAsTheirOwnUser(t *testing.T) {
 				kube.Field(c, "securityContext", "allowPrivilegeEscalation") != false)) {
 				t.Fatalf("%s: pod %v container %v", kind, pod["securityContext"], c["securityContext"])
 			}
+		}
+	}
+}
+
+func TestMySQLBufferPoolFitsTheMemoryLimit(t *testing.T) {
+	for mem, want := range map[int64]string{384: "128M", 450: "194M", 512: "256M", 2048: "256M"} {
+		if got := mysqlTuning(mem)[2]; got != "--innodb_buffer_pool_size="+want {
+			t.Errorf("%d MiB: %v", mem, got)
 		}
 	}
 }
