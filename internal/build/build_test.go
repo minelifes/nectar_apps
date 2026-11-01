@@ -368,3 +368,15 @@ func TestPodStatus(t *testing.T) {
 		t.Fatalf("finished build: %q", s)
 	}
 }
+
+// The build namespace must admit Kaniko's AppArmor "unconfined" (baseline would reject the pod).
+func TestBuildNamespaceAdmitsUnconfinedKaniko(t *testing.T) {
+	k := kubefake.New()
+	b := &Builder{Kube: k}
+	if err := b.ensureNamespace(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := kube.Str(k.Get("Namespace", "", DefaultNamespace), "metadata", "labels", "pod-security.kubernetes.io/enforce"); got != "privileged" {
+		t.Fatalf("enforce = %q", got)
+	}
+}

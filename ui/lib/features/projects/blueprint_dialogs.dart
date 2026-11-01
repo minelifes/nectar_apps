@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,6 +13,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 
 /// A one-click app from GET /api/templates.
 class AppTemplate {
@@ -662,8 +662,11 @@ Future<void> showExportDialog(
         actions: [
           TextButton(
             onPressed: () {
-              Clipboard.setData(ClipboardData(text: '$yaml'));
-              showSnack(ctx, s.projectCopiedApplyItWithNectar(slug));
+              copyText(
+                ctx,
+                '$yaml',
+                done: s.projectCopiedApplyItWithNectar(slug),
+              );
             },
             child: Text(s.backupCopy),
           ),

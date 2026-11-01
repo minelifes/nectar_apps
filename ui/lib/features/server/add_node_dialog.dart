@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
@@ -7,7 +6,7 @@ import '../../api/session.dart';
 import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
-import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 
 /// Server → Add node: the command that joins another machine to the cluster as a worker.
 class AddNodeDialog extends ConsumerStatefulWidget {
@@ -105,10 +104,11 @@ class _AddNodeDialogState extends ConsumerState<AddNodeDialog> {
           builder: (context, snap) => TextButton(
             onPressed: snap.hasData
                 ? () {
-                    Clipboard.setData(
-                      ClipboardData(text: '${snap.data!['command']}'),
+                    copyText(
+                      context,
+                      '${snap.data!['command']}',
+                      done: s.backupCopied,
                     );
-                    showSnack(context, s.backupCopied);
                   }
                 : null,
             child: Text(s.serverCopyCommand),

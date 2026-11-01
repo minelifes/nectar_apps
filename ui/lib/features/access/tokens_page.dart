@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
@@ -11,6 +10,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 
 /// Settings → API tokens: tokens for CI and scripts (the nectar CLI, the GitHub Action, curl).
 class TokensPage extends ConsumerWidget {
@@ -274,8 +274,7 @@ class _NewTokenDialogState extends ConsumerState<_NewTokenDialog> {
         actions: [
           TextButton(
             onPressed: () {
-              Clipboard.setData(ClipboardData(text: _token!));
-              showSnack(context, s.backupCopied);
+              copyText(context, _token!, done: s.backupCopied);
             },
             child: Text(s.backupCopy),
           ),

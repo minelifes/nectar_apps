@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,6 +10,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 import '../../widgets/status.dart';
 import '../apps/domain_dialog.dart';
 
@@ -239,8 +239,7 @@ class _DnsSetupState extends ConsumerState<_DnsSetup> {
                     tooltip: l.backupCopy,
                     visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.copy_rounded, size: 15),
-                    onPressed: () =>
-                        Clipboard.setData(ClipboardData(text: value)),
+                    onPressed: () => copyText(context, value),
                   ),
                 ],
               ),

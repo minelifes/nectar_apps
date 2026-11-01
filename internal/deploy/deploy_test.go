@@ -360,3 +360,46 @@ func TestPVCStatsIgnoresWholeDiskNumbers(t *testing.T) {
 		t.Fatalf("non-PVC volumes counted: %v", st)
 	}
 }
+
+// MySQL/MariaDB start through a wrapper that lowers the open-files limit (an unlimited one made MySQL spin
+// after "Switching to dedicated user 'mysql'"); the image's entrypoint still runs with the usual server.
+func TestAddonMySQLLowersOpenFilesLimit(t *testing.T) {
+	for kind, server := range map[string]string{"mysql": "mysqld", "mariadb": "mariadbd"} {
+		k, _ := AddonKindByID(kind)
+		objs := AddonObjects(addonSpec{Addon: store.Addon{Slug: "db", Kind: kind, CPUMillicores: 250, MemoryMB: 512, SizeMB: 1024},
+			Project: store.Project{Namespace: "prj-a"}, Kind: k, Image: k.Versions[0].Image, Creds: NewAddonCredentials(kind, "db")})
+		var c kube.Object
+		for _, o := range objs {
+			if kube.Str(kube.Object(o), "kind") == "StatefulSet" {
+				c = kube.Slice(kube.Object(o), "spec", "template", "spec", "containers")[0]
+			}
+		}
+		cmd, _ := kube.Field(c, "command").([]any)
+		if len(cmd) != 5 || cmd[0] != "sh" || cmd[4] != server || !strings.Contains(cmd[2].(string), "ulimit -n 1048576") ||
+			!strings.Contains(cmd[2].(string), "exec docker-entrypoint.sh") || kube.Field(c, "args") != nil {
+			t.Fatalf("%s command: %v", kind, cmd)
+		}
+	}
+}
+
+// Databases start as their own user, so the images' entrypoints never switch from root with gosu (which
+// hangs where AppArmor refuses signals inside containers). Redis keeps running redis-server directly.
+func TestAddonsRunAsTheirOwnUser(t *testing.T) {
+	for kind, uid := range map[string]int64{"postgres": 70, "mysql": 999, "mariadb": 999, "redis": 0} {
+		k, _ := AddonKindByID(kind)
+		objs := AddonObjects(addonSpec{Addon: store.Addon{Slug: "db", Kind: kind, CPUMillicores: 250, MemoryMB: 512, SizeMB: 1024},
+			Project: store.Project{Namespace: "prj-a"}, Kind: k, Image: k.Versions[0].Image, Creds: NewAddonCredentials(kind, "db")})
+		for _, o := range objs {
+			if kube.Str(kube.Object(o), "kind") != "StatefulSet" {
+				continue
+			}
+			pod := kube.Field(kube.Object(o), "spec", "template", "spec").(map[string]any)
+			c := kube.Slice(kube.Object(o), "spec", "template", "spec", "containers")[0]
+			got := kube.Int(pod, "securityContext", "runAsUser")
+			if got != uid || (uid > 0 && (kube.Int(pod, "securityContext", "fsGroup") != uid || kube.Field(pod, "securityContext", "runAsNonRoot") != true ||
+				kube.Field(c, "securityContext", "allowPrivilegeEscalation") != false)) {
+				t.Fatalf("%s: pod %v container %v", kind, pod["securityContext"], c["securityContext"])
+			}
+		}
+	}
+}

@@ -7625,6 +7625,26 @@ class S {
       args: [],
     );
   }
+
+  /// `Press Ctrl+C (⌘C) to copy`
+  String get copyPressToCopy {
+    return Intl.message(
+      'Press Ctrl+C (⌘C) to copy',
+      name: 'copyPressToCopy',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Your browser only lets pages copy on HTTPS, and the panel is open over plain HTTP. The text below is selected: press Ctrl+C (⌘C on a Mac). Opening the panel at its HTTPS domain makes the copy buttons work directly.`
+  String get copyBrowserBlocksClipboard {
+    return Intl.message(
+      'Your browser only lets pages copy on HTTPS, and the panel is open over plain HTTP. The text below is selected: press Ctrl+C (⌘C on a Mac). Opening the panel at its HTTPS domain makes the copy buttons work directly.',
+      name: 'copyBrowserBlocksClipboard',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

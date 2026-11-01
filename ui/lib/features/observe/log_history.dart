@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
@@ -8,7 +7,7 @@ import '../../api/session.dart';
 import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
-import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 import 'log_viewer.dart';
 
 /// The Logs tab: the live stream, or the stored history with search.
@@ -225,17 +224,16 @@ class _LogHistoryViewState extends ConsumerState<LogHistoryView> {
               onPressed: _lines.isEmpty
                   ? null
                   : () {
-                      Clipboard.setData(
-                        ClipboardData(
-                          text: _lines
-                              .map(
-                                (l) =>
-                                    '${l.time.toIso8601String()} ${l.pod} ${l.line}',
-                              )
-                              .join('\n'),
-                        ),
+                      copyText(
+                        context,
+                        _lines
+                            .map(
+                              (l) =>
+                                  '${l.time.toIso8601String()} ${l.pod} ${l.line}',
+                            )
+                            .join('\n'),
+                        done: s.observeCopiedLines(_lines.length),
                       );
-                      showSnack(context, s.observeCopiedLines(_lines.length));
                     },
             ),
           ],

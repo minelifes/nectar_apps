@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nectar_apps_ui/features/observe/log_viewer.dart';
@@ -16,6 +15,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 import '../../widgets/hex.dart';
 import '../../widgets/status.dart';
 import '../alerts/alert_widgets.dart';
@@ -661,8 +661,11 @@ class _DomainsCard extends ConsumerWidget {
                             tooltip: l.backupCopy,
                             icon: const Icon(Icons.copy_rounded, size: 16),
                             onPressed: () {
-                              Clipboard.setData(ClipboardData(text: d.url));
-                              showSnack(context, l.appCopied(d.host));
+                              copyText(
+                                context,
+                                d.url,
+                                done: l.appCopied(d.host),
+                              );
                             },
                           ),
                           if (canManage)

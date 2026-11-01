@@ -12,6 +12,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/copy.dart';
 import '../../widgets/gauge.dart';
 import '../../widgets/status.dart';
 import '../apps/terminal_tab.dart';
@@ -276,8 +277,7 @@ class _ConnectionCardState extends ConsumerState<_ConnectionCard> {
                     tooltip: s.backupCopy,
                     icon: const Icon(Icons.copy_rounded, size: 16),
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: v));
-                      showSnack(context, s.backupCopied);
+                      copyText(context, v, done: s.backupCopied);
                     },
                   ),
                 ],
