@@ -11,6 +11,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/hex.dart';
+import 'external_workloads.dart';
 import 'new_project_dialog.dart';
 
 class ProjectsPage extends ConsumerStatefulWidget {
@@ -33,7 +34,10 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
     return PageScaffold(
       title: l.navProjects,
       subtitle: l.projectEachProjectHasItsOwn,
-      onRefresh: () async => ref.invalidate(projectsProvider),
+      onRefresh: () async {
+        ref.invalidate(projectsProvider);
+        ref.invalidate(externalNamespacesProvider);
+      },
       actions: [
         if (canCreate)
           FilledButton.icon(
@@ -94,6 +98,7 @@ class _ProjectsPageState extends ConsumerState<ProjectsPage> {
             );
           },
         ),
+        const ExternalNamespacesCard(),
       ],
     );
   }

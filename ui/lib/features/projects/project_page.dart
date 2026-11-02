@@ -14,6 +14,7 @@ import '../../widgets/common.dart';
 import '../../widgets/gauge.dart';
 import '../access/members_card.dart';
 import '../addons/addons_section.dart';
+import 'external_workloads.dart';
 import 'blueprint_dialogs.dart';
 import 'env_groups_card.dart';
 import 'environments.dart';
@@ -138,6 +139,7 @@ class ProjectPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: NectarTokens.gapLarge),
                   AddonsSection(projectId: id, canCreate: canCreate),
+                  if (p.adopted) ProjectExternalWorkloads(projectId: id),
                 ],
               );
               if (box.maxWidth < 1000) {
