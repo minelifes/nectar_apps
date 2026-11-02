@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.10",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:685be0f53514ed732d6aad1044ca6dd4eef16bbe6a9e6b657d09da44a4b241a7",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- Fix adoption logic",
+          "previous": "1.0.9",
+          "published_at": "2026-11-02T23:25:03+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.9",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:6571630fa8cd9ebc4f720243c156c729f65beea9d0822fa10d78ec2b716da08a",
@@ -205,6 +225,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.10",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:685be0f53514ed732d6aad1044ca6dd4eef16bbe6a9e6b657d09da44a4b241a7",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- Fix adoption logic",
+          "previous": "1.0.9",
+          "published_at": "2026-11-02T23:25:03+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.9",
@@ -408,5 +448,5 @@
       ]
     }
   },
-  "updated_at": "2026-11-02T17:23:34+00:00"
+  "updated_at": "2026-11-02T23:25:03+00:00"
 }
