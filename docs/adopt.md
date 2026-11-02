@@ -36,6 +36,9 @@ every route with its TLS setup, marking what migrates as is (✓), with caveats 
 - Ingress, Traefik IngressRoute and Gateway API HTTPRoute objects keep working: the panel syncs them to gateway
   routes, and cert-manager Secrets become gateway certificates. Synced Ingresses get the edge address in their
   status (`kubectl get ingress`, Argo CD health).
-- Existing namespaces show up read-only under **External**; adopt any of them as a project. The panel only
+- `--adopt` asks which existing namespaces become Nectar projects (`all`, names, or Enter for none);
+  `--adopt-projects all|none|ns1,ns2` answers in advance, and `sh install.sh --adopt-projects ask` asks again
+  later. The panel adopts them within a minute. From any computer: `nectar external`, `nectar adopt NS…|--all`.
+- Existing namespaces are listed read-only on the **Projects** page ("Running on this cluster, not managed by Nectar"); adopt any of them as a project there, and its existing workloads stay visible on the project page. The panel only
   manages objects it creates.
 - The built-in registry is not added unless you pass `--registry` (its mirror needs one k3s restart).

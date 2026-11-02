@@ -194,6 +194,18 @@ type (
 		CreatedAt  time.Time  `json:"created_at"`
 		FinishedAt *time.Time `json:"finished_at"`
 	}
+	ExternalNamespace struct {
+		Name      string `json:"name"`
+		ProjectID *int64 `json:"project_id"`
+		Workloads []struct {
+			Kind     string   `json:"kind"`
+			Name     string   `json:"name"`
+			Replicas int64    `json:"replicas"`
+			Ready    int64    `json:"ready"`
+			Images   []string `json:"images"`
+		} `json:"workloads"`
+		Hosts []string `json:"hosts"`
+	}
 	Artifact struct {
 		ID       int64  `json:"id"`
 		Filename string `json:"filename"`
@@ -210,6 +222,12 @@ type (
 func (c *Client) Me(ctx context.Context) (User, error) {
 	var u User
 	return u, c.getJSON(ctx, "/me", &u)
+}
+
+// External lists the cluster's namespaces that Nectar did not create (adopted ones carry a project id).
+func (c *Client) External(ctx context.Context) ([]ExternalNamespace, error) {
+	var out []ExternalNamespace
+	return out, c.getJSON(ctx, "/external/namespaces", &out)
 }
 
 // Projects lists the projects the token sees.

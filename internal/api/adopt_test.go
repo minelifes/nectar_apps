@@ -2,8 +2,11 @@ package api
 
 import (
 	"context"
+	"sort"
+	"strings"
 	"testing"
 
+	"nectar_apps/internal/adopt"
 	"nectar_apps/internal/kube"
 )
 
@@ -85,5 +88,48 @@ func TestExternalNamespacesAndAdopt(t *testing.T) {
 	code, st, _ = e.do(o, "GET", "/api/adopt", nil)
 	if code != 200 || st["state"].(map[string]any)["phase"] != "soaking" || st["report_markdown"] != "# r" {
 		t.Fatalf("adopt status: %d %v", code, st)
+	}
+}
+
+// install.sh --adopt asks for projects through a ConfigMap; the panel adopts them and removes the request.
+func TestAdoptRequestsFromInstaller(t *testing.T) {
+	e := newEnv(t)
+	e.api.cluster = e.kube
+	ctx := context.Background()
+	for _, ns := range []string{"family", "portainer", "kube-system"} {
+		e.kube.Apply(ctx, kube.Object{"apiVersion": "v1", "kind": "Namespace", "metadata": map[string]any{"name": ns}})
+	}
+	e.kube.Apply(ctx, kube.Object{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": map[string]any{"name": "web", "namespace": "family"}})
+	names, err := adopt.AdoptableNamespaces(ctx, e.kube, e.api.cfg.SystemNamespace)
+	if err != nil || strings.Join(names, " ") != "family portainer" {
+		t.Fatalf("adoptable: %v %v", names, err)
+	}
+	if err := adopt.RequestProjects(ctx, e.kube, e.api.cfg.SystemNamespace, []string{"family", "kube-system"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := adopt.RequestProjects(ctx, e.kube, e.api.cfg.SystemNamespace, []string{"portainer", "family"}); err != nil {
+		t.Fatal(err)
+	}
+	cm := e.kube.Get("ConfigMap", e.api.cfg.SystemNamespace, adopt.ProjectRequestsConfigMap)
+	if kube.Str(cm, "data", "namespaces") != "family kube-system portainer" {
+		t.Fatalf("requests: %v", cm["data"])
+	}
+	e.api.processAdoptRequests(ctx)
+	ps, _ := e.api.store.ListProjects(ctx)
+	got := []string{}
+	for _, p := range ps {
+		if p.Adopted {
+			got = append(got, p.Namespace)
+		}
+	}
+	sort.Strings(got)
+	if strings.Join(got, " ") != "family portainer" {
+		t.Fatalf("adopted: %v", got)
+	}
+	if e.kube.Has("ConfigMap", e.api.cfg.SystemNamespace, adopt.ProjectRequestsConfigMap) {
+		t.Fatal("handled requests must be removed (kube-system is refused for good)")
+	}
+	if !e.kube.Has("Deployment", "family", "web") {
+		t.Fatal("existing workloads stay")
 	}
 }

@@ -28,6 +28,8 @@ const adoptUsage = `Adopt an existing k3s server (run on the server as root; ins
   nectar-apps adopt rollback   [--purge]      undo the cutover / shadow changes
   nectar-apps adopt finalize   [--force] [--restart-k3s]   stop depending on the old proxy
   nectar-apps adopt status                    phase, history and hosts still using the old proxy
+  nectar-apps adopt namespaces                namespaces that can become projects (one per line)
+  nectar-apps adopt request-projects NS...    ask the panel to adopt these namespaces as projects
 
 Common flags: --kubeconfig PATH (default /etc/rancher/k3s/k3s.yaml), --namespace NS, --state-dir DIR,
               --probe-ip IP (address used for the comparison requests; default this node's IP)
@@ -59,7 +61,7 @@ func adoptCmd(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	changes := sub != "discover" && sub != "status" && sub != "verify" && sub != "plan"
+	changes := sub != "discover" && sub != "status" && sub != "verify" && sub != "plan" && sub != "namespaces"
 	if changes && *root == "" && os.Geteuid() != 0 {
 		return adopt.ErrNotRoot
 	}
@@ -71,6 +73,26 @@ func adoptCmd(args []string) error {
 	env := &adopt.Env{
 		Kube: kc, Host: adopt.Host{Root: *root}, SystemNamespace: *namespace, StateDir: *stateDir, ProbeIP: *probeIP,
 		SQLDriver: sqliteDriver, Logf: func(format string, a ...any) { fmt.Printf("⬢ "+format+"\n", a...) },
+	}
+	switch sub {
+	case "namespaces":
+		names, err := adopt.AdoptableNamespaces(ctx, kc, *namespace)
+		if err != nil {
+			return err
+		}
+		for _, n := range names {
+			fmt.Println(n)
+		}
+		return nil
+	case "request-projects":
+		if fs.NArg() == 0 {
+			return errors.New("usage: nectar-apps adopt request-projects NAMESPACE...")
+		}
+		if err := adopt.RequestProjects(ctx, kc, *namespace, fs.Args()); err != nil {
+			return err
+		}
+		fmt.Printf("⬢ The panel adopts as projects: %s\n", strings.Join(fs.Args(), " "))
+		return nil
 	}
 	st, err := env.LoadState()
 	if err != nil {

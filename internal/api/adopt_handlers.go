@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"nectar_apps/internal/adopt"
 	"nectar_apps/internal/deploy"
@@ -209,11 +210,6 @@ var nonSlug = regexp.MustCompile(`[^a-z0-9-]+`)
 // adoptNamespace turns an existing namespace into a project. Existing workloads are not modified: the panel
 // only manages the apps created in it afterwards, and deleting the project never deletes the namespace.
 func (s *Server) adoptNamespace(w http.ResponseWriter, r *http.Request, p *principal) {
-	if s.cluster == nil || s.deployer == nil {
-		writeError(w, http.StatusServiceUnavailable, "Kubernetes is not configured")
-		return
-	}
-	ns := r.PathValue("ns")
 	var in struct {
 		Slug string `json:"slug"`
 		Name string `json:"name"`
@@ -221,63 +217,116 @@ func (s *Server) adoptNamespace(w http.ResponseWriter, r *http.Request, p *princ
 	if r.ContentLength != 0 && !decode(w, r, &in) {
 		return
 	}
-	if systemNamespaces[ns] || ns == s.cfg.SystemNamespace {
-		writeError(w, http.StatusBadRequest, "system namespaces cannot be adopted")
+	proj, code, err := s.adoptNS(r.Context(), r.PathValue("ns"), in.Slug, in.Name)
+	if err != nil {
+		if code == http.StatusInternalServerError {
+			s.serverError(w, r, err)
+		} else {
+			writeError(w, code, err.Error())
+		}
 		return
 	}
-	ctx := r.Context()
+	s.audit(r, p, "project.adopt", proj.Slug, map[string]string{"namespace": proj.Namespace})
+	writeJSON(w, http.StatusCreated, proj)
+}
+
+// adoptNS turns an existing namespace into an adopted project (its workloads are not changed). On error
+// it returns the HTTP status that describes it.
+func (s *Server) adoptNS(ctx context.Context, ns, slug, name string) (store.Project, int, error) {
+	if s.cluster == nil || s.deployer == nil {
+		return store.Project{}, http.StatusServiceUnavailable, errors.New("Kubernetes is not configured")
+	}
+	if systemNamespaces[ns] || ns == s.cfg.SystemNamespace {
+		return store.Project{}, http.StatusBadRequest, errors.New("system namespaces cannot be adopted")
+	}
 	var nsObj kube.Object
 	if err := s.cluster.GetObject(ctx, "Namespace", "", ns, &nsObj); err != nil {
 		if kube.IsNotFound(err) {
-			writeError(w, http.StatusNotFound, "namespace not found")
-			return
+			return store.Project{}, http.StatusNotFound, errors.New("namespace not found")
 		}
-		writeError(w, http.StatusBadGateway, err.Error())
-		return
+		return store.Project{}, http.StatusBadGateway, err
 	}
 	if kube.Str(nsObj, "metadata", "labels", deploy.LabelManagedBy) == deploy.ManagedBy {
-		writeError(w, http.StatusConflict, "this namespace already belongs to a Nectar project")
-		return
+		return store.Project{}, http.StatusConflict, errors.New("this namespace already belongs to a Nectar project")
 	}
 	// the panel's apps use the ServiceAccount "app": never take over one the user created
 	var sa kube.Object
 	if err := s.cluster.GetObject(ctx, "ServiceAccount", ns, deploy.AppServiceAccount, &sa); err == nil &&
 		kube.Str(sa, "metadata", "labels", deploy.LabelManagedBy) != deploy.ManagedBy {
-		writeError(w, http.StatusConflict, "the namespace has its own ServiceAccount named \"app\"; rename it before adopting the namespace")
-		return
+		return store.Project{}, http.StatusConflict, errors.New("the namespace has its own ServiceAccount named \"app\"; rename it before adopting the namespace")
 	}
-	if in.Slug == "" {
-		in.Slug = strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(ns), "-"), "-")
-		if len(in.Slug) > 30 {
-			in.Slug = strings.Trim(in.Slug[:30], "-")
+	if slug == "" {
+		slug = strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(ns), "-"), "-")
+		if len(slug) > 30 {
+			slug = strings.Trim(slug[:30], "-")
 		}
 	}
-	in.Slug = strings.ToLower(strings.TrimSpace(in.Slug))
-	if !slugRe.MatchString(in.Slug) {
-		writeError(w, http.StatusBadRequest, "slug must be 1–30 lowercase letters, digits or dashes (not starting or ending with a dash)")
-		return
+	slug = strings.ToLower(strings.TrimSpace(slug))
+	if !slugRe.MatchString(slug) {
+		return store.Project{}, http.StatusBadRequest, errors.New("slug must be 1–30 lowercase letters, digits or dashes (not starting or ending with a dash)")
 	}
-	if strings.TrimSpace(in.Name) == "" {
-		in.Name = ns
+	if strings.TrimSpace(name) == "" {
+		name = ns
 	}
-	if len(in.Name) > 100 {
-		writeError(w, http.StatusBadRequest, "name must be 1–100 characters")
-		return
+	if len(name) > 100 {
+		return store.Project{}, http.StatusBadRequest, errors.New("name must be 1–100 characters")
 	}
-	proj, err := s.store.CreateAdoptedProject(ctx, in.Slug, in.Name, ns)
+	proj, err := s.store.CreateAdoptedProject(ctx, slug, name, ns)
 	if errors.Is(err, store.ErrConflict) {
-		writeError(w, http.StatusConflict, "a project with this slug or namespace already exists")
-		return
+		return store.Project{}, http.StatusConflict, errors.New("a project with this slug or namespace already exists")
 	}
 	if err != nil {
-		s.serverError(w, r, err)
-		return
+		return store.Project{}, http.StatusInternalServerError, err
 	}
 	if err := s.deployer.EnsureProject(ctx, proj); err != nil {
 		_ = s.store.DeleteProject(ctx, proj.ID)
-		writeError(w, http.StatusBadGateway, "could not prepare the namespace: "+err.Error())
+		return store.Project{}, http.StatusBadGateway, errors.New("could not prepare the namespace: " + err.Error())
+	}
+	return proj, http.StatusCreated, nil
+}
+
+// RunAdoptRequests adopts the namespaces the installer asked for (install.sh --adopt writes them to the
+// ConfigMap adopt.ProjectRequestsConfigMap, because the installer has no panel login). Requests that
+// succeed or can never succeed are removed; the ConfigMap is deleted when none is left.
+func (s *Server) RunAdoptRequests(ctx context.Context) {
+	if s.cluster == nil {
 		return
 	}
-	s.audit(r, p, "project.adopt", proj.Slug, map[string]string{"namespace": ns})
-	writeJSON(w, http.StatusCreated, proj)
+	for {
+		s.processAdoptRequests(ctx)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(15 * time.Second):
+		}
+	}
+}
+
+func (s *Server) processAdoptRequests(ctx context.Context) {
+	var cm kube.Object
+	if err := s.cluster.GetObject(ctx, "ConfigMap", s.cfg.SystemNamespace, adopt.ProjectRequestsConfigMap, &cm); err != nil {
+		return
+	}
+	var left []string
+	for _, ns := range strings.Fields(kube.Str(cm, "data", "namespaces")) {
+		proj, code, err := s.adoptNS(ctx, ns, "", "")
+		switch {
+		case err == nil:
+			s.log.Info("adopted namespace as a project (installer request)", "namespace", ns, "project", proj.Slug)
+			if aerr := s.store.Audit(ctx, nil, "installer", "project.adopt", proj.Slug, "", map[string]string{"namespace": ns}); aerr != nil {
+				s.log.Error("audit write failed", "action", "project.adopt", "err", aerr)
+			}
+		case code >= 500:
+			left = append(left, ns) // the cluster or the database: try again later
+			s.log.Warn("could not adopt namespace yet", "namespace", ns, "err", err)
+		default:
+			s.log.Warn("namespace not adopted", "namespace", ns, "err", err)
+		}
+	}
+	if len(left) == 0 {
+		_ = s.cluster.Delete(ctx, "ConfigMap", s.cfg.SystemNamespace, adopt.ProjectRequestsConfigMap)
+		return
+	}
+	_, _ = s.cluster.Patch(ctx, "ConfigMap", s.cfg.SystemNamespace, adopt.ProjectRequestsConfigMap,
+		map[string]any{"data": map[string]any{"namespaces": strings.Join(left, " ")}})
 }

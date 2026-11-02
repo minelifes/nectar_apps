@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -43,6 +44,8 @@ Usage:
   nectar db list [--project SLUG]                                 databases of a project
   nectar db connect DB [--project SLUG] [--port N] [--show-password]
                                                                   open DB on 127.0.0.1 through the panel (any client: psql, mysql, TablePlus…)
+  nectar external                                                 namespaces running on the cluster that Nectar does not manage
+  nectar adopt NAMESPACE… [--all] [--slug S] [--name N]           make existing namespaces projects (their workloads are not changed)
   nectar templates                                                one-click apps
   nectar install TEMPLATE --project SLUG [--name NAME] [--set key=value]…
   nectar version
@@ -427,6 +430,67 @@ func run(ctx context.Context, cmd string, args []string, env Env) error {
 
 	case "db":
 		return dbCommand(ctx, c, args, env)
+
+	case "external":
+		list, err := c.External(ctx)
+		if err != nil {
+			return err
+		}
+		tw := tabwriter.NewWriter(env.Stdout, 2, 4, 2, ' ', 0)
+		fmt.Fprintln(tw, "NAMESPACE\tPROJECT\tWORKLOAD\tREADY\tIMAGES")
+		for _, ns := range list {
+			proj := "-"
+			if ns.ProjectID != nil {
+				proj = fmt.Sprintf("#%d", *ns.ProjectID)
+			}
+			if len(ns.Workloads) == 0 {
+				fmt.Fprintf(tw, "%s\t%s\t-\t-\t-\n", ns.Name, proj)
+			}
+			for _, w := range ns.Workloads {
+				fmt.Fprintf(tw, "%s\t%s\t%s/%s\t%d/%d\t%s\n", ns.Name, proj, strings.ToLower(w.Kind), w.Name, w.Ready, w.Replicas, strings.Join(w.Images, ","))
+			}
+		}
+		return tw.Flush()
+
+	case "adopt":
+		all := fs.Bool("all", false, "adopt every namespace listed by `nectar external` that is not a project yet")
+		slug := fs.String("slug", "", "project slug (one namespace only; default: from the namespace)")
+		name := fs.String("name", "", "project name (one namespace only; default: the namespace)")
+		pos, err := parse(fs, args)
+		if err != nil {
+			return err
+		}
+		if *all {
+			list, err := c.External(ctx)
+			if err != nil {
+				return err
+			}
+			for _, ns := range list {
+				if ns.ProjectID == nil {
+					pos = append(pos, ns.Name)
+				}
+			}
+		}
+		if len(pos) == 0 {
+			return errors.New("usage: nectar adopt NAMESPACE… | --all   (see `nectar external`)")
+		}
+		if len(pos) > 1 && (*slug != "" || *name != "") {
+			return errors.New("--slug and --name need exactly one namespace")
+		}
+		failed := 0
+		for _, ns := range pos {
+			var p Project
+			if err := c.postJSON(ctx, "/external/namespaces/"+url.PathEscape(ns)+"/adopt", map[string]string{"slug": *slug, "name": *name}, &p); err != nil {
+				fmt.Fprintf(env.Stderr, "✗ %s: %v\n", ns, err)
+				failed++
+				continue
+			}
+			fmt.Fprintf(env.Stdout, "✓ %s → project %s (#%d); its workloads keep running unchanged\n", ns, p.Slug, p.ID)
+		}
+		if failed > 0 {
+			return fmt.Errorf("%d namespace(s) not adopted", failed)
+		}
+		return nil
 
 	case "templates":
 		var ts []struct {
