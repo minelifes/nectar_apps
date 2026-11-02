@@ -1590,5 +1590,16 @@
   "appBaseImageStopsRightAway": "This is a base OS image: its default command is a shell that exits at once, so the app would keep restarting. Give it a long-running command, or deploy an image that runs a server.",
   "appUseSleepInfinity": "Use sleep infinity",
   "copyPressToCopy": "Press Ctrl+C (⌘C) to copy",
-  "copyBrowserBlocksClipboard": "Your browser only lets pages copy on HTTPS, and the panel is open over plain HTTP. The text below is selected: press Ctrl+C (⌘C on a Mac). Opening the panel at its HTTPS domain makes the copy buttons work directly."
+  "copyBrowserBlocksClipboard": "Your browser only lets pages copy on HTTPS, and the panel is open over plain HTTP. The text below is selected: press Ctrl+C (⌘C on a Mac). Opening the panel at its HTTPS domain makes the copy buttons work directly.",
+  "externalOnThisCluster": "Running on this cluster, not managed by Nectar",
+  "externalOnThisClusterHelp": "Workloads that ran here before Nectar (or were created with kubectl or Helm). They keep running untouched. Adopt a namespace to see it as a project and deploy Nectar apps next to them.",
+  "externalAdopt": "Adopt as project",
+  "externalAdoptTitle": "Adopt {namespace} as a project?",
+  "@externalAdoptTitle": {"placeholders": {"namespace": {"type": "String"}}},
+  "externalAdoptBody": "The namespace becomes a Nectar project. Its existing workloads are not changed and keep running; Nectar only manages the apps you create in it. Deleting the project later keeps the namespace and its workloads.",
+  "externalNotManaged": "Also running here (not managed by Nectar)",
+  "externalNotManagedHelp": "These workloads existed before the namespace was adopted. Nectar shows them but does not change them.",
+  "externalNoWorkloads": "No workloads.",
+  "externalReady": "{ready}/{total} ready",
+  "@externalReady": {"placeholders": {"ready": {"type": "int"}, "total": {"type": "int"}}}
 }

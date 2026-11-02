@@ -7645,6 +7645,96 @@ class S {
       args: [],
     );
   }
+
+  /// `Running on this cluster, not managed by Nectar`
+  String get externalOnThisCluster {
+    return Intl.message(
+      'Running on this cluster, not managed by Nectar',
+      name: 'externalOnThisCluster',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Workloads that ran here before Nectar (or were created with kubectl or Helm). They keep running untouched. Adopt a namespace to see it as a project and deploy Nectar apps next to them.`
+  String get externalOnThisClusterHelp {
+    return Intl.message(
+      'Workloads that ran here before Nectar (or were created with kubectl or Helm). They keep running untouched. Adopt a namespace to see it as a project and deploy Nectar apps next to them.',
+      name: 'externalOnThisClusterHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Adopt as project`
+  String get externalAdopt {
+    return Intl.message(
+      'Adopt as project',
+      name: 'externalAdopt',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Adopt {namespace} as a project?`
+  String externalAdoptTitle(String namespace) {
+    return Intl.message(
+      'Adopt $namespace as a project?',
+      name: 'externalAdoptTitle',
+      desc: '',
+      args: [namespace],
+    );
+  }
+
+  /// `The namespace becomes a Nectar project. Its existing workloads are not changed and keep running; Nectar only manages the apps you create in it. Deleting the project later keeps the namespace and its workloads.`
+  String get externalAdoptBody {
+    return Intl.message(
+      'The namespace becomes a Nectar project. Its existing workloads are not changed and keep running; Nectar only manages the apps you create in it. Deleting the project later keeps the namespace and its workloads.',
+      name: 'externalAdoptBody',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Also running here (not managed by Nectar)`
+  String get externalNotManaged {
+    return Intl.message(
+      'Also running here (not managed by Nectar)',
+      name: 'externalNotManaged',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `These workloads existed before the namespace was adopted. Nectar shows them but does not change them.`
+  String get externalNotManagedHelp {
+    return Intl.message(
+      'These workloads existed before the namespace was adopted. Nectar shows them but does not change them.',
+      name: 'externalNotManagedHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No workloads.`
+  String get externalNoWorkloads {
+    return Intl.message(
+      'No workloads.',
+      name: 'externalNoWorkloads',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{ready}/{total} ready`
+  String externalReady(int ready, int total) {
+    return Intl.message(
+      '$ready/$total ready',
+      name: 'externalReady',
+      desc: '',
+      args: [ready, total],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

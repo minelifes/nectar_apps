@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -86,16 +87,45 @@ func (s *Server) externalNamespaces(w http.ResponseWriter, r *http.Request, _ *p
 		writeError(w, http.StatusServiceUnavailable, "Kubernetes is not configured")
 		return
 	}
-	ctx := r.Context()
-	nss, err := s.cluster.List(ctx, "Namespace", "", "")
+	out, err := s.listExternal(r.Context(), "")
 	if err != nil {
 		writeError(w, http.StatusBadGateway, err.Error())
 		return
 	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// projectExternalWorkloads: GET /api/projects/{pid}/external-workloads — what runs in an adopted project's
+// namespace without being a Nectar app (read-only; empty for projects the panel created).
+func (s *Server) projectExternalWorkloads(w http.ResponseWriter, r *http.Request, _ *principal, proj store.Project) {
+	empty := externalNamespace{Name: proj.Namespace, Workloads: []externalWorkload{}, Services: []externalService{}, Hosts: []string{}}
+	if !proj.Adopted || s.cluster == nil {
+		writeJSON(w, http.StatusOK, empty)
+		return
+	}
+	out, err := s.listExternal(r.Context(), proj.Namespace)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	if len(out) == 1 {
+		writeJSON(w, http.StatusOK, out[0])
+		return
+	}
+	writeJSON(w, http.StatusOK, empty)
+}
+
+// listExternal returns namespaces the panel did not create (only = just that one) with what runs in them:
+// workloads, Services and Ingress hosts. Adopted namespaces carry their project id; Nectar's own objects in
+// them are left out.
+func (s *Server) listExternal(ctx context.Context, only string) ([]externalNamespace, error) {
+	nss, err := s.cluster.List(ctx, "Namespace", "", "")
+	if err != nil {
+		return nil, err
+	}
 	projects, err := s.store.ListProjects(ctx)
 	if err != nil {
-		s.serverError(w, r, err)
-		return
+		return nil, err
 	}
 	adopted := map[string]int64{}
 	owned := map[string]bool{}
@@ -114,6 +144,9 @@ func (s *Server) externalNamespaces(w http.ResponseWriter, r *http.Request, _ *p
 	out := []externalNamespace{}
 	for _, ns := range nss {
 		name := kube.Str(ns, "metadata", "name")
+		if only != "" && name != only {
+			continue
+		}
 		if systemNamespaces[name] || name == s.cfg.SystemNamespace || owned[name] ||
 			(kube.Str(ns, "metadata", "labels", deploy.LabelManagedBy) == deploy.ManagedBy && kube.Str(ns, "metadata", "labels", deploy.LabelAdopted) == "") {
 			continue
@@ -142,7 +175,7 @@ func (s *Server) externalNamespaces(w http.ResponseWriter, r *http.Request, _ *p
 			}
 		}
 		for _, o := range svcs {
-			if kube.Str(o, "metadata", "namespace") != name {
+			if kube.Str(o, "metadata", "namespace") != name || kube.Str(o, "metadata", "labels", deploy.LabelManagedBy) == deploy.ManagedBy {
 				continue
 			}
 			es := externalService{Name: kube.Str(o, "metadata", "name"), Type: kube.Str(o, "spec", "type"), Ports: []int64{}}
@@ -162,13 +195,13 @@ func (s *Server) externalNamespaces(w http.ResponseWriter, r *http.Request, _ *p
 			}
 		}
 		sort.Strings(en.Hosts)
-		if name == "default" && len(en.Workloads) == 0 && len(en.Hosts) == 0 {
+		if name == "default" && len(en.Workloads) == 0 && len(en.Hosts) == 0 && only == "" {
 			continue // only the "kubernetes" Service
 		}
 		out = append(out, en)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	writeJSON(w, http.StatusOK, out)
+	return out, nil
 }
 
 var nonSlug = regexp.MustCompile(`[^a-z0-9-]+`)

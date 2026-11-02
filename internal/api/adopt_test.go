@@ -56,6 +56,15 @@ func TestExternalNamespacesAndAdopt(t *testing.T) {
 	if code, _, _ := e.do(o, "POST", "/api/external/namespaces/legacy/adopt", nil); code != 409 {
 		t.Fatalf("adopt twice: %d", code)
 	}
+	// the adopted project shows what already runs in its namespace (not the panel's own objects)
+	code, ext, _ := e.do(o, "GET", "/api/projects/"+itoa(proj["id"].(float64))+"/external-workloads", nil)
+	if code != 200 || ext["name"] != "legacy" || len(ext["workloads"].([]any)) != 1 || ext["hosts"].([]any)[0] != "blog.example.com" {
+		t.Fatalf("project external workloads: %d %v", code, ext)
+	}
+	// a project the panel created has none
+	if code, ext, _ := e.do(o, "GET", "/api/projects/1/external-workloads", nil); code != 200 || len(ext["workloads"].([]any)) != 0 {
+		t.Fatalf("own project: %d %v", code, ext)
+	}
 	// deleting the project keeps the namespace and the user's workloads
 	if code, _, _ := e.do(o, "DELETE", "/api/projects/"+itoa(proj["id"].(float64)), nil); code != 204 {
 		t.Fatalf("delete: %d", code)

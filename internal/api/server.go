@@ -454,6 +454,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("DELETE /api/adopt/fallback-hits", s.can("settings.manage", s.resetFallbackHits))
 	mux.Handle("GET /api/external/namespaces", s.can("server.view", s.externalNamespaces))
 	mux.Handle("POST /api/external/namespaces/{ns}/adopt", s.can("project.create", s.adoptNamespace))
+	mux.Handle("GET /api/projects/{pid}/external-workloads", s.inProject("project.view", s.projectExternalWorkloads))
 
 	// artifact downloads by app pods (signed URLs, no session)
 	mux.HandleFunc("GET /internal/artifacts/{sha}", s.internalArtifact)
