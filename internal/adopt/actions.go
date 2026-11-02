@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -732,7 +733,19 @@ func (e *Env) cutoverSteps(ctx context.Context, rep *Report, st *State) error {
 		}
 		ns, name, _ := strings.Cut(ctrl.Service, "/")
 		st.log(e, "waiting for k3s ServiceLB to release 80/443 of %s", ctrl.Service)
-		return e.waitFor(ctx, "ServiceLB release of "+ctrl.Service, func() (bool, error) {
+		// say what it is waiting for: the Service type (changed by k3s's helm-install job for the bundled
+		// Traefik) and the ServiceLB pods; a timeout error carries the same explanation
+		lastReport, changedAt := e.now(), e.now()
+		err := e.waitFor(ctx, "ServiceLB release of "+ctrl.Service, func() (bool, error) {
+			if e.now().Sub(lastReport) >= 30*time.Second {
+				lastReport = e.now()
+				st.log(e, "  still waiting: %s", e.serviceLBState(ctx, ns, name, ctrl.K3sBundled))
+			}
+			if ctrl.K3sBundled {
+				if err := e.helmAppliedButIgnored(ctx, ns, name, changedAt); err != nil {
+					return false, err
+				}
+			}
 			var svc kube.Object
 			if err := e.Kube.GetObject(ctx, "Service", ns, name, &svc); err != nil {
 				return false, err
@@ -751,6 +764,10 @@ func (e *Env) cutoverSteps(ctx context.Context, rep *Report, st *State) error {
 			}
 			return true, nil
 		})
+		if err != nil && ctx.Err() == nil {
+			return fmt.Errorf("%w (%s)", err, e.serviceLBState(ctx, ns, name, ctrl.K3sBundled))
+		}
+		return err
 	case hp != nil && hp.Kind == "nectar_gateway":
 		if hp.Unit == "" {
 			return fmt.Errorf("standalone nectar_gateway (pid %d) does not run as a systemd unit: stop it manually and re-run", hp.PID)
@@ -793,15 +810,20 @@ func mustJSON(v any) json.RawMessage {
 // traefikClusterIP sets the bundled Traefik's Service to ClusterIP through a HelmChartConfig (the supported
 // way: k3s would revert a direct Service edit). Existing values are kept.
 func (e *Env) traefikClusterIP(ctx context.Context, st *State) error {
+	major := e.traefikChartMajor(ctx)
 	var cur kube.Object
 	err := e.Kube.GetObject(ctx, "HelmChartConfig", "kube-system", "traefik", &cur)
 	switch {
 	case kube.IsNotFound(err):
+		out, err := yaml.Marshal(traefikClusterIPValues(map[string]any{}, major))
+		if err != nil {
+			return err
+		}
 		st.record(e, Step{Kind: stepHelmChartConfig, Target: "kube-system/traefik", Before: json.RawMessage("null")})
 		_, err = e.Kube.Apply(ctx, kube.Object{
 			"apiVersion": "helm.cattle.io/v1", "kind": "HelmChartConfig",
 			"metadata": map[string]any{"name": "traefik", "namespace": "kube-system", "labels": map[string]any{"app.kubernetes.io/managed-by": "nectar-apps"}},
-			"spec":     map[string]any{"valuesContent": "service:\n  type: ClusterIP\n"},
+			"spec":     map[string]any{"valuesContent": string(out)},
 		})
 		if err != nil {
 			return err
@@ -815,13 +837,7 @@ func (e *Env) traefikClusterIP(ctx context.Context, st *State) error {
 				return fmt.Errorf("HelmChartConfig kube-system/traefik valuesContent: %w", err)
 			}
 		}
-		svc, _ := values["service"].(map[string]any)
-		if svc == nil {
-			svc = map[string]any{}
-		}
-		svc["type"] = "ClusterIP"
-		values["service"] = svc
-		out, err := yaml.Marshal(values)
+		out, err := yaml.Marshal(traefikClusterIPValues(values, major))
 		if err != nil {
 			return err
 		}
@@ -831,8 +847,56 @@ func (e *Env) traefikClusterIP(ctx context.Context, st *State) error {
 			return err
 		}
 	}
-	st.log(e, "Traefik Service → ClusterIP (HelmChartConfig kube-system/traefik)")
+	st.log(e, "Traefik Service → ClusterIP (HelmChartConfig kube-system/traefik, chart v%d)", major)
 	return nil
+}
+
+// traefikChartMajor is the major version of k3s's bundled Traefik chart, from its HelmChart (spec.version,
+// or the chart file name "…/traefik-40.1.3+up40.1.0.tgz"); 0 when unknown.
+func (e *Env) traefikChartMajor(ctx context.Context) int {
+	var hc kube.Object
+	if e.Kube.GetObject(ctx, "HelmChart", "kube-system", "traefik", &hc) != nil {
+		return 0
+	}
+	return chartMajor(kube.Str(hc, "spec", "version"), kube.Str(hc, "spec", "chart"))
+}
+
+var chartFileRe = regexp.MustCompile(`traefik-v?(\d+)\.\d+`)
+
+func chartMajor(version, chart string) int {
+	if v := strings.TrimPrefix(version, "v"); v != "" {
+		if n, err := strconv.Atoi(strings.SplitN(v, ".", 2)[0]); err == nil {
+			return n
+		}
+	}
+	if m := chartFileRe.FindStringSubmatch(chart); m != nil {
+		n, _ := strconv.Atoi(m[1])
+		return n
+	}
+	return 0
+}
+
+// traefikClusterIPValues sets the Service type in Helm values of the Traefik chart. Chart v40 moved it from
+// service.type to service.spec.type (and dropped the former: setting it does nothing); older charts render
+// service.type and merge service.spec into the Service, so there spec.type would duplicate the key.
+func traefikClusterIPValues(values map[string]any, major int) map[string]any {
+	svc, _ := values["service"].(map[string]any)
+	if svc == nil {
+		svc = map[string]any{}
+	}
+	if major >= 40 {
+		spec, _ := svc["spec"].(map[string]any)
+		if spec == nil {
+			spec = map[string]any{}
+		}
+		spec["type"] = "ClusterIP"
+		svc["spec"] = spec
+		delete(svc, "type")
+	} else {
+		svc["type"] = "ClusterIP"
+	}
+	values["service"] = svc
+	return values
 }
 
 // serviceClusterIP switches a controller's LoadBalancer Service to ClusterIP (node ports removed).
@@ -1181,4 +1245,82 @@ func (e *Env) Finalize(ctx context.Context, rep *Report, st *State, opt Finalize
 	st.Journal = nil // nothing left to roll back automatically; the backup stays
 	st.log(e, "finalized: unknown hosts now get the gateway's 410 page")
 	return nil
+}
+
+// serviceLBState explains why the ServiceLB of a Service has not released its ports yet: the Service type,
+// for the bundled Traefik the helm-install job that applies the HelmChartConfig, and the ServiceLB pods.
+func (e *Env) serviceLBState(ctx context.Context, ns, name string, bundled bool) string {
+	var parts []string
+	var svc kube.Object
+	if err := e.Kube.GetObject(ctx, "Service", ns, name, &svc); err == nil {
+		parts = append(parts, "Service type "+kube.Str(svc, "spec", "type"))
+	}
+	if bundled {
+		parts = append(parts, helmJobState(ctx, e.Kube, "kube-system", "helm-install-"+name))
+	}
+	if dss, err := e.Kube.List(ctx, "DaemonSet", "", "svccontroller.k3s.cattle.io/svcname="+name); err == nil {
+		n := 0
+		for _, ds := range dss {
+			if sns := kube.Str(ds, "metadata", "labels", "svccontroller.k3s.cattle.io/svcnamespace"); sns == "" || sns == ns {
+				n++
+			}
+		}
+		if n > 0 {
+			parts = append(parts, fmt.Sprintf("%d ServiceLB DaemonSet(s) still hold the ports", n))
+		} else {
+			parts = append(parts, "ServiceLB pods gone")
+		}
+	}
+	return strings.Join(parts, "; ")
+}
+
+// helmJobState describes k3s's helm-install job of a chart: running, done, or why it fails.
+func helmJobState(ctx context.Context, k Kube, ns, job string) string {
+	var j kube.Object
+	if err := k.GetObject(ctx, "Job", ns, job, &j); err != nil {
+		if kube.IsNotFound(err) {
+			return job + " not started yet (k3s's helm controller applies the change)"
+		}
+		return job + ": " + err.Error()
+	}
+	for _, c := range kube.Slice(j, "status", "conditions") {
+		if kube.Str(c, "type") == "Failed" && kube.Str(c, "status") == "True" {
+			return fmt.Sprintf("%s failed: %s %s (kubectl -n %s logs job/%s)", job, kube.Str(c, "reason"), kube.Str(c, "message"), ns, job)
+		}
+	}
+	if kube.Int(j, "status", "succeeded") > 0 {
+		return job + " done"
+	}
+	// running: a pod that cannot start says why (image pull, crash loop)
+	pods, _ := k.List(ctx, "Pod", ns, "job-name="+job)
+	for _, p := range pods {
+		for _, cs := range kube.Slice(p, "status", "containerStatuses") {
+			if w := kube.Str(cs, "state", "waiting", "reason"); w != "" {
+				return fmt.Sprintf("%s running, pod %s: %s %s", job, kube.Str(p, "metadata", "name"), w, kube.Str(cs, "state", "waiting", "message"))
+			}
+			if code := kube.Int(cs, "lastState", "terminated", "exitCode"); code != 0 {
+				return fmt.Sprintf("%s retrying, its last attempt exited with code %d (kubectl -n %s logs job/%s)", job, code, ns, job)
+			}
+		}
+	}
+	return job + " running (Helm upgrades Traefik)"
+}
+
+// helmAppliedButIgnored fails when k3s's helm-install job finished after the change but the Service is still not
+// ClusterIP 20 s later: the chart did not take the value (another chart layout), so waiting cannot help.
+func (e *Env) helmAppliedButIgnored(ctx context.Context, ns, name string, since time.Time) error {
+	var j kube.Object
+	if e.Kube.GetObject(ctx, "Job", "kube-system", "helm-install-"+name, &j) != nil || kube.Int(j, "status", "succeeded") == 0 {
+		return nil
+	}
+	done, err := time.Parse(time.RFC3339, kube.Str(j, "status", "completionTime"))
+	if err != nil || done.Before(since) || e.now().Sub(done) < 20*time.Second {
+		return nil
+	}
+	var svc kube.Object
+	if e.Kube.GetObject(ctx, "Service", ns, name, &svc) != nil || kube.Str(svc, "spec", "type") == "ClusterIP" {
+		return nil
+	}
+	return fmt.Errorf("k3s re-installed Traefik (helm-install-%s finished at %s) but the Service is still %s: this Traefik chart ignores the setting — please report the chart version (kubectl -n kube-system get helmchart traefik -o jsonpath='{.spec.chart}')",
+		name, done.Format(time.TimeOnly), kube.Str(svc, "spec", "type"))
 }
