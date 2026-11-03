@@ -7880,6 +7880,66 @@ class S {
       args: [],
     );
   }
+
+  /// `Delete project`
+  String get projectDeleteProject {
+    return Intl.message(
+      'Delete project',
+      name: 'projectDeleteProject',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Delete {name}?`
+  String projectDeleteTitle(String name) {
+    return Intl.message(
+      'Delete $name?',
+      name: 'projectDeleteTitle',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `The apps and databases Nectar created here are deleted. The namespace {namespace} and the workloads that ran in it before Nectar stay and keep running; imported workloads are scaled back up and get their hosts back.`
+  String projectDeleteAdoptedBody(String namespace) {
+    return Intl.message(
+      'The apps and databases Nectar created here are deleted. The namespace $namespace and the workloads that ran in it before Nectar stay and keep running; imported workloads are scaled back up and get their hosts back.',
+      name: 'projectDeleteAdoptedBody',
+      desc: '',
+      args: [namespace],
+    );
+  }
+
+  /// `This deletes the namespace with every app, database, volume and backup plan in it. Type {slug} to confirm`
+  String projectDeleteTypeSlug(String slug) {
+    return Intl.message(
+      'This deletes the namespace with every app, database, volume and backup plan in it. Type $slug to confirm',
+      name: 'projectDeleteTypeSlug',
+      desc: '',
+      args: [slug],
+    );
+  }
+
+  /// `The slug does not match: nothing was deleted.`
+  String get projectDeleteSlugMismatch {
+    return Intl.message(
+      'The slug does not match: nothing was deleted.',
+      name: 'projectDeleteSlugMismatch',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{name} was deleted`
+  String projectDeleted(String name) {
+    return Intl.message(
+      '$name was deleted',
+      name: 'projectDeleted',
+      desc: '',
+      args: [name],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

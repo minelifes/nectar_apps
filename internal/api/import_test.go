@@ -145,6 +145,18 @@ func TestImportWorkload(t *testing.T) {
 	if !e.kube.Has("PersistentVolumeClaim", "family", "web-data") {
 		t.Fatal("the imported claim must survive the app")
 	}
+
+	// deleting the whole adopted project also brings an imported workload back
+	if code, _, _ := e.do(o, "POST", base+"deployment/web/import", nil); code != 201 {
+		t.Fatalf("import again: %d", code)
+	}
+	e.dep.Wait()
+	if code, _, _ := e.do(o, "DELETE", "/api/projects/"+itoa(proj["id"].(float64)), nil); code != 204 {
+		t.Fatalf("delete project: %d", code)
+	}
+	if old = e.kube.Get("Deployment", "family", "web"); kube.Int(old, "spec", "replicas") != 2 || !e.kube.Has("Namespace", "", "family") {
+		t.Fatalf("project delete did not restore: %v", old["spec"])
+	}
 }
 
 func jsonOf(v any) string {

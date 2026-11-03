@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/client.dart';
 import '../../api/models.dart';
 import '../../api/session.dart';
 import '../../core/format.dart';
@@ -39,6 +40,9 @@ class ProjectPage extends ConsumerWidget {
 
     final canCreate = ref.watch(
       sessionProvider.select((s) => s.can('app.create', projectId: id)),
+    );
+    final canDelete = ref.watch(
+      sessionProvider.select((s) => s.can('project.delete', projectId: id)),
     );
     final back = IconButton(
       tooltip: l.projectAllProjects,
@@ -82,6 +86,7 @@ class ProjectPage extends ConsumerWidget {
               'yaml' => showImportDialog(context, id, compose: false),
               'export' => showExportDialog(context, ref, id, p.slug),
               'env' => showCloneProjectDialog(context, p),
+              'delete' => _deleteProject(context, ref, p),
               _ => null,
             },
             itemBuilder: (_) => [
@@ -103,6 +108,17 @@ class ProjectPage extends ConsumerWidget {
                 value: 'env',
                 child: Text(l.projectNewEnvironmentCopy),
               ),
+              if (canDelete) const PopupMenuDivider(),
+              if (canDelete)
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text(
+                    l.projectDeleteProject,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
             ],
           ),
         ],
@@ -275,5 +291,49 @@ class _QuotaCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Deletes a project after confirmation. A project the panel created loses its namespace and everything in
+/// it (the slug must be typed); an adopted one only stops being a project: its own workloads keep running.
+Future<void> _deleteProject(
+  BuildContext context,
+  WidgetRef ref,
+  Project p,
+) async {
+  final s = S.of(context);
+  if (p.adopted) {
+    if (!await confirmAction(
+      context,
+      s.projectDeleteTitle(p.name),
+      s.projectDeleteAdoptedBody(p.namespace),
+      s.actionDelete,
+      danger: true,
+    )) {
+      return;
+    }
+  } else {
+    final typed = await promptText(
+      context,
+      s.projectDeleteTitle(p.name),
+      s.projectDeleteTypeSlug(p.slug),
+    );
+    if (typed == null) return;
+    if (typed.trim() != p.slug) {
+      if (context.mounted) {
+        showSnack(context, s.projectDeleteSlugMismatch, error: true);
+      }
+      return;
+    }
+  }
+  if (!context.mounted) return;
+  try {
+    await ref.read(apiProvider).delete('/projects/${p.id}');
+    ref.invalidate(projectsProvider);
+    if (!context.mounted) return;
+    showSnack(context, s.projectDeleted(p.name));
+    context.go('/projects');
+  } on Object catch (e) {
+    if (context.mounted) showSnack(context, describeError(e), error: true);
   }
 }
