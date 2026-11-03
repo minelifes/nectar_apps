@@ -135,6 +135,9 @@ func validateVolumes(vs []store.Volume, old []store.Volume) string {
 		if v.StorageClass != "" && !storageClassRe.MatchString(v.StorageClass) {
 			return fmt.Sprintf("volume %s: invalid storage class %q", v.Name, v.StorageClass)
 		}
+		if old != nil && prevVol[v.Name].Claim != v.Claim {
+			return "volume " + v.Name + ": an existing claim is set only when a workload is imported"
+		}
 		if was, ok := prevVol[v.Name]; ok && (was.StorageClass != v.StorageClass || was.Shared != v.Shared) {
 			return "volume " + v.Name + ": the storage class and sharing of an existing volume cannot change — add a new volume and copy the data"
 		}

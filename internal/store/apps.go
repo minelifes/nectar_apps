@@ -40,6 +40,8 @@ type AppConfig struct {
 	Options map[string]any `json:"options,omitempty"`
 	// Volumes are persistent disks (PVCs) mounted into every container of the app.
 	Volumes []Volume `json:"volumes,omitempty"`
+	// ContainerArgs are the container's arguments (image apps; kept from an imported workload).
+	ContainerArgs []string `json:"container_args,omitempty"`
 	// ResumeReplicas remembers the replicas before a stop, for start.
 	ResumeReplicas int `json:"resume_replicas,omitempty"`
 }
@@ -55,6 +57,9 @@ type Volume struct {
 	// Shared mounts the volume ReadWriteMany (several replicas on several nodes; needs a class that
 	// supports it, e.g. nfs). Fixed once the volume exists.
 	Shared bool `json:"shared,omitempty"`
+	// Claim is an existing PersistentVolumeClaim used instead of "<app>-<name>" (a workload imported from
+	// the cluster keeps its disk). The panel never creates, resizes or deletes it.
+	Claim string `json:"claim,omitempty"`
 }
 
 // Resources per replica. NoLimit = requests only (the app may use any free capacity).

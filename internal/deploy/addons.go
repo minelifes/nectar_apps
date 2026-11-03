@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"strconv"
 
@@ -436,9 +437,7 @@ func (d *Deployer) LinkedEnv(ctx context.Context, appID int64) (map[string]strin
 		if err != nil {
 			return nil, fmt.Errorf("add-on %s: %w", a.Slug, err)
 		}
-		for k, v := range AddonEnv(a, c, l.Prefix) {
-			out[k] = v
-		}
+		maps.Copy(out, AddonEnv(a, c, l.Prefix))
 	}
 	return out, nil
 }

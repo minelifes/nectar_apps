@@ -304,7 +304,7 @@ func (m *Manager) startBackup(ctx context.Context, plan store.BackupPlan) (store
 			return store.BackupRun{}, errors.New("the app has no volumes to back up")
 		}
 		for _, v := range sub.Volumes {
-			j.Volumes = append(j.Volumes, map[string]any{"name": "v-" + v, "persistentVolumeClaim": map[string]any{"claimName": deploy.VolumeClaimName(sub.App.Slug, v), "readOnly": true}})
+			j.Volumes = append(j.Volumes, map[string]any{"name": "v-" + v, "persistentVolumeClaim": map[string]any{"claimName": deploy.AppVolumeClaim(*sub.App, v), "readOnly": true}})
 			j.Mounts = append(j.Mounts, map[string]any{"name": "v-" + v, "mountPath": "/data/" + v, "readOnly": true})
 		}
 		j.Script = backup("/data")
@@ -492,7 +492,7 @@ func (m *Manager) restore(ctx context.Context, run store.BackupRun, sub subject,
 		}
 		includes := ""
 		for _, v := range sub.Volumes {
-			j.Volumes = append(j.Volumes, map[string]any{"name": "v-" + v, "persistentVolumeClaim": map[string]any{"claimName": deploy.VolumeClaimName(app.Slug, v)}})
+			j.Volumes = append(j.Volumes, map[string]any{"name": "v-" + v, "persistentVolumeClaim": map[string]any{"claimName": deploy.AppVolumeClaim(app, v)}})
 			j.Mounts = append(j.Mounts, map[string]any{"name": "v-" + v, "mountPath": "/data/" + v})
 			includes += " --include /data/" + v
 		}

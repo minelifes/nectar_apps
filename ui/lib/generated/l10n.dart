@@ -7735,6 +7735,151 @@ class S {
       args: [ready, total],
     );
   }
+
+  /// `Import as app`
+  String get importAction {
+    return Intl.message(
+      'Import as app',
+      name: 'importAction',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Import {workload} as a Nectar app`
+  String importTitle(String workload) {
+    return Intl.message(
+      'Import $workload as a Nectar app',
+      name: 'importTitle',
+      desc: '',
+      args: [workload],
+    );
+  }
+
+  /// `Nectar copies the image, ports, variables (also from Secrets and ConfigMaps), mounted config files, replicas, resources and health check into a new app, and keeps using the same volumes: no data is copied. Ingress hosts that only lead to this workload become the app's domains (HTTPS from Let's Encrypt). The original is scaled down to 0 and its Services point at the new app. The pod restarts once. Deleting the app later brings the original and its hosts back.`
+  String get importHelp {
+    return Intl.message(
+      'Nectar copies the image, ports, variables (also from Secrets and ConfigMaps), mounted config files, replicas, resources and health check into a new app, and keeps using the same volumes: no data is copied. Ingress hosts that only lead to this workload become the app\'s domains (HTTPS from Let\'s Encrypt). The original is scaled down to 0 and its Services point at the new app. The pod restarts once. Deleting the app later brings the original and its hosts back.',
+      name: 'importHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `App slug`
+  String get importAppSlug {
+    return Intl.message('App slug', name: 'importAppSlug', desc: '', args: []);
+  }
+
+  /// `Type`
+  String get importKind {
+    return Intl.message('Type', name: 'importKind', desc: '', args: []);
+  }
+
+  /// `Image`
+  String get importImage {
+    return Intl.message('Image', name: 'importImage', desc: '', args: []);
+  }
+
+  /// `Ports`
+  String get importPorts {
+    return Intl.message('Ports', name: 'importPorts', desc: '', args: []);
+  }
+
+  /// `Replicas`
+  String get importReplicas {
+    return Intl.message('Replicas', name: 'importReplicas', desc: '', args: []);
+  }
+
+  /// `Resources`
+  String get importResources {
+    return Intl.message(
+      'Resources',
+      name: 'importResources',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `no limit (as before)`
+  String get importNoLimit {
+    return Intl.message(
+      'no limit (as before)',
+      name: 'importNoLimit',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Variables`
+  String get importEnv {
+    return Intl.message('Variables', name: 'importEnv', desc: '', args: []);
+  }
+
+  /// `Config files`
+  String get importFiles {
+    return Intl.message(
+      'Config files',
+      name: 'importFiles',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Volumes (kept)`
+  String get importVolumes {
+    return Intl.message(
+      'Volumes (kept)',
+      name: 'importVolumes',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Services`
+  String get importServices {
+    return Intl.message('Services', name: 'importServices', desc: '', args: []);
+  }
+
+  /// `Hosts (stay on the Ingress)`
+  String get importHosts {
+    return Intl.message(
+      'Hosts (stay on the Ingress)',
+      name: 'importHosts',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Importing…`
+  String get importImporting {
+    return Intl.message(
+      'Importing…',
+      name: 'importImporting',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{workload} is now a Nectar app`
+  String importDone(String workload) {
+    return Intl.message(
+      '$workload is now a Nectar app',
+      name: 'importDone',
+      desc: '',
+      args: [workload],
+    );
+  }
+
+  /// `Domains (moved to the app)`
+  String get importDomains {
+    return Intl.message(
+      'Domains (moved to the app)',
+      name: 'importDomains',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

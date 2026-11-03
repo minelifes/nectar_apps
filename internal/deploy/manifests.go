@@ -195,6 +195,24 @@ func (s AppSpec) name() string { return s.App.Slug }
 // VolumeClaimName is the PVC name of an app volume.
 func VolumeClaimName(appSlug, volume string) string { return trimName(appSlug + "-" + volume) }
 
+// ClaimOf is the PVC a volume mounts: its existing claim (imported workloads) or the app's own.
+func ClaimOf(appSlug string, v store.Volume) string {
+	if v.Claim != "" {
+		return v.Claim
+	}
+	return VolumeClaimName(appSlug, v.Name)
+}
+
+// AppVolumeClaim is the PVC of the app volume called name (the app's own naming when it is not configured).
+func AppVolumeClaim(a store.App, name string) string {
+	for _, v := range a.Config.Volumes {
+		if v.Name == name {
+			return ClaimOf(a.Slug, v)
+		}
+	}
+	return VolumeClaimName(a.Slug, name)
+}
+
 // LabelVolume marks the PVCs of app volumes with the volume name.
 const LabelVolume = "nectar.dev/volume"
 
@@ -241,6 +259,9 @@ func AppObjects(s AppSpec) ([]obj, error) {
 		})
 	}
 	for _, v := range s.Config.Volumes {
+		if v.Claim != "" {
+			continue // an existing claim (imported workload): not the panel's
+		}
 		spec := map[string]any{
 			"accessModes": []any{"ReadWriteOnce"},
 			"resources":   map[string]any{"requests": map[string]any{"storage": fmt.Sprintf("%dMi", v.SizeMB)}},
@@ -425,7 +446,7 @@ func (s AppSpec) podSpec(command []string, role string) (map[string]any, error) 
 		}
 	}
 	for _, v := range cfg.Volumes {
-		volumes = append(volumes, map[string]any{"name": "vol-" + v.Name, "persistentVolumeClaim": map[string]any{"claimName": VolumeClaimName(s.App.Slug, v.Name)}})
+		volumes = append(volumes, map[string]any{"name": "vol-" + v.Name, "persistentVolumeClaim": map[string]any{"claimName": ClaimOf(s.App.Slug, v)}})
 		mounts = append(mounts, map[string]any{"name": "vol-" + v.Name, "mountPath": v.MountPath})
 	}
 
@@ -448,6 +469,9 @@ func (s AppSpec) podSpec(command []string, role string) (map[string]any, error) 
 		if len(rt.Args) > 0 && len(command) == 0 && len(cfg.Command) == 0 {
 			c["args"] = toAny(rt.Args)
 		}
+	}
+	if len(command) == 0 && len(cfg.ContainerArgs) > 0 {
+		c["args"] = toAny(cfg.ContainerArgs)
 	}
 	if len(mounts) > 0 {
 		c["volumeMounts"] = mounts

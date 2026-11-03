@@ -9,6 +9,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import 'import_workload_dialog.dart';
 
 /// What runs in a namespace the panel did not create (an existing k3s cluster adopted by Nectar): read-only.
 class ExternalWorkload {
@@ -195,7 +196,17 @@ class ProjectExternalWorkloads extends ConsumerWidget {
               style: TextStyle(color: c.muted, fontSize: 12.5),
             ),
           ),
-          NCard(child: ExternalNamespaceBody(ns: ns)),
+          NCard(
+            child: ExternalNamespaceBody(
+              ns: ns,
+              onImport:
+                  ref
+                      .watch(sessionProvider)
+                      .can('app.create', projectId: projectId)
+                  ? (w) => showImportWorkloadDialog(context, projectId, w)
+                  : null,
+            ),
+          ),
         ],
       ),
     );
@@ -204,9 +215,12 @@ class ProjectExternalWorkloads extends ConsumerWidget {
 
 /// The workloads, Services and hosts of an external namespace.
 class ExternalNamespaceBody extends StatelessWidget {
-  const ExternalNamespaceBody({super.key, required this.ns});
+  const ExternalNamespaceBody({super.key, required this.ns, this.onImport});
 
   final ExternalNamespace ns;
+
+  /// Shows "Import as app" on Deployments and StatefulSets (adopted projects).
+  final void Function(ExternalWorkload w)? onImport;
 
   @override
   Widget build(BuildContext context) {
@@ -249,6 +263,14 @@ class ExternalNamespaceBody extends StatelessWidget {
                   ),
                 ),
                 Text(s.externalReady(w.ready, w.replicas), style: small),
+                if (onImport != null &&
+                    (w.kind == 'Deployment' || w.kind == 'StatefulSet')) ...[
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => onImport!(w),
+                    child: Text(s.importAction),
+                  ),
+                ],
               ],
             ),
           ),

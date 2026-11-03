@@ -161,7 +161,8 @@ func (s *Server) listExternal(ctx context.Context, only string) ([]externalNames
 			items []kube.Object
 		}{{"Deployment", deps}, {"StatefulSet", sts}, {"DaemonSet", dss}} {
 			for _, o := range group.items {
-				if kube.Str(o, "metadata", "namespace") != name || kube.Str(o, "metadata", "labels", deploy.LabelManagedBy) == deploy.ManagedBy {
+				if kube.Str(o, "metadata", "namespace") != name || kube.Str(o, "metadata", "labels", deploy.LabelManagedBy) == deploy.ManagedBy ||
+					kube.Str(o, "metadata", "annotations", annImportedAs) != "" { // imported: it is an app now
 					continue
 				}
 				wl := externalWorkload{Kind: group.kind, Name: kube.Str(o, "metadata", "name"),
@@ -176,7 +177,8 @@ func (s *Server) listExternal(ctx context.Context, only string) ([]externalNames
 			}
 		}
 		for _, o := range svcs {
-			if kube.Str(o, "metadata", "namespace") != name || kube.Str(o, "metadata", "labels", deploy.LabelManagedBy) == deploy.ManagedBy {
+			if kube.Str(o, "metadata", "namespace") != name || kube.Str(o, "metadata", "labels", deploy.LabelManagedBy) == deploy.ManagedBy ||
+				kube.Str(o, "metadata", "annotations", annImportedBy) != "" {
 				continue
 			}
 			es := externalService{Name: kube.Str(o, "metadata", "name"), Type: kube.Str(o, "spec", "type"), Ports: []int64{}}

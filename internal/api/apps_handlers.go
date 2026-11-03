@@ -462,6 +462,12 @@ func (s *Server) createApp(w http.ResponseWriter, r *http.Request, p *principal,
 		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
+	for _, v := range cfg.Volumes {
+		if v.Claim != "" {
+			writeError(w, http.StatusBadRequest, "volume "+v.Name+": an existing claim is set only when a workload is imported")
+			return
+		}
+	}
 	if taken, err := s.store.SlugTaken(r.Context(), proj.ID, in.Slug); err == nil && taken {
 		writeError(w, http.StatusConflict, "an app or add-on with this slug already exists in the project")
 		return
@@ -615,6 +621,7 @@ func (s *Server) removeApp(ctx context.Context, app store.App, proj store.Projec
 			return fmt.Errorf("%w: %v", errCluster, err)
 		}
 	}
+	s.undoImport(ctx, proj, app.Slug) // an imported workload comes back
 	_, srcErr := s.store.GetAppSource(ctx, app.ID)
 	arts, _ := s.store.ListArtifacts(ctx, app.ID, 1000)
 	if err := s.store.DeleteApp(ctx, app.ID); err != nil {
@@ -642,6 +649,9 @@ func (s *Server) removeApp(ctx context.Context, app store.App, proj store.Projec
 	defer cancel()
 	if err := s.syncer.Sync(sctx); err != nil {
 		s.log.Warn("route sync", "err", err)
+	}
+	if s.ingSync != nil && proj.Adopted {
+		s.ingSync.Trigger() // hosts an imported app had taken over go back to their Ingress
 	}
 	return nil
 }
