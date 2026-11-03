@@ -90,7 +90,7 @@ Usage:
   nectar-apps admin reset-password --email E [--password P]
   nectar-apps admin rotate-master-key [--key K] [--no-restart]
   nectar-apps admin make-owner --email E                 grant the Owner flag (recovery)
-  nectar-apps adopt discover|backup|shadow|verify|cutover|rollback|finalize|status
+  nectar-apps adopt discover|backup|shadow|verify|cutover|rollback|finalize|status|namespaces
                                                          migrate an existing k3s server (see adopt --help)
   nectar-apps update run|snapshot|restore                internal: the updater Job started by Settings → Updates
   nectar-apps version
@@ -396,6 +396,7 @@ func serve() error {
 	alertEngine.Sender.Push = srv.SendPush // alert channels of kind "push" (Firebase; Settings → Push notifications)
 	go srv.RunEdge(ctx)                    // gateway replicas on extra edge nodes follow the primary's image
 	go srv.RunPreviews(ctx)                // delete pull request previews without activity
+	go srv.RunAdoptRequests(ctx)           // namespaces install.sh --adopt asked to adopt as projects
 
 	httpSrv := &http.Server{
 		Addr:              cfg.HTTPAddr,

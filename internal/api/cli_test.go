@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"nectar_apps/internal/cli"
+	"nectar_apps/internal/kube"
 )
 
 // The nectar CLI against the real API (fake cluster): token, deploy of a file and of an image, rollback.
@@ -126,5 +127,41 @@ func TestCLIBlueprints(t *testing.T) {
 	}
 	if code, _, errs := run("apps: [{slug: bad}]", "apply", "-f", "-", "--project", "shop"); code == 0 || !strings.Contains(errs, "image is required") {
 		t.Fatalf("invalid file: %d %s", code, errs)
+	}
+}
+
+// nectar external / nectar adopt against the real API (fake cluster).
+func TestCLIAdopt(t *testing.T) {
+	e := newEnv(t)
+	e.api.cluster = e.kube
+	o := e.owner()
+	ctx := context.Background()
+	for _, ns := range []string{"family", "portainer", "nectarmail"} {
+		e.kube.Apply(ctx, kube.Object{"apiVersion": "v1", "kind": "Namespace", "metadata": map[string]any{"name": ns}})
+	}
+	e.kube.Apply(ctx, kube.Object{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": map[string]any{"name": "web", "namespace": "family"},
+		"spec": map[string]any{"replicas": float64(1), "template": map[string]any{"spec": map[string]any{"containers": []any{
+			map[string]any{"name": "web", "image": "nginx:1.27"}}}}}, "status": map[string]any{"readyReplicas": float64(1)}})
+	_, tok, _ := e.do(o, "POST", "/api/me/tokens", map[string]any{"name": "admin"})
+	run := func(args ...string) (int, string, string) {
+		var out, errb bytes.Buffer
+		code := cli.Run(ctx, args, cli.Env{Stdout: &out, Stderr: &errb, Version: "test",
+			Client: &cli.Client{URL: e.srv.URL, Token: tok["token"].(string)}})
+		return code, out.String(), errb.String()
+	}
+	if code, out, errs := run("external"); code != 0 || !strings.Contains(out, "deployment/web") || !strings.Contains(out, "nginx:1.27") || !strings.Contains(out, "portainer") {
+		t.Fatalf("external: %d %s %s", code, out, errs)
+	}
+	if code, out, errs := run("adopt", "family", "--name", "Family"); code != 0 || !strings.Contains(out, "family → project family") {
+		t.Fatalf("adopt: %d %s %s", code, out, errs)
+	}
+	if code, out, errs := run("adopt", "--all"); code != 0 || !strings.Contains(out, "nectarmail") || !strings.Contains(out, "portainer") || strings.Contains(out, "family →") {
+		t.Fatalf("adopt --all: %d %s %s", code, out, errs)
+	}
+	if code, _, errs := run("adopt", "kube-system"); code != 1 || !strings.Contains(errs, "system namespaces") {
+		t.Fatalf("adopt kube-system: %d %s", code, errs)
+	}
+	if code, out, _ := run("external"); code != 0 || !strings.Contains(out, "#1") || !strings.Contains(out, "#3") {
+		t.Fatalf("external after adopt: %s", out)
 	}
 }

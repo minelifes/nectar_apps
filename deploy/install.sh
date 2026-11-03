@@ -32,6 +32,7 @@ INGRESS_CLASS=""
 INGRESS_SYNC="nectar"
 INGRESS_CONTROLLER=""
 STRATEGY=""                               # adopt: migrate | keep | adopt-gateway (default: recommended)
+ADOPT_PROJECTS=""
 ADOPT_BIN="${ADOPT_BIN:-}"                # nectar-apps binary for the host-side adopt commands
 RELEASES="https://github.com/minelifes/nectar_apps/releases"
 GATEWAY_RELEASES="https://github.com/minelifes/nectar_gateway/releases"
@@ -41,7 +42,7 @@ RESTART_K3S=0
 DRY_RUN=0
 ASSUME_YES=0
 SKIP_FIREWALL=0
-MODE="install"                            # install | discover | adopt | rollback | finalize | status | uninstall
+MODE="install"                            # install | discover | adopt | rollback | finalize | status | adopt-projects | uninstall
 PURGE_K3S=0
 RESTORE_KIT=""                            # disaster recovery: recovery kit JSON from the old panel
 RESTORE_MASTER_KEY=""                     # … and the master key printed by the first install
@@ -133,6 +134,8 @@ Existing k3s (adopt mode):
   --finalize             stop depending on the old proxy (disables bundled Traefik via a k3s drop-in)
   --restart-k3s          with --finalize: restart k3s now so Traefik is removed
   --force                with --adopt/--finalize: skip the safety checks
+  --adopt-projects LIST  make existing namespaces Nectar projects: all, none, or ns1,ns2 (their workloads are
+                         not changed). --adopt asks when this is not given; alone it only does this step
   --binary PATH          use a local nectar-apps binary for the adopt commands (development)
 
   --no-cli               do not install the nectar CLI (default: /usr/local/bin/nectar, from the same release)
@@ -173,6 +176,8 @@ while [ $# -gt 0 ]; do
 		--adopt) MODE="adopt"; shift ;;
 		--strategy) STRATEGY="${2:?}"; shift 2 ;;
 		--strategy=*) STRATEGY="${1#--strategy=}"; shift ;;
+		--adopt-projects) ADOPT_PROJECTS="${2:?}"; shift 2 ;;
+		--adopt-projects=*) ADOPT_PROJECTS="${1#--adopt-projects=}"; shift ;;
 		--status) MODE="status"; shift ;;
 		--rollback) MODE="rollback"; shift ;;
 		--finalize) MODE="finalize"; shift ;;
@@ -189,6 +194,8 @@ while [ $# -gt 0 ]; do
 		*) usage >&2; die "unknown option: $1" ;;
 	esac
 done
+# --adopt-projects on its own only offers the existing namespaces as projects
+[ -n "$ADOPT_PROJECTS" ] && [ "$MODE" = install ] && MODE="adopt-projects"
 
 confirm() {
 	[ "$ASSUME_YES" -eq 1 ] && return 0
@@ -413,6 +420,45 @@ discover() {
 	adopt_cli discover
 }
 
+# ask_adopt_projects offers the namespaces that already run workloads as Nectar projects. The installer has
+# no panel login, so it writes the choice to a ConfigMap and the panel adopts them (within a minute).
+ask_adopt_projects() {
+	if [ "$DRY_RUN" -eq 1 ]; then run "$ADOPT_BIN" adopt request-projects "(chosen namespaces)"; return 0; fi
+	candidates="$("$ADOPT_BIN" adopt namespaces --namespace "$NAMESPACE" 2>/dev/null | tr '\n' ' ')"
+	candidates="${candidates% }"
+	[ -n "$candidates" ] || return 0
+	sel="$ADOPT_PROJECTS"
+	if [ -z "$sel" ] || [ "$sel" = ask ]; then
+		if [ "$ASSUME_YES" -eq 1 ] || [ ! -r /dev/tty ]; then
+			info "Existing namespaces stay outside Nectar: $candidates"
+			info "Adopt them later: Projects page → Adopt as project, or  sh install.sh --adopt-projects all"
+			return 0
+		fi
+		echo
+		info "These namespaces run workloads that Nectar did not create: $candidates"
+		info "Adopting one makes it a Nectar project: you see it in the panel and can deploy next to it. Nothing in it is changed."
+		printf 'Adopt which as projects? [all / names separated by spaces / Enter = none] '
+		read -r sel </dev/tty || sel=""
+	fi
+	case "$sel" in
+		""|none)
+			info "No namespace adopted. Later: Projects page → Adopt as project, or  sh install.sh --adopt-projects all"
+			return 0 ;;
+		all) sel="$candidates" ;;
+	esac
+	chosen=""
+	for ns in $(echo "$sel" | tr ',' ' '); do
+		case " $candidates " in
+			*" $ns "*) chosen="$chosen $ns" ;;
+			*) warn "$ns cannot be adopted (not found, a system namespace or already a project) — skipped" ;;
+		esac
+	done
+	[ -n "$chosen" ] || return 0
+	# shellcheck disable=SC2086 # one argument per namespace
+	"$ADOPT_BIN" adopt request-projects --namespace "$NAMESPACE" $chosen || { warn "could not hand the namespaces to the panel"; return 0; }
+	info "The panel turns them into projects within a minute; their workloads keep running unchanged."
+}
+
 do_adopt() {
 	k3s_present || die "k3s is not installed: run the installer without --adopt for a fresh install"
 	install_prerequisites
@@ -451,6 +497,7 @@ do_adopt() {
 	setup_registry
 	deploy_stack
 	install_cli
+	ask_adopt_projects
 	if [ "$STRATEGY" = keep ]; then
 		print_summary
 		return
@@ -591,18 +638,44 @@ APPARMOR
 	fi
 }
 
+# resolve_k3s_version pins the stable k3s release before the k3s installer runs: the installer itself asks
+# update.k3s.io with a 5-minute timeout and fails when that host is slow, while github.com (where the
+# binaries come from anyway) gives the same answer.
+resolve_k3s_version() {
+	[ -n "$K3S_VERSION" ] && return 0
+	for url in https://update.k3s.io/v1-release/channels/stable https://github.com/k3s-io/k3s/releases/latest; do
+		v="$(curl -sS -o /dev/null --connect-timeout 10 --max-time 20 --retry 2 -w '%{redirect_url}' "$url" 2>/dev/null || true)"
+		v="$(printf '%s' "${v##*/}" | sed 's/%2[Bb]/+/g')"
+		case "$v" in
+			v1.*) K3S_VERSION="$v"; info "k3s stable channel: $v"; return 0 ;;
+		esac
+	done
+	warn "could not look up the k3s stable version (update.k3s.io and github.com did not answer); the k3s installer tries itself"
+}
+
+# get_k3s_installer downloads get.k3s.io to a file (retried) instead of piping a possibly cut-off download.
+get_k3s_installer() {
+	K3S_INSTALLER="$(mktemp)"
+	curl -sfL --connect-timeout 15 --max-time 120 --retry 3 https://get.k3s.io -o "$K3S_INSTALLER" ||
+		die "could not download the k3s installer from get.k3s.io"
+}
+
 install_k3s() {
 	if k3s_present; then
 		ok "k3s already installed: $(k3s --version | head -1)"
 		return
 	fi
-	info "Installing k3s ${K3S_VERSION:-(stable channel)} without Traefik and ServiceLB"
 	exec_flags="server --disable traefik --disable servicelb --write-kubeconfig-mode 600"
 	if [ "$DRY_RUN" -eq 1 ]; then
+		info "Installing k3s ${K3S_VERSION:-(stable channel)} without Traefik and ServiceLB"
 		run sh -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION='$K3S_VERSION' INSTALL_K3S_EXEC='$exec_flags' sh -"
 		return
 	fi
-	curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="$K3S_VERSION" INSTALL_K3S_EXEC="$exec_flags" sh -
+	resolve_k3s_version
+	info "Installing k3s ${K3S_VERSION:-(stable channel)} without Traefik and ServiceLB"
+	get_k3s_installer
+	INSTALL_K3S_VERSION="$K3S_VERSION" INSTALL_K3S_EXEC="$exec_flags" sh "$K3S_INSTALLER" || { rm -f "$K3S_INSTALLER"; die "k3s installation failed (see above)"; }
+	rm -f "$K3S_INSTALLER"
 	info "Waiting for the node to become Ready"
 	i=0
 	until kc get nodes --no-headers 2>/dev/null | grep -q ' Ready'; do
@@ -1032,7 +1105,10 @@ do_join() {
 		run sh -c "curl -sfL https://get.k3s.io | K3S_URL='$JOIN_URL' K3S_TOKEN=<token> INSTALL_K3S_VERSION='$K3S_VERSION' sh -"
 		return
 	fi
-	curl -sfL https://get.k3s.io | K3S_URL="$JOIN_URL" K3S_TOKEN="$JOIN_TOKEN" INSTALL_K3S_VERSION="$K3S_VERSION" sh -
+	resolve_k3s_version
+	get_k3s_installer
+	K3S_URL="$JOIN_URL" K3S_TOKEN="$JOIN_TOKEN" INSTALL_K3S_VERSION="$K3S_VERSION" sh "$K3S_INSTALLER" || { rm -f "$K3S_INSTALLER"; die "k3s agent installation failed (see above)"; }
+	rm -f "$K3S_INSTALLER"
 	ok "Joined. The node shows up under Server in the panel within a minute."
 	me="$(hostname -I 2>/dev/null | awk '{print $1}')"
 	echo
@@ -1182,6 +1258,10 @@ case "$MODE" in
 	discover) k3s_present || die "k3s is not installed — nothing to discover"; discover ;;
 	adopt) do_adopt ;;
 	status) fetch_adopt_bin; adopt_cli status ;;
+	adopt-projects)
+		k3s_present || die "k3s is not installed — there is nothing to adopt"
+		fetch_adopt_bin
+		ask_adopt_projects ;;
 	rollback)
 		fetch_adopt_bin
 		confirm "Undo the adoption cutover (the previous proxy gets 80/443 back)?" || die "aborted"

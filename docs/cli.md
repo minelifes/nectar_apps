@@ -31,6 +31,8 @@ nectar rollback shop/api                                    # or --to 12
 | `nectar import-compose -f docker-compose.yml --project SLUG [--dry-run] [--no-deploy]` | convert a compose file |
 | `nectar db list [--project SLUG]` | the project's databases |
 | `nectar db connect DB [--project SLUG] [--port N] [--show-password]` | open a database on `127.0.0.1` through the panel |
+| `nectar external` | namespaces on the cluster that Nectar did not create, with their workloads and images |
+| `nectar adopt NAMESPACE… [--all] [--slug S] [--name N]` | make existing namespaces projects; their workloads are not changed |
 | `nectar templates` | one-click apps |
 | `nectar install TEMPLATE --project SLUG [--name NAME] [--set key=value]…` | install a one-click app |
 | `nectar version` | |

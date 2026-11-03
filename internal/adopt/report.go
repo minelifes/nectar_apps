@@ -134,7 +134,7 @@ func (r *Report) Markdown() string {
 	}
 	w("## Workloads")
 	w("")
-	w("Existing workloads are never modified. They appear under **External** in the panel and can be adopted as projects later.")
+	w("Existing workloads are never modified. They are listed on the **Projects** page under \"Running on this cluster, not managed by Nectar\" and can be adopted as projects there.")
 	w("")
 	w("| Namespace | Deployments | StatefulSets | DaemonSets | Services | Ingresses |")
 	w("|---|---|---|---|---|---|")
