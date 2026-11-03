@@ -1621,5 +1621,15 @@
   "importImporting": "Importing…",
   "importDone": "{workload} is now a Nectar app",
   "@importDone": {"placeholders": {"workload": {"type": "String"}}},
-  "importDomains": "Domains (moved to the app)"
+  "importDomains": "Domains (moved to the app)",
+  "projectDeleteProject": "Delete project",
+  "projectDeleteTitle": "Delete {name}?",
+  "@projectDeleteTitle": {"placeholders": {"name": {"type": "String"}}},
+  "projectDeleteAdoptedBody": "The apps and databases Nectar created here are deleted. The namespace {namespace} and the workloads that ran in it before Nectar stay and keep running; imported workloads are scaled back up and get their hosts back.",
+  "@projectDeleteAdoptedBody": {"placeholders": {"namespace": {"type": "String"}}},
+  "projectDeleteTypeSlug": "This deletes the namespace with every app, database, volume and backup plan in it. Type {slug} to confirm",
+  "@projectDeleteTypeSlug": {"placeholders": {"slug": {"type": "String"}}},
+  "projectDeleteSlugMismatch": "The slug does not match: nothing was deleted.",
+  "projectDeleted": "{name} was deleted",
+  "@projectDeleted": {"placeholders": {"name": {"type": "String"}}}
 }

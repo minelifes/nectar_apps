@@ -261,12 +261,18 @@ func (s *Server) deleteProject(w http.ResponseWriter, r *http.Request, p *princi
 			return
 		}
 	}
+	for _, a := range apps {
+		s.undoImport(r.Context(), proj, a.Slug) // adopted: imported workloads come back
+	}
 	if err := s.store.DeleteProject(r.Context(), proj.ID); err != nil {
 		s.serverError(w, r, err)
 		return
 	}
 	s.removeOrphanFiles(r, shas)
 	s.resync(r)
+	if s.ingSync != nil && proj.Adopted {
+		s.ingSync.Trigger() // hosts imported apps had taken over go back to their Ingress
+	}
 	s.audit(r, p, "project.delete", proj.Slug, nil)
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -887,5 +887,11 @@
   "importHosts": "Хости (лишаються в Ingress)",
   "importImporting": "Імпорт…",
   "importDone": "{workload} тепер застосунок Nectar",
-  "importDomains": "Домени (переходять до застосунку)"
+  "importDomains": "Домени (переходять до застосунку)",
+  "projectDeleteProject": "Видалити проєкт",
+  "projectDeleteTitle": "Видалити {name}?",
+  "projectDeleteAdoptedBody": "Застосунки й бази даних, створені тут Nectar, буде видалено. Простір імен {namespace} і навантаження, що працювали в ньому до Nectar, залишаться й працюватимуть далі; імпортовані навантаження знову масштабуються й отримують свої хости назад.",
+  "projectDeleteTypeSlug": "Буде видалено простір імен з усіма застосунками, базами даних, томами й планами резервного копіювання. Введіть {slug} для підтвердження",
+  "projectDeleteSlugMismatch": "Slug не збігається: нічого не видалено.",
+  "projectDeleted": "{name} видалено"
 }
