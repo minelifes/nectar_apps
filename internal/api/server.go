@@ -455,6 +455,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/external/namespaces", s.can("server.view", s.externalNamespaces))
 	mux.Handle("POST /api/external/namespaces/{ns}/adopt", s.can("project.create", s.adoptNamespace))
 	mux.Handle("GET /api/projects/{pid}/external-workloads", s.inProject("project.view", s.projectExternalWorkloads))
+	mux.Handle("GET /api/projects/{pid}/external-workloads/{kind}/{name}/import", s.inProject("app.create", s.importPreview))
+	mux.Handle("POST /api/projects/{pid}/external-workloads/{kind}/{name}/import", s.inProject("app.create", s.importWorkload))
 
 	// artifact downloads by app pods (signed URLs, no session)
 	mux.HandleFunc("GET /internal/artifacts/{sha}", s.internalArtifact)

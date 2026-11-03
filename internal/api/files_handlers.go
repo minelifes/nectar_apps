@@ -40,7 +40,7 @@ func (s *Server) volumeSession(w http.ResponseWriter, r *http.Request, app store
 		return nil, false
 	}
 	b := &volfiles.Browser{Kube: s.kube, Image: deploy.InitImage}
-	sess, err := b.Open(r.Context(), proj.Namespace, deploy.VolumeClaimName(app.Slug, name))
+	sess, err := b.Open(r.Context(), proj.Namespace, deploy.AppVolumeClaim(app, name))
 	if err != nil {
 		writeError(w, http.StatusBadGateway, err.Error())
 		return nil, false
@@ -192,7 +192,7 @@ func (s *Server) closeFiles(w http.ResponseWriter, r *http.Request, _ *principal
 		return
 	}
 	b := &volfiles.Browser{Kube: s.kube, Image: deploy.InitImage}
-	if err := b.Close(r.Context(), proj.Namespace, deploy.VolumeClaimName(app.Slug, r.PathValue("name"))); err != nil {
+	if err := b.Close(r.Context(), proj.Namespace, deploy.AppVolumeClaim(app, r.PathValue("name"))); err != nil {
 		writeError(w, http.StatusBadGateway, err.Error())
 		return
 	}

@@ -41,4 +41,12 @@ every route with its TLS setup, marking what migrates as is (✓), with caveats 
   later. The panel adopts them within a minute. From any computer: `nectar external`, `nectar adopt NS…|--all`.
 - Existing namespaces are listed read-only on the **Projects** page ("Running on this cluster, not managed by Nectar"); adopt any of them as a project there, and its existing workloads stay visible on the project page. The panel only
   manages objects it creates.
+- In an adopted project, **Import as app** (on each Deployment or single-replica StatefulSet) turns the workload
+  into a Nectar app: image, ports, variables (also from Secrets/ConfigMaps), mounted config files, replicas,
+  resources, health check and the same PVCs (no data copied). The original is scaled to 0 and its Services select
+  the app's pods. Ingress hosts whose every path leads to the workload become the app's domains (HTTPS from
+  Let's Encrypt; the panel's domains win over the Ingress, which stays in place unused); hosts shared with other
+  workloads or using regex paths stay on the Ingress. Deleting the app scales the original back up, restores the
+  Services and hands the hosts back to the Ingress. Not importable: several containers, init containers, host network, privileged containers, hostPath
+  and other volume kinds.
 - The built-in registry is not added unless you pass `--registry` (its mirror needs one k3s restart).

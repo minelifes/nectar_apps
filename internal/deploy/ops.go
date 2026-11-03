@@ -144,7 +144,7 @@ func (d *Deployer) Volumes(ctx context.Context, a store.App, p store.Project) ([
 	byName := map[string]*VolumeInfo{}
 	var order []string
 	for _, v := range a.Config.Volumes {
-		byName[v.Name] = &VolumeInfo{Name: v.Name, Claim: VolumeClaimName(a.Slug, v.Name), MountPath: v.MountPath, RequestedMB: v.SizeMB, InConfig: true}
+		byName[v.Name] = &VolumeInfo{Name: v.Name, Claim: ClaimOf(a.Slug, v), MountPath: v.MountPath, RequestedMB: v.SizeMB, InConfig: true}
 		order = append(order, v.Name)
 	}
 	if live, err := d.store.LiveRelease(ctx, a.ID); err == nil {
@@ -152,7 +152,7 @@ func (d *Deployer) Volumes(ctx context.Context, a store.App, p store.Project) ([
 			if vi, ok := byName[v.Name]; ok {
 				vi.Mounted = true
 			} else {
-				byName[v.Name] = &VolumeInfo{Name: v.Name, Claim: VolumeClaimName(a.Slug, v.Name), MountPath: v.MountPath, RequestedMB: v.SizeMB, Mounted: true}
+				byName[v.Name] = &VolumeInfo{Name: v.Name, Claim: ClaimOf(a.Slug, v), MountPath: v.MountPath, RequestedMB: v.SizeMB, Mounted: true}
 				order = append(order, v.Name)
 			}
 		}
@@ -231,6 +231,11 @@ func (d *Deployer) volumeUsage(ctx context.Context, a store.App, p store.Project
 // ResizeVolume grows a volume. The storage class must support expansion (k3s local-path does not: there
 // the size is not enforced anyway, so the new size is only recorded).
 func (d *Deployer) ResizeVolume(ctx context.Context, a store.App, p store.Project, name string, sizeMB int64) (applied bool, err error) {
+	for _, v := range a.Config.Volumes {
+		if v.Name == name && v.Claim != "" {
+			return false, nil // an existing claim (imported workload): only the recorded size changes
+		}
+	}
 	return d.ResizeClaim(ctx, p.Namespace, VolumeClaimName(a.Slug, name), sizeMB)
 }
 
