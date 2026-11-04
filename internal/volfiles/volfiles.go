@@ -322,3 +322,23 @@ func (s *Session) Remove(ctx context.Context, p string) error {
 	_, err := s.run(ctx, `[ -e "$1" ] || [ -L "$1" ] || exit 44; rm -rf -- "$1"`, nil, 4096, p)
 	return err
 }
+
+// Chown changes the owner of a file or folder (e.g. "1000:1000").
+func (s *Session) Chown(ctx context.Context, p, owner string) error {
+	_, err := s.run(ctx, `[ -e "$1" ] || [ -L "$1" ] || exit 44; chown -R "$2" "$1"`, nil, 4096, p, owner)
+	return err
+}
+
+// Chmod changes the permissions of a file or folder (octal, e.g. "755").
+func (s *Session) Chmod(ctx context.Context, p string, mode int) error {
+	_, err := s.run(ctx, `[ -e "$1" ] || [ -L "$1" ] || exit 44; chmod -R "$2" "$1"`, nil, 4096, p, strconv.Itoa(mode))
+	return err
+}
+
+// Touch creates an empty file (or updates its mtime if it exists). The file gets the owner of its folder.
+func (s *Session) Touch(ctx context.Context, file string) error {
+	_, err := s.run(ctx, `d=$(dirname "$1"); [ -d "$d" ] || exit 44
+if [ -e "$1" ]; then touch "$1";
+else touch "$1" && chown "$(stat -c %u:%g "$d")" "$1" && chmod "$(stat -c %a "$d")" "$1"; fi`, nil, 4096, file)
+	return err
+}

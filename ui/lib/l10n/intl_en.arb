@@ -1351,6 +1351,8 @@
   },
   "appUpload": "Upload",
   "appNewFolder": "New folder",
+  "appNewFile": "New file",
+  "appPermissions": "Permissions",
   "appChangesApplyToTheRunning": "Changes apply to the running app at once. New files get the owner of their folder.",
   "appOpeningTheVolume": "Opening the volume…",
   "appEmptyFolder": "Empty folder",

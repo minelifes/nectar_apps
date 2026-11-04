@@ -389,6 +389,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/apps/{id}/volumes/{name}/files/content", s.onApp("volume.manage", s.uploadFile)) // clients that stream with POST
 	mux.Handle("POST /api/apps/{id}/volumes/{name}/files", s.onApp("volume.manage", s.fileAction))
 	mux.Handle("POST /api/apps/{id}/volumes/{name}/files/close", s.onApp("volume.manage", s.closeFiles))
+	mux.Handle("POST /api/apps/{id}/volumes/{name}/files/chmod-chown", s.onApp("volume.manage", s.fileChownChmod))
 	mux.Handle("GET /api/server/volumes", s.can("server.view", s.serverVolumes))
 	mux.Handle("GET /api/server/storage-classes", s.authed(s.storageClasses))
 	mux.Handle("GET /api/apps/{id}/addons", s.onApp("app.view", s.appAddons))

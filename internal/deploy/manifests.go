@@ -458,7 +458,7 @@ func (s AppSpec) podSpec(command []string, role string) (map[string]any, error) 
 		"resources":       resourcesFor(cfg.Resources),
 	}
 	cmd := cfg.Command
-	if len(cmd) == 0 {
+	if cmd == nil || len(cmd) == 0 {
 		cmd = rt.Command
 	}
 	if len(command) > 0 {

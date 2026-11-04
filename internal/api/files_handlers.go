@@ -141,7 +141,7 @@ func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request, p *principal
 
 func (s *Server) fileAction(w http.ResponseWriter, r *http.Request, p *principal, app store.App, proj store.Project) {
 	var in struct {
-		Action string `json:"action"` // mkdir | rename | delete
+		Action string `json:"action"` // mkdir | rename | delete | touch
 		Path   string `json:"path"`
 		To     string `json:"to"`
 	}
@@ -174,8 +174,10 @@ func (s *Server) fileAction(w http.ResponseWriter, r *http.Request, p *principal
 		err = sess.Rename(r.Context(), target, to)
 	case "delete":
 		err = sess.Remove(r.Context(), target)
+	case "touch":
+		err = sess.Touch(r.Context(), target)
 	default:
-		writeError(w, http.StatusBadRequest, "action must be mkdir, rename or delete")
+		writeError(w, http.StatusBadRequest, "action must be mkdir, rename, delete or touch")
 		return
 	}
 	if err != nil {
@@ -183,6 +185,48 @@ func (s *Server) fileAction(w http.ResponseWriter, r *http.Request, p *principal
 		return
 	}
 	s.audit(r, p, "volume.file_"+in.Action, proj.Slug+"/"+app.Slug, map[string]string{"volume": r.PathValue("name"), "path": rel(target), "to": rel(to)})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// fileChownChmod: POST /api/apps/{id}/volumes/{name}/files/chmod-chown (volume.manage).
+func (s *Server) fileChownChmod(w http.ResponseWriter, r *http.Request, p *principal, app store.App, proj store.Project) {
+	var in struct {
+		Path  string `json:"path"`
+		Owner string `json:"owner"`
+		Mode  string `json:"mode"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	path, ok := filePath(w, in.Path)
+	if !ok {
+		return
+	}
+	sess, ok := s.volumeSession(w, r, app, proj)
+	if !ok {
+		return
+	}
+	var errs []string
+	if in.Owner != "" {
+		if err := sess.Chown(r.Context(), path, in.Owner); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	if in.Mode != "" {
+		mode, err := strconv.ParseInt(in.Mode, 8, 32)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid mode (octal)")
+			return
+		}
+		if err := sess.Chmod(r.Context(), path, int(mode)); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		writeError(w, http.StatusBadGateway, strings.Join(errs, "; "))
+		return
+	}
+	s.audit(r, p, "volume.file_chmod_chown", proj.Slug+"/"+app.Slug, map[string]string{"volume": r.PathValue("name"), "path": rel(path), "owner": in.Owner, "mode": in.Mode})
 	w.WriteHeader(http.StatusNoContent)
 }
 

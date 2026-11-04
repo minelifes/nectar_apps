@@ -279,10 +279,10 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
             if (!rt.takesImage) 'runtime_version': _version,
             'config': {
               if (rt.takesImage && !_fromGit) 'image': _image.text.trim(),
-              if (rt.takesImage &&
-                  !_fromGit &&
-                  _startCommand.text.trim().isNotEmpty)
-                'command': ['sh', '-c', _startCommand.text.trim()],
+              if (rt.takesImage && !_fromGit)
+                'command': _startCommand.text.trim().isEmpty
+                    ? <String>[]
+                    : ['sh', '-c', _startCommand.text.trim()],
               if (_kind == 'web') 'port': int.parse(_port.text.trim()),
               if (_kind == 'cron') 'schedule': _schedule.text.trim(),
             },

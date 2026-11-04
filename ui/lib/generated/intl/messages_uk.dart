@@ -759,6 +759,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appNetworkAndHealthCheck": MessageLookupByLibrary.simpleMessage(
       "Мережа й перевірка справності",
     ),
+    "appNewFile": MessageLookupByLibrary.simpleMessage("Новий файл"),
     "appNewFolder": MessageLookupByLibrary.simpleMessage("Нова тека"),
     "appNewOrHttps": MessageLookupByLibrary.simpleMessage("/new або https://…"),
     "appNewSecret": MessageLookupByLibrary.simpleMessage("Новий секрет"),
@@ -819,6 +820,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appPathInTheContainer": MessageLookupByLibrary.simpleMessage(
       "Шлях у контейнері",
     ),
+    "appPermissions": MessageLookupByLibrary.simpleMessage("Дозволи"),
     "appPersistentDisksFilesWrittenThere": MessageLookupByLibrary.simpleMessage(
       "Постійні диски: записані туди файли переживають перезапуски й розгортання. Усе інше в контейнері тимчасове.",
     ),

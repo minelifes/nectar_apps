@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -248,6 +248,60 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
     }, 'Deleted ${e.name}');
   }
 
+  Future<void> _newFile() async {
+    final name = await promptText(
+      context,
+      'New file',
+      'File name',
+      initial: 'untitled.txt',
+    );
+    if (name == null || name.trim().isEmpty) return;
+    if (name.contains('/')) {
+      if (mounted) {
+        showSnack(context, 'File name cannot contain slashes', error: true);
+      }
+      return;
+    }
+    await _act({
+      'action': 'touch',
+      'path': _join(name.trim()),
+    }, 'File ${name.trim()} created');
+  }
+
+  Future<void> _chmodChown(VolumeEntry e) async {
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (_) => _ChmodChownDialog(
+        path: _join(e.name),
+        name: e.name,
+        isDir: e.isDir,
+        initialMode: e.mode,
+        initialOwner: e.owner,
+      ),
+    );
+    if (result == null || !mounted) return;
+    final mode = result['mode'];
+    final owner = result['owner'];
+    if ((mode == null || mode.isEmpty) && (owner == null || owner.isEmpty)) {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(apiProvider)
+          .post(
+            '$_base/chmod-chown',
+            data: {'path': _join(e.name), 'mode': mode, 'owner': owner},
+          );
+      if (mounted) showSnack(context, 'Permissions updated');
+      await _load();
+    } on Object catch (err) {
+      if (mounted) showSnack(context, describeError(err), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
@@ -304,6 +358,12 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
                   onPressed: _busy || _entries == null ? null : _newFolder,
                   icon: const Icon(Icons.create_new_folder_outlined, size: 18),
                   label: Text(s.appNewFolder),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: _busy || _entries == null ? null : _newFile,
+                  icon: const Icon(Icons.note_add_outlined, size: 18),
+                  label: Text(s.appNewFile),
                 ),
                 const Spacer(),
                 IconButton(
@@ -418,6 +478,7 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
               'download' => _download(e),
               'rename' => _rename(e),
               'delete' => _delete(e),
+              'permissions' => _chmodChown(e),
               _ => null,
             },
             itemBuilder: (_) => [
@@ -426,6 +487,10 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
               if (e.type == 'file')
                 PopupMenuItem(value: 'download', child: Text(s.appDownload)),
               PopupMenuItem(value: 'rename', child: Text(s.appRenameMove)),
+              PopupMenuItem(
+                value: 'permissions',
+                child: Text(s.appPermissions),
+              ),
               PopupMenuItem(value: 'delete', child: Text(s.actionDelete)),
             ],
           ),
@@ -486,6 +551,91 @@ class _EditFileDialogState extends State<_EditFileDialog> {
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, _ctl.text),
+          child: Text(s.actionSave),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChmodChownDialog extends StatefulWidget {
+  const _ChmodChownDialog({
+    required this.path,
+    required this.name,
+    required this.isDir,
+    required this.initialMode,
+    required this.initialOwner,
+  });
+
+  final String path;
+  final String name;
+  final bool isDir;
+  final String initialMode;
+  final String initialOwner;
+
+  @override
+  State<_ChmodChownDialog> createState() => _ChmodChownDialogState();
+}
+
+class _ChmodChownDialogState extends State<_ChmodChownDialog> {
+  late final _modeCtrl = TextEditingController(text: widget.initialMode);
+  late final _ownerCtrl = TextEditingController(text: widget.initialOwner);
+
+  @override
+  void dispose() {
+    _modeCtrl.dispose();
+    _ownerCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return AlertDialog(
+      title: Text(s.appPermissions),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              widget.isDir ? 'Folder: ${widget.name}' : 'File: ${widget.name}',
+              style: monoStyle(context, size: 12),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _modeCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Mode (octal)',
+                hintText: '755',
+                helperText: 'e.g. 755, 644, 777',
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _ownerCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Owner (uid:gid)',
+                hintText: '1000:1000',
+                helperText: 'leave empty to keep current',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, {
+            'mode': _modeCtrl.text.trim(),
+            'owner': _ownerCtrl.text.trim(),
+          }),
           child: Text(s.actionSave),
         ),
       ],
