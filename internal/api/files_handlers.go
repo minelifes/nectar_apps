@@ -198,7 +198,7 @@ func (s *Server) fileChownChmod(w http.ResponseWriter, r *http.Request, p *princ
 	if !decode(w, r, &in) {
 		return
 	}
-	path, ok := filePath(w, in.Path)
+	path2, ok := filePath(w, in.Path)
 	if !ok {
 		return
 	}
@@ -208,7 +208,7 @@ func (s *Server) fileChownChmod(w http.ResponseWriter, r *http.Request, p *princ
 	}
 	var errs []string
 	if in.Owner != "" {
-		if err := sess.Chown(r.Context(), path, in.Owner); err != nil {
+		if err := sess.Chown(r.Context(), path2, in.Owner); err != nil {
 			errs = append(errs, err.Error())
 		}
 	}
@@ -218,7 +218,7 @@ func (s *Server) fileChownChmod(w http.ResponseWriter, r *http.Request, p *princ
 			writeError(w, http.StatusBadRequest, "invalid mode (decimial)")
 			return
 		}
-		if err := sess.Chmod(r.Context(), path, int(mode)); err != nil {
+		if err := sess.Chmod(r.Context(), path2, int(mode)); err != nil {
 			errs = append(errs, err.Error())
 		}
 	}
@@ -226,7 +226,7 @@ func (s *Server) fileChownChmod(w http.ResponseWriter, r *http.Request, p *princ
 		writeError(w, http.StatusBadGateway, strings.Join(errs, "; "))
 		return
 	}
-	s.audit(r, p, "volume.file_chmod_chown", proj.Slug+"/"+app.Slug, map[string]string{"volume": r.PathValue("name"), "path": rel(path), "owner": in.Owner, "mode": in.Mode})
+	s.audit(r, p, "volume.file_chmod_chown", proj.Slug+"/"+app.Slug, map[string]string{"volume": r.PathValue("name"), "path": rel(path2), "owner": in.Owner, "mode": in.Mode})
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -269,7 +269,7 @@ func (s *Server) storageClasses(w http.ResponseWriter, r *http.Request, _ *princ
 		writeError(w, http.StatusBadGateway, "kubernetes: "+err.Error())
 		return
 	}
-	out := []map[string]any{}
+	var out []map[string]any
 	for _, sc := range list {
 		name := strOf(sc, "metadata", "name")
 		prov := strOf(sc, "provisioner")

@@ -875,6 +875,10 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                 helperText: l.appStartCommandHelp,
               ),
               autocorrect: false,
+              maxLines: null,
+              minLines: 4,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
               onChanged: (_) => setState(() {}),
             ),
             if (isBareBaseImage(_image.text) &&
@@ -1414,6 +1418,8 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
             ? 'none'
             : '${_env.length} variables (${_env.where((v) => v.secret).length} secret)',
       ),
+      if (rt.takesImage && !_fromGit && _startCommand.text.trim().isNotEmpty)
+        ('Start command', _startCommand.text.trim()),
     ];
     final c = NectarColors.of(context);
     return Column(

@@ -15,6 +15,7 @@ import '../../generated/l10n.dart';
 import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/syntax_highlighter.dart';
 
 /// Browse, upload, download, edit, rename and delete the files of an app volume.
 Future<void> showVolumeFiles(
@@ -519,6 +520,13 @@ class _EditFileDialog extends StatefulWidget {
 
 class _EditFileDialogState extends State<_EditFileDialog> {
   late final _ctl = TextEditingController(text: widget.text);
+  bool _editing = true;
+
+  String _fileType() {
+    final parts = widget.name.split('.');
+    if (parts.length < 2) return 'txt';
+    return parts.last.toLowerCase();
+  }
 
   @override
   void dispose() {
@@ -530,19 +538,34 @@ class _EditFileDialogState extends State<_EditFileDialog> {
   Widget build(BuildContext context) {
     final s = S.of(context);
     return AlertDialog(
-      title: Text(widget.name),
+      title: Row(
+        children: [
+          Expanded(child: Text(widget.name)),
+          TextButton(
+            onPressed: () => setState(() => _editing = !_editing),
+            child: Text(_editing ? 'Preview' : 'Edit'),
+          ),
+        ],
+      ),
       content: SizedBox(
         width: 760,
         height: 480,
-        child: TextField(
-          controller: _ctl,
-          expands: true,
-          maxLines: null,
-          minLines: null,
-          textAlignVertical: TextAlignVertical.top,
-          style: monoStyle(context, size: 13),
-          decoration: const InputDecoration(border: OutlineInputBorder()),
-        ),
+        child: _editing
+            ? TextField(
+                controller: _ctl,
+                expands: true,
+                maxLines: null,
+                minLines: null,
+                textAlignVertical: TextAlignVertical.top,
+                style: monoStyle(context, size: 13),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+              )
+            : SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: SyntaxView(text: widget.text, fileType: _fileType()),
+                ),
+              ),
       ),
       actions: [
         TextButton(
