@@ -213,9 +213,9 @@ func (s *Server) fileChownChmod(w http.ResponseWriter, r *http.Request, p *princ
 		}
 	}
 	if in.Mode != "" {
-		mode, err := strconv.ParseInt(in.Mode, 8, 32)
+		mode, err := strconv.ParseInt(in.Mode, 10, 32)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid mode (octal)")
+			writeError(w, http.StatusBadRequest, "invalid mode (decimial)")
 			return
 		}
 		if err := sess.Chmod(r.Context(), path, int(mode)); err != nil {
