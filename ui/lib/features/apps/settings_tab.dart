@@ -468,13 +468,24 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           spacing: 16,
           runSpacing: 12,
           children: [
-            field(
-              _command,
-              'Start command',
-              hint: l.appLeaveEmptyForTheDefault,
+            SizedBox(
               width: 520,
-              mono: true,
-              help: 'Runs with sh -c, so the image needs a shell',
+              child: TextField(
+                controller: _command,
+                maxLines: null,
+                minLines: 4,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                style: monoStyle(context, size: 13.5),
+                decoration: InputDecoration(
+                  labelText: 'Start command',
+                  hintText: l.appLeaveEmptyForTheDefault,
+                  helperText:
+                      'Runs with sh -c, so the image needs a shell. One command per line.',
+                  helperMaxLines: 2,
+                ),
+                onChanged: (_) => _changed(),
+              ),
             ),
             field(
               _args,
