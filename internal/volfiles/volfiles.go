@@ -331,7 +331,7 @@ func (s *Session) Chown(ctx context.Context, p, owner string) error {
 
 // Chmod changes the permissions of a file or folder (octal, e.g. "755").
 func (s *Session) Chmod(ctx context.Context, p string, mode int) error {
-	_, err := s.run(ctx, `[ -e "$1" ] || [ -L "$1" ] || exit 44; chmod -R "$2" "$1"`, nil, 4096, p, strconv.Itoa(mode))
+	_, err := s.run(ctx, `[ -e "$1" ] || [ -L "$1" ] || exit 44; chmod -R "$2" "$1"`, nil, 4096, p, strconv.FormatInt(int64(mode), 10))
 	return err
 }
 
