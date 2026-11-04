@@ -724,6 +724,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appNetworkAndHealthCheck": MessageLookupByLibrary.simpleMessage(
       "Network and health check",
     ),
+    "appNewFile": MessageLookupByLibrary.simpleMessage("New file"),
     "appNewFolder": MessageLookupByLibrary.simpleMessage("New folder"),
     "appNewOrHttps": MessageLookupByLibrary.simpleMessage("/new or https://…"),
     "appNewSecret": MessageLookupByLibrary.simpleMessage("New secret"),
@@ -784,6 +785,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appPathInTheContainer": MessageLookupByLibrary.simpleMessage(
       "Path in the container",
     ),
+    "appPermissions": MessageLookupByLibrary.simpleMessage("Permissions"),
     "appPersistentDisksFilesWrittenThere": MessageLookupByLibrary.simpleMessage(
       "Persistent disks: files written there survive restarts and deploys. Everything else in the container is temporary.",
     ),

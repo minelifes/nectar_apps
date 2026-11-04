@@ -6351,6 +6351,21 @@ class S {
     return Intl.message('New folder', name: 'appNewFolder', desc: '', args: []);
   }
 
+  /// `New file`
+  String get appNewFile {
+    return Intl.message('New file', name: 'appNewFile', desc: '', args: []);
+  }
+
+  /// `Permissions`
+  String get appPermissions {
+    return Intl.message(
+      'Permissions',
+      name: 'appPermissions',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Changes apply to the running app at once. New files get the owner of their folder.`
   String get appChangesApplyToTheRunning {
     return Intl.message(

@@ -722,6 +722,8 @@
   "appFiles2": "Файли · {volume}",
   "appUpload": "Завантажити",
   "appNewFolder": "Нова тека",
+  "appNewFile": "Новий файл",
+  "appPermissions": "Дозволи",
   "appChangesApplyToTheRunning": "Зміни одразу діють для запущеного застосунку. Нові файли отримують власника своєї теки.",
   "appOpeningTheVolume": "Відкриття тому…",
   "appEmptyFolder": "Порожня тека",
