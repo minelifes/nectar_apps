@@ -32,21 +32,22 @@ const (
 
 // Runtime describes one app type.
 type Runtime struct {
-	ID          string            `json:"id" yaml:"id"`
-	Name        string            `json:"name" yaml:"name"`
-	Description string            `json:"description" yaml:"description"`
-	Icon        string            `json:"icon" yaml:"icon"`
-	Kinds       []string          `json:"kinds" yaml:"kinds"`
-	Artifact    Artifact          `json:"artifact" yaml:"artifact"`
-	Versions    []Version         `json:"versions" yaml:"versions"`
-	Command     []string          `json:"command,omitempty" yaml:"command"`
-	Args        []string          `json:"args,omitempty" yaml:"args"`
-	Env         map[string]string `json:"env,omitempty" yaml:"env"`
-	Port        int               `json:"port" yaml:"port"`
-	Health      Health            `json:"health" yaml:"health"`
-	RunAsUser   *int64            `json:"run_as_user,omitempty" yaml:"run_as_user"`
-	Options     map[string]Option `json:"options,omitempty" yaml:"options"`
-	ConfigFiles []ConfigFile      `json:"-" yaml:"config_files"`
+	ID              string            `json:"id" yaml:"id"`
+	Name            string            `json:"name" yaml:"name"`
+	Description     string            `json:"description" yaml:"description"`
+	Icon            string            `json:"icon" yaml:"icon"`
+	Kinds           []string          `json:"kinds" yaml:"kinds"`
+	Artifact        Artifact          `json:"artifact" yaml:"artifact"`
+	Versions        []Version         `json:"versions" yaml:"versions"`
+	Command         []string          `json:"command,omitempty" yaml:"command"`
+	Args            []string          `json:"args,omitempty" yaml:"args"`
+	Env             map[string]string `json:"env,omitempty" yaml:"env"`
+	Port            int               `json:"port" yaml:"port"`
+	Health          Health            `json:"health" yaml:"health"`
+	RunAsUser       *int64            `json:"run_as_user,omitempty" yaml:"run_as_user"` // deprecated: use SecurityContext
+	SecurityContext SecurityContext   `json:"security_context,omitempty" yaml:"security_context"`
+	Options         map[string]Option `json:"options,omitempty" yaml:"options"`
+	ConfigFiles     []ConfigFile      `json:"-" yaml:"config_files"`
 }
 
 // Artifact describes what the user uploads and where it goes.
@@ -69,6 +70,14 @@ type Version struct {
 type Health struct {
 	Type string `json:"type" yaml:"type"` // tcp | http | none
 	Path string `json:"path,omitempty" yaml:"path"`
+}
+
+// SecurityContext controls the security settings for containers.
+type SecurityContext struct {
+	RunAsNonRoot             *bool  `json:"run_as_non_root,omitempty" yaml:"run_as_non_root"`
+	RunAsUser                *int64 `json:"run_as_user,omitempty" yaml:"run_as_user"`
+	RunAsGroup               *int64 `json:"run_as_group,omitempty" yaml:"run_as_group"`
+	AllowPrivilegeEscalation *bool  `json:"allow_privilege_escalation,omitempty" yaml:"allow_privilege_escalation"`
 }
 
 // Option is a runtime-specific setting shown in the wizard.
@@ -197,4 +206,25 @@ func (r Runtime) OptionDefaults() map[string]any {
 		out[k] = o.Default
 	}
 	return out
+}
+
+// EffectiveSecurityContext returns the merged security context.
+// The new SecurityContext fields take precedence; RunAsUser is a legacy shorthand
+// that sets runAsUser, runAsGroup, fsGroup to the same UID.
+func (r Runtime) EffectiveSecurityContext() SecurityContext {
+	sc := r.SecurityContext
+	if r.RunAsUser != nil {
+		if sc.RunAsUser == nil {
+			sc.RunAsUser = r.RunAsUser
+		}
+		if sc.RunAsGroup == nil {
+			sc.RunAsGroup = r.RunAsUser
+		}
+		if sc.RunAsNonRoot == nil {
+			uid := *r.RunAsUser
+			b := uid != 0
+			sc.RunAsNonRoot = &b
+		}
+	}
+	return sc
 }

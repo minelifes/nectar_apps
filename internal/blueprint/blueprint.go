@@ -87,6 +87,8 @@ type App struct {
 	Links []Link `json:"links,omitempty" yaml:"links,omitempty"`
 	// EnvGroups attaches project env groups (all their variables).
 	EnvGroups []string `json:"env_groups,omitempty" yaml:"env_groups,omitempty"`
+	// SecurityContext overrides the runtime's security settings.
+	SecurityContext SecurityContext `json:"security_context,omitempty" yaml:"security_context,omitempty"`
 }
 
 // Volume is a persistent disk.
@@ -101,6 +103,14 @@ type Volume struct {
 type Port struct {
 	Port     int    `json:"port" yaml:"port"`
 	Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"` // tcp (default) | udp
+}
+
+// SecurityContext controls the security settings for the app's containers.
+type SecurityContext struct {
+	RunAsNonRoot             *bool  `json:"run_as_non_root,omitempty" yaml:"run_as_non_root"`
+	RunAsUser                *int64 `json:"run_as_user,omitempty" yaml:"run_as_user"`
+	RunAsGroup               *int64 `json:"run_as_group,omitempty" yaml:"run_as_group"`
+	AllowPrivilegeEscalation *bool  `json:"allow_privilege_escalation,omitempty" yaml:"allow_privilege_escalation"`
 }
 
 // Link connects a database to the app.
