@@ -332,6 +332,53 @@ func failed(steps []applyStep) int {
 	return n
 }
 
+func toInt64(v any) int64 {
+	switch x := v.(type) {
+	case float64:
+		return int64(x)
+	case int:
+		return int64(x)
+	case int64:
+		return x
+	default:
+		return 0
+	}
+}
+
+// ImportOptionsFromBytes extracts import options from a JSON body.
+func ImportOptionsFromBytes(b []byte) blueprint.ImportOptions {
+	var opts blueprint.ImportOptions
+	var body map[string]any
+	if err := json.Unmarshal(b, &body); err != nil {
+		return opts
+	}
+	if v, ok := body["volume_size_mb"]; ok {
+		opts.VolumeSizeMB = toInt64(v)
+	}
+	if v, ok := body["default_cpu_millicores"]; ok {
+		opts.DefaultCPUMillicores = toInt64(v)
+	}
+	if v, ok := body["default_memory_mb"]; ok {
+		opts.DefaultMemoryMB = toInt64(v)
+	}
+	return opts
+}
+
+// parseComposeBody extracts the compose YAML and deploy/dryRun flags from the body.
+func parseComposeBody(b []byte) (raw []byte, deploy, dryRun bool) {
+	deploy = true
+	dryRun = false
+	var wrapped struct {
+		Compose  *string `json:"compose"`
+		Deploy   *bool   `json:"deploy"`
+		DryRun   bool    `json:"dry_run"`
+	}
+	if json.Unmarshal(b, &wrapped) == nil && wrapped.Compose != nil {
+		return []byte(*wrapped.Compose), wrapped.Deploy == nil || *wrapped.Deploy, wrapped.DryRun
+	}
+	return b, true, false
+}
+
 // readBlueprint reads a request body: raw YAML/JSON, or {"blueprint": "<yaml>", "deploy": bool}.
 func readBlueprintBody(w http.ResponseWriter, r *http.Request) (data []byte, deploy, dryRun bool, ok bool) {
 	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
@@ -554,13 +601,22 @@ func (s *Server) exportProject(w http.ResponseWriter, r *http.Request, p *princi
 }
 
 // importCompose: POST /api/projects/{pid}/import/compose — a docker-compose.yml (raw or {compose, deploy,
-// dry_run}). dry_run returns the converted nectar.yaml and the notes without changing anything.
+// dry_run, volume_size_mb, default_cpu_millicores, default_memory_mb}). dry_run returns the converted
+// nectar.yaml and the notes without changing anything.
 func (s *Server) importCompose(w http.ResponseWriter, r *http.Request, p *principal, proj store.Project) {
-	raw, deploy, dryRun, ok := readBlueprintBody(w, r)
-	if !ok {
+	// Read body once for both options extraction and compose parsing.
+	bodyBytes, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	if err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, "the file is larger than 1 MB")
 		return
 	}
-	b, notes, err := blueprint.FromCompose(raw)
+	opts := ImportOptionsFromBytes(bodyBytes)
+	raw, deploy, dryRun := parseComposeBody(bodyBytes)
+	if raw == nil {
+		writeError(w, http.StatusBadRequest, "empty or invalid request body")
+		return
+	}
+	b, notes, err := blueprint.FromCompose(raw, opts)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return

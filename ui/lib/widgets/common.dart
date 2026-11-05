@@ -25,33 +25,35 @@ class NCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final body = Padding(
-      padding: padding ?? const EdgeInsets.all(NectarTokens.gap + 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (title != null) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title!,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                ?trailing,
-              ],
-            ),
-            const SizedBox(height: 14),
-          ],
-          child,
-        ],
-      ),
-    );
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: onTap == null ? body : InkWell(onTap: onTap, child: body),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: padding ?? const EdgeInsets.all(NectarTokens.gap + 2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (title != null) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title!,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    ?trailing,
+                  ],
+                ),
+                const SizedBox(height: 14),
+              ],
+              child,
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
