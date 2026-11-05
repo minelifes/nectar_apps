@@ -171,10 +171,10 @@ func (s *Server) applyBlueprint(r *http.Request, proj store.Project, b blueprint
 		}
 		if a.SecurityContext.RunAsNonRoot != nil || a.SecurityContext.RunAsUser != nil || a.SecurityContext.RunAsGroup != nil || a.SecurityContext.AllowPrivilegeEscalation != nil {
 			cfg["security_context"] = map[string]any{
-				"run_as_non_root":             a.SecurityContext.RunAsNonRoot,
-				"run_as_user":                 a.SecurityContext.RunAsUser,
-				"run_as_group":                a.SecurityContext.RunAsGroup,
-				"allow_privilege_escalation":  a.SecurityContext.AllowPrivilegeEscalation,
+				"run_as_non_root":            a.SecurityContext.RunAsNonRoot,
+				"run_as_user":                a.SecurityContext.RunAsUser,
+				"run_as_group":               a.SecurityContext.RunAsGroup,
+				"allow_privilege_escalation": a.SecurityContext.AllowPrivilegeEscalation,
 			}
 		}
 		for k, v := range cfg { // leave unset fields to the runtime defaults
