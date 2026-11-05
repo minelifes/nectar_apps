@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nectar_apps_ui/widgets/syntax_highlighter.dart';
 
 import '../../api/client.dart';
 import '../../api/models.dart';
@@ -470,22 +471,36 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           children: [
             SizedBox(
               width: 520,
-              child: TextField(
+              child: SyntaxHighlightedTextField(
                 controller: _command,
-                maxLines: null,
-                minLines: 4,
-                keyboardType: TextInputType.multiline,
-                textInputAction: TextInputAction.newline,
-                style: monoStyle(context, size: 13.5),
+                fileType: 'sh',
+                style: monoStyle(context, size: 12),
                 decoration: InputDecoration(
-                  labelText: 'Start command',
-                  hintText: l.appLeaveEmptyForTheDefault,
+                  labelText: l.appStartCommandOptional,
+                  hintText: 'sleep infinity',
                   helperText:
                       'Runs with sh -c, so the image needs a shell. One command per line.',
-                  helperMaxLines: 2,
                 ),
+                maxLines: null,
+                minLines: 4,
                 onChanged: (_) => _changed(),
               ),
+              // child: TextField(
+              //   controller: _command,
+              //   maxLines: null,
+              //   minLines: 4,
+              //   keyboardType: TextInputType.multiline,
+              //   textInputAction: TextInputAction.newline,
+              //   style: monoStyle(context, size: 13.5),
+              //   decoration: InputDecoration(
+              //     labelText: 'Start command',
+              //     hintText: l.appLeaveEmptyForTheDefault,
+              //     helperText:
+              //         'Runs with sh -c, so the image needs a shell. One command per line.',
+              //     helperMaxLines: 2,
+              //   ),
+              //   onChanged: (_) => _changed(),
+              // ),
             ),
             field(
               _args,

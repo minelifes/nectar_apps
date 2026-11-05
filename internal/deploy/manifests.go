@@ -411,10 +411,29 @@ func (s AppSpec) job(name, role string, command []string, deadline int) (obj, er
 func (s AppSpec) podSpec(command []string, role string) (map[string]any, error) {
 	rt, cfg := s.Runtime, s.Config
 	sec := map[string]any{"seccompProfile": map[string]any{"type": "RuntimeDefault"}}
-	if rt.RunAsUser != nil {
-		uid := *rt.RunAsUser
-		sec["runAsUser"], sec["runAsGroup"], sec["fsGroup"] = uid, uid, uid
-		sec["runAsNonRoot"] = uid != 0
+	esc := rt.EffectiveSecurityContext()
+	// Config's security context overrides the runtime's.
+	if cfg.SecurityContext.RunAsNonRoot != nil {
+		esc.RunAsNonRoot = cfg.SecurityContext.RunAsNonRoot
+	}
+	if cfg.SecurityContext.RunAsUser != nil {
+		esc.RunAsUser = cfg.SecurityContext.RunAsUser
+	}
+	if cfg.SecurityContext.RunAsGroup != nil {
+		esc.RunAsGroup = cfg.SecurityContext.RunAsGroup
+	}
+	if cfg.SecurityContext.AllowPrivilegeEscalation != nil {
+		esc.AllowPrivilegeEscalation = cfg.SecurityContext.AllowPrivilegeEscalation
+	}
+	if esc.RunAsNonRoot != nil {
+		sec["runAsNonRoot"] = *esc.RunAsNonRoot
+	}
+	if esc.RunAsUser != nil {
+		sec["runAsUser"] = *esc.RunAsUser
+	}
+	if esc.RunAsGroup != nil {
+		sec["runAsGroup"] = *esc.RunAsGroup
+		sec["fsGroup"] = *esc.RunAsGroup
 	}
 
 	var volumes, mounts, inits []any
@@ -476,8 +495,13 @@ func (s AppSpec) podSpec(command []string, role string) (map[string]any, error) 
 	if len(mounts) > 0 {
 		c["volumeMounts"] = mounts
 	}
-	csec := map[string]any{"allowPrivilegeEscalation": false}
-	if rt.RunAsUser != nil && *rt.RunAsUser != 0 {
+	csec := map[string]any{}
+	if esc.AllowPrivilegeEscalation != nil {
+		csec["allowPrivilegeEscalation"] = *esc.AllowPrivilegeEscalation
+	} else {
+		csec["allowPrivilegeEscalation"] = false
+	}
+	if esc.RunAsUser != nil && *esc.RunAsUser != 0 {
 		csec["capabilities"] = map[string]any{"drop": []any{"ALL"}}
 	}
 	c["securityContext"] = csec

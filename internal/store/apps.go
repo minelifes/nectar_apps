@@ -44,6 +44,16 @@ type AppConfig struct {
 	ContainerArgs []string `json:"container_args,omitempty"`
 	// ResumeReplicas remembers the replicas before a stop, for start.
 	ResumeReplicas int `json:"resume_replicas,omitempty"`
+	// SecurityContext overrides the runtime's security settings.
+	SecurityContext SecurityContext `json:"security_context,omitempty"`
+}
+
+// SecurityContext controls the security settings for the app's containers.
+type SecurityContext struct {
+	RunAsNonRoot             *bool  `json:"run_as_non_root,omitempty"`
+	RunAsUser                *int64 `json:"run_as_user,omitempty"`
+	RunAsGroup               *int64 `json:"run_as_group,omitempty"`
+	AllowPrivilegeEscalation *bool  `json:"allow_privilege_escalation,omitempty"`
 }
 
 // Volume is a persistent disk of an app (PersistentVolumeClaim "<app>-<name>").
@@ -123,8 +133,7 @@ func (s *Store) CreateApp(ctx context.Context, a App) (App, error) {
 		return App{}, err
 	}
 	now := s.unix()
-	res, err := s.db.ExecContext(ctx, `INSERT INTO apps (id, project_id, slug, name, kind, runtime_id, runtime_version, config, status, created_at, updated_at)
-		VALUES (`+nextID("apps")+`, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)`,
+	res, err := s.db.ExecContext(ctx, ``+nextID("apps")+`, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)`,
 		a.ProjectID, a.Slug, strings.TrimSpace(a.Name), a.Kind, a.RuntimeID, a.RuntimeVersion, string(cfg), now, now)
 	if isUnique(err) {
 		return App{}, ErrConflict

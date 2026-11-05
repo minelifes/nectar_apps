@@ -169,9 +169,27 @@ func (s *Server) applyBlueprint(r *http.Request, proj store.Project, b blueprint
 			}
 			cfg["expose"] = ports
 		}
+		if a.SecurityContext.RunAsNonRoot != nil || a.SecurityContext.RunAsUser != nil || a.SecurityContext.RunAsGroup != nil || a.SecurityContext.AllowPrivilegeEscalation != nil {
+			cfg["security_context"] = map[string]any{
+				"run_as_non_root":             a.SecurityContext.RunAsNonRoot,
+				"run_as_user":                 a.SecurityContext.RunAsUser,
+				"run_as_group":                a.SecurityContext.RunAsGroup,
+				"allow_privilege_escalation":  a.SecurityContext.AllowPrivilegeEscalation,
+			}
+		}
 		for k, v := range cfg { // leave unset fields to the runtime defaults
 			if v == nil || v == "" || v == 0 {
 				delete(cfg, k)
+			}
+			if m, ok := v.(map[string]any); ok {
+				for mk, mv := range m {
+					if mv == nil {
+						delete(m, mk)
+					}
+				}
+				if len(m) == 0 {
+					delete(cfg, k)
+				}
 			}
 			if l, ok := v.([]string); ok && len(l) == 0 {
 				delete(cfg, k)

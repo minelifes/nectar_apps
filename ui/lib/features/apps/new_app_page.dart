@@ -14,6 +14,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/hex.dart';
+import '../../widgets/syntax_highlighter.dart';
 import '../auth/auth_frame.dart';
 import '../projects/new_project_dialog.dart';
 import 'artifact_file.dart';
@@ -866,19 +867,17 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
               ),
             ),
             const SizedBox(height: 14),
-            TextField(
+            SyntaxHighlightedTextField(
               controller: _startCommand,
-              style: monoStyle(context, size: 14),
+              fileType: 'sh',
+              style: monoStyle(context, size: 12),
               decoration: InputDecoration(
                 labelText: l.appStartCommandOptional,
                 hintText: 'sleep infinity',
                 helperText: l.appStartCommandHelp,
               ),
-              autocorrect: false,
               maxLines: null,
               minLines: 4,
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
               onChanged: (_) => setState(() {}),
             ),
             if (isBareBaseImage(_image.text) &&
@@ -1437,16 +1436,30 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                     style: TextStyle(color: c.muted, fontSize: 13.5),
                   ),
                 ),
-                Expanded(
-                  child: SelectableText(
-                    v,
-                    style: const TextStyle(fontSize: 13.5),
-                  ),
-                ),
+                Expanded(child: _startCommandPreview(k, v)),
               ],
             ),
           ),
       ],
+    );
+  }
+
+  Widget _startCommandPreview(String key, String value) {
+    if (key != 'Start command') {
+      return SelectableText(value, style: const TextStyle(fontSize: 13.5));
+    }
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: SingleChildScrollView(
+        child: SyntaxHighlightedTextField(
+          controller: TextEditingController(text: value),
+          fileType: 'sh',
+          style: monoStyle(context, size: 12),
+          maxLines: null,
+          minLines: 4,
+          enabled: false,
+        ),
+      ),
     );
   }
 

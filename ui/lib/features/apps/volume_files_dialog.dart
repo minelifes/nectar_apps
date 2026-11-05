@@ -550,22 +550,30 @@ class _EditFileDialogState extends State<_EditFileDialog> {
       content: SizedBox(
         width: 760,
         height: 480,
-        child: _editing
-            ? TextField(
-                controller: _ctl,
-                expands: true,
-                maxLines: null,
-                minLines: null,
-                textAlignVertical: TextAlignVertical.top,
-                style: monoStyle(context, size: 13),
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-              )
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: SyntaxView(text: widget.text, fileType: _fileType()),
-                ),
-              ),
+        child: SyntaxHighlightedTextField(
+          controller: _ctl,
+          fileType: _fileType(),
+          style: monoStyle(context, size: 12),
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+          maxLines: null,
+          minLines: 4,
+        ),
+        // child: _editing
+        //     ? TextField(
+        //         controller: _ctl,
+        //         expands: true,
+        //         maxLines: null,
+        //         minLines: null,
+        //         textAlignVertical: TextAlignVertical.top,
+        //         style: monoStyle(context, size: 13),
+        //         decoration: const InputDecoration(border: OutlineInputBorder()),
+        //       )
+        //     : SingleChildScrollView(
+        //         child: Padding(
+        //           padding: const EdgeInsets.all(12),
+        //           child: SyntaxView(text: widget.text, fileType: _fileType()),
+        //         ),
+        //       ),
       ),
       actions: [
         TextButton(
