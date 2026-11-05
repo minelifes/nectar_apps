@@ -851,6 +851,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#an-opened-port-works-through-an-ssh-tunnel-but-not-from-outside" class="md-nav__link">
+    <span class="md-ellipsis">
+      An opened port works through an SSH tunnel but not from outside
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1043,6 +1052,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#an-opened-port-works-through-an-ssh-tunnel-but-not-from-outside" class="md-nav__link">
+    <span class="md-ellipsis">
+      An opened port works through an SSH tunnel but not from outside
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1089,6 +1107,21 @@ containers recover without a restart:</p>
 <p><code>--apparmor-fix</code> installs the profile on any distribution, and <code>--no-apparmor-fix</code> never installs it.
 Databases whose first start was interrupted may be half-initialized: delete and recreate them (new ones
 are empty anyway).</p>
+<h2 id="an-opened-port-works-through-an-ssh-tunnel-but-not-from-outside">An opened port works through an SSH tunnel but not from outside<a class="headerlink" href="#an-opened-port-works-through-an-ssh-tunnel-but-not-from-outside" title="Permanent link">&para;</a></h2>
+<p>"Open ports on the server" are node ports (30000–32767). If <code>ssh -L 30001:localhost:30001 server</code> works but
+<code>server_ip:30001</code> does not, a firewall drops the traffic before it reaches k3s:</p>
+<ul>
+<li><strong>ufw / firewalld on the server</strong>: installers before this fix only allowed 22, 80 and 443. Allow the range
+  (or a single port):</li>
+</ul>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span><span class="m">30000</span>:32767/tcp<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>ufw<span class="w"> </span>allow<span class="w"> </span><span class="m">30000</span>:32767/udp
+<span class="c1"># firewalld:</span>
+sudo<span class="w"> </span>firewall-cmd<span class="w"> </span>--permanent<span class="w"> </span>--add-port<span class="o">=</span><span class="m">30000</span>-32767/tcp<span class="w"> </span>--add-port<span class="o">=</span><span class="m">30000</span>-32767/udp<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>firewall-cmd<span class="w"> </span>--reload
+</code></pre></div>
+<ul>
+<li><strong>the cloud provider's firewall</strong> (security group, Hetzner/DO/AWS firewall): add an inbound rule for the
+  port or range there too.</li>
+</ul>
 
 
 
