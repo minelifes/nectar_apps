@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.17",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:aebbab82bf74246e274de4b001badf1cbc76eda39ad7027013086890ca526b15",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- Fix formatting of security context map assignment\n- Fix SQL query for inserting new app records\n- Code syntax 2 version. Fix mqtt runnning. add security context",
+          "previous": "1.0.16",
+          "published_at": "2026-11-05T04:58:02+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.16",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:6578e70efd8e6872fe98de3a0dbbe558f5c5a7fc3aaafe803a9a4f65d3242277",
@@ -345,6 +365,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.17",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:aebbab82bf74246e274de4b001badf1cbc76eda39ad7027013086890ca526b15",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- Fix formatting of security context map assignment\n- Fix SQL query for inserting new app records\n- Code syntax 2 version. Fix mqtt runnning. add security context",
+          "previous": "1.0.16",
+          "published_at": "2026-11-05T04:58:02+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.16",
@@ -688,5 +728,5 @@
       ]
     }
   },
-  "updated_at": "2026-11-04T20:56:59+00:00"
+  "updated_at": "2026-11-05T04:58:02+00:00"
 }
