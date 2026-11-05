@@ -33,3 +33,20 @@ curl -sfL https://raw.githubusercontent.com/minelifes/nectar_apps/main/deploy/in
 `--apparmor-fix` installs the profile on any distribution, and `--no-apparmor-fix` never installs it.
 Databases whose first start was interrupted may be half-initialized: delete and recreate them (new ones
 are empty anyway).
+
+## An opened port works through an SSH tunnel but not from outside
+
+"Open ports on the server" are node ports (30000–32767). If `ssh -L 30001:localhost:30001 server` works but
+`server_ip:30001` does not, a firewall drops the traffic before it reaches k3s:
+
+- **ufw / firewalld on the server**: installers before this fix only allowed 22, 80 and 443. Allow the range
+  (or a single port):
+
+  ```sh
+  sudo ufw allow 30000:32767/tcp && sudo ufw allow 30000:32767/udp
+  # firewalld:
+  sudo firewall-cmd --permanent --add-port=30000-32767/tcp --add-port=30000-32767/udp && sudo firewall-cmd --reload
+  ```
+
+- **the cloud provider's firewall** (security group, Hetzner/DO/AWS firewall): add an inbound rule for the
+  port or range there too.

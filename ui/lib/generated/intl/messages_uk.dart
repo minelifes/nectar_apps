@@ -946,7 +946,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appStorage": MessageLookupByLibrary.simpleMessage("Сховище"),
     "appTcp": MessageLookupByLibrary.simpleMessage("TCP"),
     "appTcpUdpPortsReachableFrom": MessageLookupByLibrary.simpleMessage(
-      "Порти TCP/UDP, доступні ззовні (MQTT, ігрові сервери…). Вебтрафік натомість іде через домени.",
+      "Порти TCP/UDP, доступні ззовні (MQTT, ігрові сервери…), за адресою сервера й портом сервера (30000–32767). Інсталятор відкриває цей діапазон в ufw/firewalld; хмарний фаєрвол (security group) теж має його дозволяти. Вебтрафік натомість іде через домени.",
     ),
     "appTheFileDisappearsFromThe": MessageLookupByLibrary.simpleMessage(
       "Файл зникне з контейнерів після наступного розгортання.",

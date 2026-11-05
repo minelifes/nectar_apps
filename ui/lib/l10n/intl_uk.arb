@@ -684,7 +684,7 @@
   "appEGMigrateUp": "напр. ./migrate up",
   "appChangingSettingsNeedsTheApp": "Для зміни налаштувань потрібен дозвіл app.edit.",
   "appOpenPortsOnTheServer": "Відкриті порти на сервері",
-  "appTcpUdpPortsReachableFrom": "Порти TCP/UDP, доступні ззовні (MQTT, ігрові сервери…). Вебтрафік натомість іде через домени.",
+  "appTcpUdpPortsReachableFrom": "Порти TCP/UDP, доступні ззовні (MQTT, ігрові сервери…), за адресою сервера й портом сервера (30000–32767). Інсталятор відкриває цей діапазон в ufw/firewalld; хмарний фаєрвол (security group) теж має його дозволяти. Вебтрафік натомість іде через домени.",
   "appContainerPort": "Порт контейнера",
   "appTcp": "TCP",
   "appUdp": "UDP",

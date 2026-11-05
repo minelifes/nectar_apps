@@ -905,7 +905,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "appStorage": MessageLookupByLibrary.simpleMessage("Storage"),
     "appTcp": MessageLookupByLibrary.simpleMessage("TCP"),
     "appTcpUdpPortsReachableFrom": MessageLookupByLibrary.simpleMessage(
-      "TCP/UDP ports reachable from outside (MQTT, game servers…). Web traffic goes through domains instead.",
+      "TCP/UDP ports reachable from outside (MQTT, game servers…) on the server\'s address and the server port (30000–32767). The installer opens that range in ufw/firewalld; a cloud firewall (security group) must allow it too. Web traffic goes through domains instead.",
     ),
     "appTheFileDisappearsFromThe": MessageLookupByLibrary.simpleMessage(
       "The file disappears from the containers with the next deploy.",

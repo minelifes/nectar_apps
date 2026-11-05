@@ -6036,10 +6036,10 @@ class S {
     );
   }
 
-  /// `TCP/UDP ports reachable from outside (MQTT, game servers…). Web traffic goes through domains instead.`
+  /// `TCP/UDP ports reachable from outside (MQTT, game servers…) on the server's address and the server port (30000–32767). The installer opens that range in ufw/firewalld; a cloud firewall (security group) must allow it too. Web traffic goes through domains instead.`
   String get appTcpUdpPortsReachableFrom {
     return Intl.message(
-      'TCP/UDP ports reachable from outside (MQTT, game servers…). Web traffic goes through domains instead.',
+      'TCP/UDP ports reachable from outside (MQTT, game servers…) on the server\'s address and the server port (30000–32767). The installer opens that range in ufw/firewalld; a cloud firewall (security group) must allow it too. Web traffic goes through domains instead.',
       name: 'appTcpUdpPortsReachableFrom',
       desc: '',
       args: [],

@@ -228,23 +228,18 @@ templates:
           port: 1883
           internal_ports: [9001]
           memory_mb: 64
-          security_context:
-            run_as_non_root: true
-            run_as_user: 1883
-            run_as_group: 1883
-            allow_privilege_escalation: false
+          # starts as root to write its config and the root-owned password file, then mosquitto drops to its
+          # own user (1883) itself; the data volume belongs to that user
           command:
             - sh
             - -c
             - |
               set -e
-              mosquitto_passwd -b -c /mosquitto/data/passwd "$MQTT_USER" "$MQTT_PASSWORD"
+              mosquitto_passwd -b -c /mosquitto/config/passwd "$MQTT_USER" "$MQTT_PASSWORD"
+              chown root:root /mosquitto/config/passwd
+              chmod 0700 /mosquitto/config/passwd
               chown -R mosquitto:mosquitto /mosquitto/data
-              chown -R root:root /mosquitto/data/passwd
-              chmod 0700 /mosquitto/data/passwd
-              printf 'listener 1883\nlistener 9001\nprotocol websockets\nallow_anonymous false\npassword_file /mosquitto/data/passwd\npersistence true\npersistence_location /mosquitto/data/\nlog_dest stdout\n' > /mosquitto/config/mosquitto.conf
-              chmod 0777 /mosquitto/config/mosquitto.conf
-              chown root:root /mosquitto/config/mosquitto.conf
+              printf 'listener 1883\nlistener 9001\nprotocol websockets\nallow_anonymous false\npassword_file /mosquitto/config/passwd\npersistence true\npersistence_location /mosquitto/data/\nlog_dest stdout\n' > /mosquitto/config/mosquitto.conf
               exec mosquitto -c /mosquitto/config/mosquitto.conf
           env:
             MQTT_USER: "[[input.user]]"
@@ -254,7 +249,6 @@ templates:
             - { port: 1883 }
           volumes:
             - { name: data, mount_path: /mosquitto/data, size_mb: 64 }
-            - { name: config, mount_path: /mosquitto/config, size_mb: 64 }
 
   - id: emqx
     name: EMQX (MQTT)

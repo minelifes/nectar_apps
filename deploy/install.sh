@@ -532,28 +532,35 @@ configure_firewall() {
 	[ "$SKIP_FIREWALL" -eq 1 ] && { warn "Skipping firewall configuration (--skip-firewall)"; return; }
 	sp="$(ssh_port)"
 	if have ufw; then
-		info "Configuring ufw (allow SSH $sp, 80, 443; everything else incoming denied)"
+		info "Configuring ufw (allow SSH $sp, 80, 443 and the node ports 30000-32767; everything else incoming denied)"
 		run ufw allow "$sp/tcp"
 		run ufw allow 80/tcp
 		run ufw allow 443/tcp
 		run ufw allow 443/udp   # HTTP/3
+		# "Open ports on the server" of an app (MQTT, game servers…) are node ports: only ports an app
+		# opens are listened on, the rest of the range answers nothing
+		run ufw allow 30000:32767/tcp
+		run ufw allow 30000:32767/udp
 		# pod and service networks must reach the host (k3s defaults)
 		run ufw allow from 10.42.0.0/16
 		run ufw allow from 10.43.0.0/16
 		run ufw default deny incoming
 		run ufw --force enable
 	elif have firewall-cmd && firewall-cmd --state >/dev/null 2>&1; then
-		info "Configuring firewalld (allow SSH, 80, 443; trust k3s pod/service networks)"
+		info "Configuring firewalld (allow SSH, 80, 443 and the node ports 30000-32767; trust k3s pod/service networks)"
 		run firewall-cmd --permanent --add-service=ssh
 		run firewall-cmd --permanent --add-port="$sp/tcp"
 		run firewall-cmd --permanent --add-service=http
 		run firewall-cmd --permanent --add-service=https
 		run firewall-cmd --permanent --add-port=443/udp
+		run firewall-cmd --permanent --add-port=30000-32767/tcp
+		run firewall-cmd --permanent --add-port=30000-32767/udp
 		run firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
 		run firewall-cmd --permanent --zone=trusted --add-source=10.43.0.0/16
 		run firewall-cmd --reload
 	else
-		warn "No ufw/firewalld found. Make sure only SSH ($sp), 80 and 443 are reachable from the internet;"
+		warn "No ufw/firewalld found. Make sure only SSH ($sp), 80, 443 and the node ports 30000-32767 (ports apps open) are"
+		warn "reachable from the internet;"
 		warn "the Kubernetes API (6443) and kubelet (10250) must NOT be exposed."
 	fi
 }
