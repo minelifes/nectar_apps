@@ -485,38 +485,39 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                 minLines: 4,
                 onChanged: (_) => _changed(),
               ),
-              // child: TextField(
-              //   controller: _command,
-              //   maxLines: null,
-              //   minLines: 4,
-              //   keyboardType: TextInputType.multiline,
-              //   textInputAction: TextInputAction.newline,
-              //   style: monoStyle(context, size: 13.5),
-              //   decoration: InputDecoration(
-              //     labelText: 'Start command',
-              //     hintText: l.appLeaveEmptyForTheDefault,
-              //     helperText:
-              //         'Runs with sh -c, so the image needs a shell. One command per line.',
-              //     helperMaxLines: 2,
-              //   ),
-              //   onChanged: (_) => _changed(),
-              // ),
             ),
-            field(
-              _args,
-              'Arguments (APP_ARGS)',
+            SizedBox(
               width: 520,
-              mono: true,
-              help: 'Passed to the default start command of the runtime',
+              child: SyntaxHighlightedTextField(
+                controller: _args,
+                fileType: 'sh',
+                style: monoStyle(context, size: 12),
+                decoration: InputDecoration(
+                  labelText: 'Arguments (APP_ARGS)',
+                  helperText:
+                      'Passed to the default start command of the runtime',
+                ),
+                maxLines: null,
+                minLines: 1,
+                onChanged: (_) => _changed(),
+              ),
             ),
-            field(
-              _release,
-              'Release command',
-              hint: l.appEGMigrateUp,
+            SizedBox(
               width: 520,
-              mono: true,
-              help:
-                  'Runs once before each deploy goes live; a failure stops the deploy',
+              child: SyntaxHighlightedTextField(
+                controller: _release,
+                fileType: 'sh',
+                style: monoStyle(context, size: 12),
+                decoration: InputDecoration(
+                  labelText: 'Release command',
+                  hint: Text(l.appEGMigrateUp),
+                  helperText:
+                      'Runs once before each deploy goes live; a failure stops the deploy',
+                ),
+                maxLines: null,
+                minLines: 1,
+                onChanged: (_) => _changed(),
+              ),
             ),
           ],
         ),

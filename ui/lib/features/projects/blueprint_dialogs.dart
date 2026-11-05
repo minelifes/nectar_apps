@@ -14,6 +14,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/copy.dart';
+import '../../widgets/syntax_highlighter.dart';
 
 /// A one-click app from GET /api/templates.
 class AppTemplate {
@@ -306,6 +307,7 @@ class _TemplateGalleryState extends ConsumerState<_TemplateGallery> {
                         child: Text(
                           t.name,
                           style: Theme.of(context).textTheme.titleSmall,
+                          maxLines: 1,
                         ),
                       ),
                       Text(
@@ -468,6 +470,10 @@ class _ImportDialog extends ConsumerStatefulWidget {
 
 class _ImportDialogState extends ConsumerState<_ImportDialog> {
   final _text = TextEditingController();
+  final _volumeSize = TextEditingController(text: '64');
+  final _cpuMillicores = TextEditingController(text: '500');
+  final _memoryMB = TextEditingController(text: '128');
+  bool _showConfig = false;
   bool _deploy = true;
   bool _busy = false;
   String? _preview;
@@ -477,11 +483,28 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
   String get _path => widget.compose
       ? '/projects/${widget.projectId}/import/compose'
       : '/projects/${widget.projectId}/apply';
+
   String get _key => widget.compose ? 'compose' : 'blueprint';
+
+  Map<String, dynamic> _composePayload() {
+    final map = <String, dynamic>{_key: _text.text, 'deploy': _deploy};
+    if (widget.compose) {
+      final vs = int.tryParse(_volumeSize.text.trim());
+      if (vs != null && vs > 0) map['volume_size_mb'] = vs;
+      final cpu = int.tryParse(_cpuMillicores.text.trim());
+      if (cpu != null && cpu > 0) map['default_cpu_millicores'] = cpu;
+      final mem = int.tryParse(_memoryMB.text.trim());
+      if (mem != null && mem > 0) map['default_memory_mb'] = mem;
+    }
+    return map;
+  }
 
   @override
   void dispose() {
     _text.dispose();
+    _volumeSize.dispose();
+    _cpuMillicores.dispose();
+    _memoryMB.dispose();
     super.dispose();
   }
 
@@ -500,18 +523,9 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
   Future<void> _run({required bool dryRun}) async {
     setState(() => _busy = true);
     try {
-      final res =
-          await ref
-                  .read(apiProvider)
-                  .post(
-                    _path,
-                    data: {
-                      _key: _text.text,
-                      'deploy': _deploy,
-                      'dry_run': dryRun,
-                    },
-                  )
-              as Map;
+      final payload = _composePayload();
+      payload['dry_run'] = dryRun;
+      final res = await ref.read(apiProvider).post(_path, data: payload) as Map;
       setState(() {
         _notes = [for (final n in (res['notes'] as List? ?? const [])) '$n'];
         if (dryRun) {
@@ -529,6 +543,69 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Widget _configPanel(BuildContext context, NectarColors c) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _volumeSize,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Default volume size (MB)',
+                    helperText: 'Size for all volumes created from bind mounts',
+                    helperStyle: TextStyle(color: c.muted, fontSize: 11),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _cpuMillicores,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Default CPU (millicores)',
+                    helperText: 'e.g. 250, 500, 1000',
+                    helperStyle: TextStyle(color: c.muted, fontSize: 11),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _memoryMB,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Default memory (MB)',
+                    helperText: 'e.g. 256, 512, 1024',
+                    helperStyle: TextStyle(color: c.muted, fontSize: 11),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: EdgeInsetsGeometry.only(
+              top: 16,
+              left: 8,
+              right: 8,
+              bottom: 8,
+            ),
+            child: Text(
+              '* These defaults apply only when the compose file does not specify them.',
+              style: TextStyle(color: c.muted, fontSize: 11),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -570,11 +647,54 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                TextField(
+                if (widget.compose) ...[
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => setState(() => _showConfig = !_showConfig),
+                    child: SizedBox(
+                      height: 32,
+                      child: Center(
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 4),
+                            Icon(Icons.tune_rounded, size: 18, color: c.muted),
+                            const SizedBox(width: 6),
+                            Text(
+                              _showConfig
+                                  ? 'Hide import options'
+                                  : 'Import options',
+                              style: TextStyle(color: c.muted, fontSize: 13),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              _showConfig
+                                  ? Icons.expand_less
+                                  : Icons.expand_more,
+                              size: 18,
+                              color: c.muted,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  AnimatedCrossFade(
+                    firstChild: _configPanel(context, c),
+                    secondChild: const SizedBox.shrink(),
+                    firstCurve: const Threshold(0),
+                    secondCurve: const Threshold(1),
+                    crossFadeState: _showConfig
+                        ? CrossFadeState.showFirst
+                        : CrossFadeState.showSecond,
+                    duration: const Duration(milliseconds: 200),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                SyntaxHighlightedTextField(
                   controller: _text,
+                  fileType: 'yaml',
                   minLines: 10,
                   maxLines: 18,
-                  style: monoStyle(context, size: 12.5),
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                   ),
@@ -595,9 +715,12 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                       border: Border.all(color: c.border),
                       borderRadius: BorderRadius.circular(NectarTokens.radius),
                     ),
-                    child: SelectableText(
-                      _preview!,
-                      style: monoStyle(context, size: 12),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SelectableText(
+                        _preview!,
+                        style: monoStyle(context, size: 12),
+                      ),
                     ),
                   ),
                   if (_notes.isNotEmpty)

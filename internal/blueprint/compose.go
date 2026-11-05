@@ -77,8 +77,18 @@ func imageBase(image string) string {
 	return strings.TrimPrefix(ref, "library/")
 }
 
+// ImportOptions controls defaults applied during docker-compose import.
+type ImportOptions struct {
+	VolumeSizeMB    int64 // default volume size; 0 means 1024
+	DefaultCPUMillicores int64 // default CPU in millicores; 0 means no default
+	DefaultMemoryMB    int64 // default memory in MB; 0 means no default
+}
+
 // FromCompose converts a docker-compose file. notes explain what was changed or left out.
-func FromCompose(data []byte) (Blueprint, []string, error) {
+func FromCompose(data []byte, opts ImportOptions) (Blueprint, []string, error) {
+	if opts.VolumeSizeMB == 0 {
+		opts.VolumeSizeMB = 1024
+	}
 	var f composeFile
 	if err := yaml.Unmarshal(data, &f); err != nil {
 		return Blueprint{}, nil, fmt.Errorf("not a docker-compose file: %s", firstLine(err.Error()))
@@ -197,14 +207,20 @@ func FromCompose(data []byte) (Blueprint, []string, error) {
 			case target == "":
 				continue
 			case strings.HasPrefix(src, ".") || strings.HasPrefix(src, "/") || strings.HasPrefix(src, "~"):
-				note("%s: the bind mount %s → %s is not imported — upload the files to a volume (app → Settings → Volumes → Files) or use config files", name, src, target)
+				// Create a managed volume for bind mounts (the user can populate it later).
+				vname := composeSlug(src)
+				if vname == "" || vname == "." || vname == "/" {
+					vname = "data" + strconv.Itoa(len(app.Volumes)+1)
+				}
+				note("%s: bind mount %s → %s became volume %q (size %d MB, populate via Settings → Volumes → Files)", name, src, target, vname, opts.VolumeSizeMB)
+				app.Volumes = append(app.Volumes, Volume{Name: vname, MountPath: target, SizeMB: opts.VolumeSizeMB})
 				continue
 			}
 			vname := composeSlug(src)
 			if vname == "" {
 				vname = "data" + strconv.Itoa(len(app.Volumes)+1)
 			}
-			app.Volumes = append(app.Volumes, Volume{Name: vname, MountPath: target, SizeMB: 1024})
+			app.Volumes = append(app.Volumes, Volume{Name: vname, MountPath: target, SizeMB: opts.VolumeSizeMB})
 		}
 
 		// replicas / resources
@@ -213,6 +229,15 @@ func FromCompose(data []byte) (Blueprint, []string, error) {
 		}
 		if m := composeMemory(svc.Deploy.Resources.Limits.Memory); m > 0 {
 			app.MemoryMB = m
+		}
+		if c := composeCPUs(svc.Deploy.Resources.Limits.CPUs); c > 0 {
+			app.CPUMillicores = c
+		}
+		if app.CPUMillicores == 0 && opts.DefaultCPUMillicores > 0 {
+			app.CPUMillicores = opts.DefaultCPUMillicores
+		}
+		if app.MemoryMB == 0 && opts.DefaultMemoryMB > 0 {
+			app.MemoryMB = opts.DefaultMemoryMB
 		}
 		if svc.Restart == "no" {
 			note("%s has restart: no — Nectar always restarts crashed apps", name)
@@ -353,4 +378,31 @@ func composeMemory(s string) int64 {
 		return 0
 	}
 	return int64(f * mult)
+}
+
+// composeCPUs parses "0.5", "1", "1000m" into millicores.
+func composeCPUs(v any) int64 {
+	switch x := v.(type) {
+	case string:
+		s := strings.TrimSpace(x)
+		if s == "" {
+			return 0
+		}
+		if strings.HasSuffix(s, "m") {
+			n, _ := strconv.ParseFloat(strings.TrimRight(s, "m"), 64)
+			return int64(n)
+		}
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return 0
+		}
+		return int64(f * 1000)
+	case float64:
+		return int64(x * 1000)
+	case int:
+		return int64(x * 1000)
+	case int64:
+		return x * 1000
+	}
+	return 0
 }

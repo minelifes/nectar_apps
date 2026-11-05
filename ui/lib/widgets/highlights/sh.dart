@@ -50,8 +50,8 @@ final shellSyntaxRules = <SyntaxRule>[
       r'\b(if|then|elif|else|fi|for|while|until|do|done|'
       r'case|esac|in|function|select|time|coproc|'
       r'break|continue|return|exit|local|export|readonly|'
-      r'declare|typeset|unset|shift|source|eval|exec|'
-      r'trap|set|shopt|alias|unalias)\b',
+      r'declare|typeset|unset|shift|source|eval|chmod|exec|chown|'
+      r'trap|set|sh|shopt|alias|unalias)\b',
     ),
     const TextStyle(color: Color(0xFFC678DD), fontWeight: FontWeight.bold),
   ),

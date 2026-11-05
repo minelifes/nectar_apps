@@ -115,7 +115,7 @@ services:
     build: .
     command: npm run worker
 volumes: { uploads: {}, pgdata: {} }
-`))
+`), ImportOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ volumes: { uploads: {}, pgdata: {} }
 	}
 	web, db, w := by["web"], by["db"], by["queue-worker"]
 	if web.Kind != "web" || web.Port != 3000 || len(web.InternalPorts) != 1 || web.InternalPorts[0] != 9090 || *web.Replicas != 2 || web.MemoryMB != 1024 ||
-		web.Secrets["API_TOKEN"] != "abc" || web.Env["LOG_LEVEL"] != "info" || len(web.Volumes) != 1 || web.Volumes[0].Name != "uploads" {
+		web.Secrets["API_TOKEN"] != "abc" || web.Env["LOG_LEVEL"] != "info" || len(web.Volumes) != 2 || web.Volumes[0].Name != "uploads" {
 		t.Fatalf("web: %+v", web)
 	}
 	if db.Kind != "worker" || db.Port != 5432 || db.Secrets["POSTGRES_PASSWORD"] != "pw" || db.Volumes[0].MountPath != "/var/lib/postgresql/data" {
@@ -140,7 +140,87 @@ volumes: { uploads: {}, pgdata: {} }
 			t.Errorf("notes lack %q:\n%s", want, joined)
 		}
 	}
-	if _, _, err := FromCompose([]byte("services: {}")); err == nil {
+	if _, _, err := FromCompose([]byte("services: {}"), ImportOptions{}); err == nil {
 		t.Fatal("empty compose accepted")
+	}
+}
+
+func TestFromComposeBindMountVolumesAndResources(t *testing.T) {
+	b, notes, err := FromCompose([]byte(`
+services:
+  web:
+    image: nginx:1
+    ports: ["80:80"]
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
+`), ImportOptions{VolumeSizeMB: 2048, DefaultCPUMillicores: 250, DefaultMemoryMB: 512})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(b.Apps) != 1 {
+		t.Fatalf("expected 1 app, got %d", len(b.Apps))
+	}
+	web := b.Apps[0]
+	if len(web.Volumes) != 2 {
+		t.Fatalf("expected 2 volumes, got %d: %+v", len(web.Volumes), web.Volumes)
+	}
+	if web.Volumes[0].SizeMB != 2048 {
+		t.Fatalf("volume size: expected 2048, got %d", web.Volumes[0].SizeMB)
+	}
+	if web.CPUMillicores != 500 {
+		t.Fatalf("cpu: expected 500, got %d", web.CPUMillicores)
+	}
+	if web.MemoryMB != 512 {
+		t.Fatalf("memory: expected 512, got %d", web.MemoryMB)
+	}
+	joined := strings.Join(notes, "\n")
+	if !strings.Contains(joined, "bind mount ./data") {
+		t.Errorf("notes should mention bind mount ./data:\n%s", joined)
+	}
+}
+
+func TestFromComposeDefaultResources(t *testing.T) {
+	b, _, err := FromCompose([]byte(`
+services:
+  worker:
+    image: busybox:1
+    command: ["sleep", "infinity"]
+`), ImportOptions{DefaultCPUMillicores: 500, DefaultMemoryMB: 256})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Apps[0].CPUMillicores != 500 {
+		t.Fatalf("cpu: expected 500, got %d", b.Apps[0].CPUMillicores)
+	}
+	if b.Apps[0].MemoryMB != 256 {
+		t.Fatalf("memory: expected 256, got %d", b.Apps[0].MemoryMB)
+	}
+}
+
+func TestComposeCPUs(t *testing.T) {
+	tests := []struct {
+		input    any
+		expected int64
+	}{
+		{"0.5", 500},
+		{"1", 1000},
+		{"1000m", 1000},
+		{"250m", 250},
+		{float64(0.25), 250},
+		{int(1), 1000},
+		{"", 0},
+		{nil, 0},
+	}
+	for _, tc := range tests {
+		got := composeCPUs(tc.input)
+		if got != tc.expected {
+			t.Errorf("composeCPUs(%v) = %d, want %d", tc.input, got, tc.expected)
+		}
 	}
 }
