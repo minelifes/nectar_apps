@@ -369,9 +369,9 @@ func parseComposeBody(b []byte) (raw []byte, deploy, dryRun bool) {
 	deploy = true
 	dryRun = false
 	var wrapped struct {
-		Compose  *string `json:"compose"`
-		Deploy   *bool   `json:"deploy"`
-		DryRun   bool    `json:"dry_run"`
+		Compose *string `json:"compose"`
+		Deploy  *bool   `json:"deploy"`
+		DryRun  bool    `json:"dry_run"`
 	}
 	if json.Unmarshal(b, &wrapped) == nil && wrapped.Compose != nil {
 		return []byte(*wrapped.Compose), wrapped.Deploy == nil || *wrapped.Deploy, wrapped.DryRun

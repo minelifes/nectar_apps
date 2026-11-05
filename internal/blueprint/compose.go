@@ -79,9 +79,9 @@ func imageBase(image string) string {
 
 // ImportOptions controls defaults applied during docker-compose import.
 type ImportOptions struct {
-	VolumeSizeMB    int64 // default volume size; 0 means 1024
+	VolumeSizeMB         int64 // default volume size; 0 means 1024
 	DefaultCPUMillicores int64 // default CPU in millicores; 0 means no default
-	DefaultMemoryMB    int64 // default memory in MB; 0 means no default
+	DefaultMemoryMB      int64 // default memory in MB; 0 means no default
 }
 
 // FromCompose converts a docker-compose file. notes explain what was changed or left out.
