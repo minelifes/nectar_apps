@@ -133,7 +133,7 @@ func (s *Store) CreateApp(ctx context.Context, a App) (App, error) {
 		return App{}, err
 	}
 	now := s.unix()
-	res, err := s.db.ExecContext(ctx, ``+nextID("apps")+`, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)`,
+	res, err := s.db.ExecContext(ctx, `INSERT INTO apps (id, project_id, slug, name, kind, runtime_id, runtime_version, config, status, created_at, updated_at) VALUES (`+nextID("apps")+`, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?)`,
 		a.ProjectID, a.Slug, strings.TrimSpace(a.Name), a.Kind, a.RuntimeID, a.RuntimeVersion, string(cfg), now, now)
 	if isUnique(err) {
 		return App{}, ErrConflict
