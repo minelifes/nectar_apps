@@ -584,6 +584,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#your-own-domain-editing-and-paths-to-other-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Your own domain, editing, and paths to other apps
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1115,6 +1124,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#your-own-domain-editing-and-paths-to-other-apps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Your own domain, editing, and paths to other apps
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1170,6 +1188,20 @@ domain. Records someone else created are never changed (the domain shows "existi
 <h2 id="gateway-page">Gateway page<a class="headerlink" href="#gateway-page" title="Permanent link">&para;</a></h2>
 <p>Server → Gateway shows every route with its health check, certificate and rate limit, the latest requests over
 all domains (filter by domain, status class or client IP; block an IP from its row), certificates and blocked IPs.</p>
+<h2 id="your-own-domain-editing-and-paths-to-other-apps">Your own domain, editing, and paths to other apps<a class="headerlink" href="#your-own-domain-editing-and-paths-to-other-apps" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>New app:</strong> the <em>Name &amp; domain</em> step takes an optional own domain; it is added next to the generated
+  default domain (<code>&lt;app&gt;-&lt;project&gt;.&lt;base domain&gt;</code>), which always stays.</li>
+<li><strong>Edit a domain:</strong> on the app page, Domains → the settings icon. Host and path can be changed (the domain is
+  replaced by one with the same settings and gets a fresh certificate); the generated default keeps its name.</li>
+<li><strong>Route a path to another app:</strong> on app1's Domains card, <em>Route a path to another app</em>: e.g.
+  <code>app1.com/myCustomRoute</code> → <code>app2</code> (a web app, or a <strong>worker with a port</strong>), optionally on another of its
+  ports. <em>Remove the path before forwarding</em> sends <code>/myCustomRoute/users</code> to app2 as <code>/users</code>; off, app2 gets
+  the full path. The longest matching path wins, so the rest of <code>app1.com</code> still goes to app1. The route is a
+  domain of app2 (host app1.com, path /myCustomRoute) and is listed on both apps.</li>
+<li>Removing the path needs nectar-gateway with the <code>strip-prefix</code> feature; an older gateway leaves such a
+  route inactive with a message instead of sending app2 paths it does not expect.</li>
+</ul>
 
 
 
