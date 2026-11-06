@@ -161,9 +161,9 @@ class ProjectPage extends ConsumerWidget {
               if (box.maxWidth < 1000) {
                 return Column(
                   children: [
-                    quota,
-                    const SizedBox(height: NectarTokens.gapLarge),
                     appsSection,
+                    const SizedBox(height: NectarTokens.gapLarge),
+                    quota,
                   ],
                 );
               }

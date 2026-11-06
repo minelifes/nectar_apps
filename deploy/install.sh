@@ -462,6 +462,7 @@ ask_adopt_projects() {
 do_adopt() {
 	k3s_present || die "k3s is not installed: run the installer without --adopt for a fresh install"
 	install_prerequisites
+	fix_apparmor_signals # Ubuntu 25.10+/26.04: signals and host profiles inside containers
 	fetch_adopt_bin
 	if [ "$DRY_RUN" -eq 1 ]; then
 		for step in discover backup shadow verify cutover; do run "$ADOPT_BIN" adopt "$step"; done
@@ -544,6 +545,10 @@ configure_firewall() {
 		# pod and service networks must reach the host (k3s defaults)
 		run ufw allow from 10.42.0.0/16
 		run ufw allow from 10.43.0.0/16
+		# traffic k3s forwards to pods (node ports, after DNAT) and from pods out goes through ufw's FORWARD
+		# chain, which drops everything by default: without these, an app's open port only answered on localhost
+		run ufw route allow to 10.42.0.0/16
+		run ufw route allow from 10.42.0.0/16
 		run ufw default deny incoming
 		run ufw --force enable
 	elif have firewall-cmd && firewall-cmd --state >/dev/null 2>&1; then
@@ -643,6 +648,42 @@ APPARMOR
 	else
 		warn "could not load $APPARMOR_PROFILE — databases may hang on start (see docs/troubleshooting)"
 	fi
+	disable_orphan_apparmor_profiles
+}
+
+# disable_orphan_apparmor_profiles — with the stacked label above, a host profile that attaches to a path
+# (Ubuntu ships profiles for programs that are not installed, e.g. "mosquitto" for /usr/sbin/mosquitto) also
+# confines the same program inside a container, and denies its files there ("Unable to open config file
+# /mosquitto/config/mosquitto.conf"). A profile whose program does not exist on the host only ever confines
+# containers, so it is disabled (the usual /etc/apparmor.d/disable symlink; remove it to undo). Profiles of
+# programs installed on the host are left alone.
+disable_orphan_apparmor_profiles() {
+	[ -d /etc/apparmor.d ] || return 0
+	disabled=""
+	for f in /etc/apparmor.d/*; do
+		[ -f "$f" ] || continue
+		name="${f##*/}"
+		case "$name" in
+			cri-containerd.apparmor.d|*.dpkg-*|*.rpm*|*~) continue ;;
+		esac
+		[ -e "/etc/apparmor.d/disable/$name" ] && continue
+		# the attachment of a top-level profile: "profile NAME /abs/path …{" or "/abs/path …{" (no globs)
+		attach="$(sed -n -e 's/^[[:space:]]*profile[[:space:]]\{1,\}[^[:space:]]\{1,\}[[:space:]]\{1,\}\(\/[^[:space:]{]*\).*{.*$/\1/p' \
+			-e 's/^\(\/[^[:space:]{]*\)[[:space:]].*{.*$/\1/p' "$f" | head -1)"
+		case "$attach" in
+			""|*/|*'*'*|*'?'*|*'['*|*'{'*|*'@'*) continue ;;
+		esac
+		[ -e "$attach" ] && continue
+		if [ "$DRY_RUN" -eq 1 ]; then
+			run ln -s "$f" "/etc/apparmor.d/disable/$name"
+			continue
+		fi
+		mkdir -p /etc/apparmor.d/disable
+		ln -s "$f" "/etc/apparmor.d/disable/$name" && apparmor_parser -R "$f" >/dev/null 2>&1 || true
+		disabled="$disabled $name"
+	done
+	[ -n "$disabled" ] && info "Disabled AppArmor profiles of programs not installed on this server (they confined the same programs in containers):$disabled"
+	return 0
 }
 
 # resolve_k3s_version pins the stable k3s release before the k3s installer runs: the installer itself asks
@@ -1095,6 +1136,8 @@ do_join() {
 			run ufw allow from "$server_host"
 			run ufw allow from 10.42.0.0/16
 			run ufw allow from 10.43.0.0/16
+			run ufw route allow to 10.42.0.0/16
+			run ufw route allow from 10.42.0.0/16
 			run ufw default deny incoming
 			run ufw --force enable
 		elif have firewall-cmd && firewall-cmd --state >/dev/null 2>&1; then
@@ -1116,6 +1159,7 @@ do_join() {
 	get_k3s_installer
 	K3S_URL="$JOIN_URL" K3S_TOKEN="$JOIN_TOKEN" INSTALL_K3S_VERSION="$K3S_VERSION" sh "$K3S_INSTALLER" || { rm -f "$K3S_INSTALLER"; die "k3s agent installation failed (see above)"; }
 	rm -f "$K3S_INSTALLER"
+	fix_apparmor_signals # the node runs containers too
 	ok "Joined. The node shows up under Server in the panel within a minute."
 	me="$(hostname -I 2>/dev/null | awk '{print $1}')"
 	echo

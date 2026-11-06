@@ -520,7 +520,7 @@ func (d *Deployer) prune(ctx context.Context, s AppSpec, desired []kube.Object) 
 		want[k+"/"+n] = true
 	}
 	sel := LabelApp + "=" + s.App.Slug + "," + LabelManagedBy + "=" + ManagedBy
-	for _, kind := range []string{"Deployment", "CronJob", "Service", "ConfigMap", "Secret"} {
+	for _, kind := range []string{"Deployment", "CronJob", "Service", "ConfigMap", "Secret", "NetworkPolicy"} {
 		items, err := d.kube.List(ctx, kind, s.Project.Namespace, sel)
 		if err != nil {
 			return err
@@ -541,7 +541,7 @@ func (d *Deployer) prune(ctx context.Context, s AppSpec, desired []kube.Object) 
 func (d *Deployer) DeleteApp(ctx context.Context, a store.App, p store.Project) error {
 	sel := LabelApp + "=" + a.Slug + "," + LabelManagedBy + "=" + ManagedBy
 	// volumes go too: deleting an app deletes its data
-	for _, kind := range []string{"Deployment", "CronJob", "Job", "Service", "ConfigMap", "Secret", "PersistentVolumeClaim"} {
+	for _, kind := range []string{"Deployment", "CronJob", "Job", "Service", "ConfigMap", "Secret", "PersistentVolumeClaim", "NetworkPolicy"} {
 		items, err := d.kube.List(ctx, kind, p.Namespace, sel)
 		if kube.IsNotFound(err) {
 			continue

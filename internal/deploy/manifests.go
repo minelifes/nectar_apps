@@ -351,7 +351,7 @@ func AppObjects(s AppSpec) ([]obj, error) {
 		})
 	}
 	if len(s.Config.Expose) > 0 && (s.App.Kind == runtimes.KindWeb || s.App.Kind == runtimes.KindWorker) {
-		var ports []any
+		var ports, allowed []any
 		for i, p := range s.Config.Expose {
 			proto := strings.ToUpper(p.Protocol)
 			if proto == "" {
@@ -362,7 +362,23 @@ func AppObjects(s AppSpec) ([]obj, error) {
 				port["nodePort"] = p.NodePort
 			}
 			ports = append(ports, port)
+			allowed = append(allowed, map[string]any{"port": p.Port, "protocol": proto})
 		}
+		// the project's isolation policy only admits the project, the system namespace and the node
+		// addresses; k3s's policy controller checks node-port traffic before it is SNATed, with the client's
+		// address, so the opened ports need their own rule: from anywhere, to these ports of this app only
+		out = append(out, obj{
+			"apiVersion": "networking.k8s.io/v1", "kind": "NetworkPolicy",
+			"metadata": meta(s.name()+"-ports", ns, labels),
+			"spec": map[string]any{
+				"podSelector": map[string]any{"matchLabels": map[string]any{LabelApp: s.App.Slug, LabelRole: "workload"}},
+				"policyTypes": []any{"Ingress"},
+				"ingress": []any{map[string]any{
+					"from":  []any{map[string]any{"ipBlock": map[string]any{"cidr": "0.0.0.0/0"}}, map[string]any{"ipBlock": map[string]any{"cidr": "::/0"}}},
+					"ports": allowed,
+				}},
+			},
+		})
 		out = append(out, obj{
 			"apiVersion": "v1", "kind": "Service",
 			"metadata": meta(s.name()+"-ports", ns, labels),

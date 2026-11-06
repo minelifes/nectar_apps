@@ -48,5 +48,38 @@ are empty anyway).
   sudo firewall-cmd --permanent --add-port=30000-32767/tcp --add-port=30000-32767/udp && sudo firewall-cmd --reload
   ```
 
+- **ufw drops forwarded traffic**: k3s forwards a node port to the pod's address (10.42.x.x), so the packet
+  passes ufw's FORWARD chain, whose default policy is DROP. `tcpdump -ni <nic> tcp port 30001` then shows the
+  SYN arriving and no answer. Installers since this fix add:
+
+  ```sh
+  sudo ufw route allow to 10.42.0.0/16
+  sudo ufw route allow from 10.42.0.0/16
+  ```
+
 - **the cloud provider's firewall** (security group, Hetzner/DO/AWS firewall): add an inbound rule for the
   port or range there too.
+
+## "Unable to open config file" (or permission denied) although the file is there — Ubuntu 26.04
+
+On Ubuntu 25.10+/26.04 with recent k3s, container processes carry a stacked AppArmor label, and a host
+profile that attaches to a program's path also confines that program inside containers. Ubuntu ships
+profiles for programs that are usually not installed (for example `mosquitto`), which then deny the
+container's own files. The kernel log shows it:
+
+```sh
+sudo journalctl -k --no-pager | grep 'apparmor="DENIED"' | tail
+# … profile="mosquitto" name="/mosquitto/config/mosquitto.conf" …
+```
+
+The installer (`--apparmor-fix`, automatic on these systems) disables profiles whose program does not exist
+on the host. By hand, for one profile:
+
+```sh
+sudo ln -s /etc/apparmor.d/mosquitto /etc/apparmor.d/disable/
+sudo apparmor_parser -R /etc/apparmor.d/mosquitto
+```
+
+Panels before this fix also blocked opened ports in the project's NetworkPolicy (k3s checks it with the
+client's address, not the node's): redeploy the app after updating, which adds the NetworkPolicy
+`<app>-ports` allowing those ports from anywhere.
