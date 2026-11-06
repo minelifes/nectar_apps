@@ -7955,6 +7955,376 @@ class S {
       args: [name],
     );
   }
+
+  /// `Copy`
+  String get actionCopy {
+    return Intl.message('Copy', name: 'actionCopy', desc: '', args: []);
+  }
+
+  /// `Mark as database…`
+  String get appDbMarkMenu {
+    return Intl.message(
+      'Mark as database…',
+      name: 'appDbMarkMenu',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Database settings…`
+  String get appDbSettingsMenu {
+    return Intl.message(
+      'Database settings…',
+      name: 'appDbSettingsMenu',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Mark as database`
+  String get appDbMarkTitle {
+    return Intl.message(
+      'Mark as database',
+      name: 'appDbMarkTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Database settings`
+  String get appDbSettingsTitle {
+    return Intl.message(
+      'Database settings',
+      name: 'appDbSettingsTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The app stays an app (deploys, logs, charts, scaling) and also gets what databases have: 'nectar db connect', backups that are real dumps, and connection variables for other apps. The password is read from one of its variables; nothing is copied.`
+  String get appDbMarkHelp {
+    return Intl.message(
+      'The app stays an app (deploys, logs, charts, scaling) and also gets what databases have: `nectar db connect`, backups that are real dumps, and connection variables for other apps. The password is read from one of its variables; nothing is copied.',
+      name: 'appDbMarkHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Engine`
+  String get appDbEngine {
+    return Intl.message('Engine', name: 'appDbEngine', desc: '', args: []);
+  }
+
+  /// `Port (empty = the usual one)`
+  String get appDbPort {
+    return Intl.message(
+      'Port (empty = the usual one)',
+      name: 'appDbPort',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Variable with the password`
+  String get appDbPasswordVar {
+    return Intl.message(
+      'Variable with the password',
+      name: 'appDbPasswordVar',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Variable with the password (if any)`
+  String get appDbPasswordVarOptional {
+    return Intl.message(
+      'Variable with the password (if any)',
+      name: 'appDbPasswordVarOptional',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Variable with the user`
+  String get appDbUserVar {
+    return Intl.message(
+      'Variable with the user',
+      name: 'appDbUserVar',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Variable with the database name`
+  String get appDbDatabaseVar {
+    return Intl.message(
+      'Variable with the database name',
+      name: 'appDbDatabaseVar',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `(none)`
+  String get appDbNoVariable {
+    return Intl.message('(none)', name: 'appDbNoVariable', desc: '', args: []);
+  }
+
+  /// `(type it below)`
+  String get appDbTypeIt {
+    return Intl.message(
+      '(type it below)',
+      name: 'appDbTypeIt',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `User`
+  String get appDbUser {
+    return Intl.message('User', name: 'appDbUser', desc: '', args: []);
+  }
+
+  /// `Database`
+  String get appDbDatabase {
+    return Intl.message('Database', name: 'appDbDatabase', desc: '', args: []);
+  }
+
+  /// `Password`
+  String get appDbPassword {
+    return Intl.message('Password', name: 'appDbPassword', desc: '', args: []);
+  }
+
+  /// `Host`
+  String get appDbHost {
+    return Intl.message('Host', name: 'appDbHost', desc: '', args: []);
+  }
+
+  /// `{name} is marked as a database`
+  String appDbMarked(String name) {
+    return Intl.message(
+      '$name is marked as a database',
+      name: 'appDbMarked',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `Unmark`
+  String get appDbUnmark {
+    return Intl.message('Unmark', name: 'appDbUnmark', desc: '', args: []);
+  }
+
+  /// `{name} is no longer a database?`
+  String appDbUnmarkTitle(String name) {
+    return Intl.message(
+      '$name is no longer a database?',
+      name: 'appDbUnmarkTitle',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `It stays an app and keeps running. Linked apps keep their variables, but their references stop resolving: their next deploy says what to fix. Backup plans of it back up its volumes again.`
+  String get appDbUnmarkBody {
+    return Intl.message(
+      'It stays an app and keeps running. Linked apps keep their variables, but their references stop resolving: their next deploy says what to fix. Backup plans of it back up its volumes again.',
+      name: 'appDbUnmarkBody',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Database · {engine}`
+  String appDbCardTitle(String engine) {
+    return Intl.message(
+      'Database · $engine',
+      name: 'appDbCardTitle',
+      desc: '',
+      args: [engine],
+    );
+  }
+
+  /// `Show credentials`
+  String get appDbShowCredentials {
+    return Intl.message(
+      'Show credentials',
+      name: 'appDbShowCredentials',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Credentials`
+  String get appDbCredentials {
+    return Intl.message(
+      'Credentials',
+      name: 'appDbCredentials',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Apps of this project connect to`
+  String get appDbInsideProject {
+    return Intl.message(
+      'Apps of this project connect to',
+      name: 'appDbInsideProject',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `From your computer`
+  String get appDbFromYourComputer {
+    return Intl.message(
+      'From your computer',
+      name: 'appDbFromYourComputer',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Linked apps`
+  String get appDbLinkedApps {
+    return Intl.message(
+      'Linked apps',
+      name: 'appDbLinkedApps',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Link to app`
+  String get appDbLinkAction {
+    return Intl.message(
+      'Link to app',
+      name: 'appDbLinkAction',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Link`
+  String get appDbLink {
+    return Intl.message('Link', name: 'appDbLink', desc: '', args: []);
+  }
+
+  /// `Link an app to {name}`
+  String appDbLinkTitle(String name) {
+    return Intl.message(
+      'Link an app to $name',
+      name: 'appDbLinkTitle',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `The app gets DATABASE_URL and the engine's variables as references ({example} …), resolved on each of its deploys: a changed password reaches it with its next deploy.`
+  String appDbLinkHelp(String example) {
+    return Intl.message(
+      'The app gets DATABASE_URL and the engine\'s variables as references ($example …), resolved on each of its deploys: a changed password reaches it with its next deploy.',
+      name: 'appDbLinkHelp',
+      desc: '',
+      args: [example],
+    );
+  }
+
+  /// `App`
+  String get appDbLinkApp {
+    return Intl.message('App', name: 'appDbLinkApp', desc: '', args: []);
+  }
+
+  /// `Prefix (optional)`
+  String get appDbLinkPrefix {
+    return Intl.message(
+      'Prefix (optional)',
+      name: 'appDbLinkPrefix',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{name} linked: deploy it to use the variables`
+  String appDbLinked(String name) {
+    return Intl.message(
+      '$name linked: deploy it to use the variables',
+      name: 'appDbLinked',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `Unlink`
+  String get appDbUnlink {
+    return Intl.message('Unlink', name: 'appDbUnlink', desc: '', args: []);
+  }
+
+  /// `Unlink {name}?`
+  String appDbUnlinkTitle(String name) {
+    return Intl.message(
+      'Unlink $name?',
+      name: 'appDbUnlinkTitle',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `Removes its variables that reference {slug}. Deploy it afterwards.`
+  String appDbUnlinkBody(String slug) {
+    return Intl.message(
+      'Removes its variables that reference $slug. Deploy it afterwards.',
+      name: 'appDbUnlinkBody',
+      desc: '',
+      args: [slug],
+    );
+  }
+
+  /// `No app is linked yet. Apps can also reference single values like {example}.`
+  String appDbNoLinks(String example) {
+    return Intl.message(
+      'No app is linked yet. Apps can also reference single values like $example.',
+      name: 'appDbNoLinks',
+      desc: '',
+      args: [example],
+    );
+  }
+
+  /// `no prefix`
+  String get appDbNoPrefix {
+    return Intl.message('no prefix', name: 'appDbNoPrefix', desc: '', args: []);
+  }
+
+  /// `prefix {prefix}`
+  String appDbPrefix(String prefix) {
+    return Intl.message(
+      'prefix $prefix',
+      name: 'appDbPrefix',
+      desc: '',
+      args: [prefix],
+    );
+  }
+
+  /// `Backup plans of this app make dumps (restored into the running database; Redis while stopped).`
+  String get appDbBackupsNote {
+    return Intl.message(
+      'Backup plans of this app make dumps (restored into the running database; Redis while stopped).',
+      name: 'appDbBackupsNote',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{engine} app`
+  String appDbAppTag(String engine) {
+    return Intl.message(
+      '$engine app',
+      name: 'appDbAppTag',
+      desc: '',
+      args: [engine],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

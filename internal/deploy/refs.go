@@ -13,7 +13,8 @@ import (
 
 // References in env values: "${db.PGHOST}" is the variable PGHOST that the project's add-on "db" gives
 // linked apps, "${api.host}" / "${api.port}" / "${api.url}" the in-cluster address of the project's app
-// "api" and "${api.KEY}" one of its own variables (as set on the app, not resolved again), "${shared.KEY}"
+// "api" and "${api.KEY}" one of its own variables (as set on the app, not resolved again) — for an app marked
+// as a database also its connection variables (${mydb.DATABASE_URL}, ${mydb.PGHOST}, …) —, "${shared.KEY}"
 // a variable of the project's env group "shared". "$${…}" is a literal "${…}".
 // References are resolved at every deploy, so a rotated password or a moved port is picked up.
 
@@ -89,8 +90,17 @@ func (r *refSource) value(name, field string) (string, bool) {
 			env, _ = r.d.DecryptEnv(context.Background(), a.ID)
 			r.appEnv[name] = env
 		}
-		v, ok := env[field]
-		return v, ok
+		if v, ok := env[field]; ok {
+			return v, ok
+		}
+		// a database app also offers the connection variables of its engine (DATABASE_URL, PGHOST, …)
+		if a.Database != nil {
+			if c, err := AppDatabaseCredentials(a.Database, env); err == nil {
+				v, ok := DatabaseEnv(a.Database.Engine, a.Slug, AppDatabasePort(a), c, "")[field]
+				return v, ok
+			}
+		}
+		return "", false
 	}
 	return "", false
 }

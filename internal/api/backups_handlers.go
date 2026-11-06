@@ -332,7 +332,7 @@ func (s *Server) createPlan(w http.ResponseWriter, r *http.Request, p *principal
 		return
 	}
 	if in.Scope == backup.ScopeApp {
-		if a, _ := s.store.GetApp(r.Context(), in.SubjectID); len(a.Config.Volumes) == 0 {
+		if a, _ := s.store.GetApp(r.Context(), in.SubjectID); len(a.Config.Volumes) == 0 && a.Database == nil {
 			writeError(w, http.StatusBadRequest, "the app has no volumes: add one in its settings first")
 			return
 		}

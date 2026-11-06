@@ -354,6 +354,15 @@ func (s *Server) Handler() http.Handler {
 
 	mux.Handle("GET /api/apps/{id}", s.onApp("app.view", s.getApp))
 	mux.Handle("PATCH /api/apps/{id}", s.onApp("app.edit", s.updateApp))
+	mux.Handle("GET /api/apps/{id}/database/detect", s.onApp("app.edit", s.appDatabaseDetect))
+	mux.Handle("PUT /api/apps/{id}/database", s.onApp("app.edit", s.putAppDatabase))
+	mux.Handle("DELETE /api/apps/{id}/database", s.onApp("app.edit", s.deleteAppDatabase))
+	mux.Handle("GET /api/apps/{id}/database/credentials", s.onApp("env.secrets.view", s.appDatabaseCredentials))
+	mux.Handle("GET /api/apps/{id}/database/tunnel", s.onApp("env.secrets.view", s.appDatabaseTunnel)) // nectar db connect
+	mux.Handle("GET /api/apps/{id}/database/links", s.onApp("app.view", s.appDatabaseLinks))
+	mux.Handle("POST /api/apps/{id}/database/links", s.onApp("app.view", s.linkAppDatabase))
+	mux.Handle("DELETE /api/apps/{id}/database/links/{app}", s.onApp("app.view", s.unlinkAppDatabase))
+	mux.Handle("GET /api/projects/{pid}/app-databases", s.inProject("project.view", s.projectAppDatabases))
 	mux.Handle("DELETE /api/apps/{id}", s.onApp("app.delete", s.deleteApp))
 	mux.Handle("GET /api/apps/{id}/status", s.onApp("app.view", s.appStatus))
 	mux.Handle("GET /api/apps/{id}/usage", s.onApp("app.metrics", s.appUsage))

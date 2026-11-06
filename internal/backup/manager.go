@@ -179,6 +179,9 @@ func (m *Manager) subject(ctx context.Context, scope string, id int64) (subject,
 			return subject{}, err
 		}
 		s := subject{Name: p.Slug + "/" + a.Slug, Namespace: p.Namespace, App: &a, Project: p, CreatedAt: a.CreatedAt}
+		if a.Database != nil {
+			s.Name += " (" + a.Database.Engine + ")"
+		}
 		for _, v := range a.Config.Volumes {
 			s.Volumes = append(s.Volumes, v.Name)
 		}
@@ -298,8 +301,16 @@ func (m *Manager) startBackup(ctx context.Context, plan store.BackupPlan) (store
 	backup := func(paths string) string {
 		return resticPreamble + "restic backup --json --host nectar --tag nectar --tag \"$TAG\" " + paths + " | tail -n 1\n" + forget + "\n"
 	}
-	switch plan.Scope {
-	case ScopeApp:
+	switch {
+	case plan.Scope == ScopeApp && sub.App.Database != nil:
+		// a database app: a dump, not a copy of its files
+		init, file, err := appDumpContainer(*sub.App)
+		if err != nil {
+			return store.BackupRun{}, err
+		}
+		j.Init = []map[string]any{init}
+		j.Script = backup("/work/" + file)
+	case plan.Scope == ScopeApp:
 		if len(sub.Volumes) == 0 {
 			return store.BackupRun{}, errors.New("the app has no volumes to back up")
 		}
@@ -308,14 +319,14 @@ func (m *Manager) startBackup(ctx context.Context, plan store.BackupPlan) (store
 			j.Mounts = append(j.Mounts, map[string]any{"name": "v-" + v, "mountPath": "/data/" + v, "readOnly": true})
 		}
 		j.Script = backup("/data")
-	case ScopeAddon:
+	case plan.Scope == ScopeAddon:
 		init, file, err := dumpContainer(*sub.Addon)
 		if err != nil {
 			return store.BackupRun{}, err
 		}
 		j.Init = []map[string]any{init}
 		j.Script = backup("/work/" + file)
-	case ScopePanel:
+	case plan.Scope == ScopePanel:
 		dir := filepath.Join(m.DataDir, "backup")
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return store.BackupRun{}, err
@@ -484,7 +495,53 @@ func (m *Manager) restore(ctx context.Context, run store.BackupRun, sub subject,
 	j := jobSpec{Namespace: sub.Namespace, Name: run.Job, TargetID: t.ID, Kind: t.Kind, Config: cfg, Env: map[string]string{"SNAP": snapshot}}
 	open := strings.Replace(resticPreamble, "|| restic init", "|| { echo 'the backup repository does not exist'; exit 1; }", 1)
 	var after func(context.Context) error
+	// stopApp scales an app to 0 until the restore is over
+	stopApp := func(app store.App) error {
+		replicas := app.Config.Replicas
+		if replicas == 0 {
+			return nil
+		}
+		if err := m.Deployer.Scale(ctx, app, sub.Project, 0); err != nil && !errors.Is(err, deploy.ErrNotDeployed) {
+			return fmt.Errorf("stop the app: %w", err)
+		}
+		if err := m.waitPodsGone(ctx, sub.Namespace, deploy.LabelApp+"="+app.Slug+","+deploy.LabelRole+"=workload"); err != nil {
+			return err
+		}
+		after = func(ctx context.Context) error {
+			app, err := m.Store.GetApp(ctx, app.ID)
+			if err != nil {
+				return err
+			}
+			return m.Deployer.Scale(ctx, app, sub.Project, replicas)
+		}
+		return nil
+	}
 	switch {
+	case sub.App != nil && sub.App.Database != nil && sub.App.Database.Engine == "redis":
+		// like a Redis add-on: replace the RDB file while the app is stopped
+		app := *sub.App
+		v, ok := redisDataVolume(app)
+		if !ok {
+			return errors.New("the Redis app needs a volume at /data (or exactly one volume) to restore into")
+		}
+		if err := stopApp(app); err != nil {
+			return err
+		}
+		j.Volumes = []map[string]any{{"name": "data", "persistentVolumeClaim": map[string]any{"claimName": deploy.ClaimOf(app.Slug, v)}}}
+		j.Mounts = []map[string]any{{"name": "data", "mountPath": "/data"}}
+		j.Script = open + `restic dump "$SNAP" /work/dump.rdb > /data/dump.rdb.new
+mv /data/dump.rdb.new /data/dump.rdb
+rm -rf /data/appendonlydir /data/appendonly.aof
+echo restored`
+	case sub.App != nil && sub.App.Database != nil:
+		// PostgreSQL / MySQL / MariaDB: the dump is loaded into the running app
+		load, file, err := appLoadContainer(*sub.App)
+		if err != nil {
+			return err
+		}
+		j.Script = open + `restic dump "$SNAP" /work/` + file + ` > /work/restore.tmp
+mv /work/restore.tmp /work/` + file + "\n"
+		j.After = []map[string]any{load}
 	case sub.App != nil:
 		app := *sub.App
 		if len(sub.Volumes) == 0 {
@@ -497,21 +554,8 @@ func (m *Manager) restore(ctx context.Context, run store.BackupRun, sub subject,
 			includes += " --include /data/" + v
 		}
 		j.Script = open + `restic restore "$SNAP" --host nectar --target /` + includes + " --delete\necho restored\n"
-		replicas := app.Config.Replicas
-		if replicas > 0 {
-			if err := m.Deployer.Scale(ctx, app, sub.Project, 0); err != nil && !errors.Is(err, deploy.ErrNotDeployed) {
-				return fmt.Errorf("stop the app: %w", err)
-			}
-			if err := m.waitPodsGone(ctx, sub.Namespace, deploy.LabelApp+"="+app.Slug+","+deploy.LabelRole+"=workload"); err != nil {
-				return err
-			}
-			after = func(ctx context.Context) error {
-				app, err := m.Store.GetApp(ctx, app.ID)
-				if err != nil {
-					return err
-				}
-				return m.Deployer.Scale(ctx, app, sub.Project, replicas)
-			}
+		if err := stopApp(app); err != nil {
+			return err
 		}
 	case sub.Addon != nil:
 		a := *sub.Addon

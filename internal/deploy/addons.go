@@ -146,9 +146,15 @@ func (d *Deployer) AddonCredentials(a store.Addon) (AddonCredentials, error) {
 // AddonEnv returns the variables a linked app gets (host = the add-on's Service in the same namespace).
 func AddonEnv(a store.Addon, c AddonCredentials, prefix string) map[string]string {
 	k, _ := AddonKindByID(a.Kind)
-	host, port := a.Slug, strconv.Itoa(k.Port)
+	return DatabaseEnv(a.Kind, a.Slug, k.Port, c, prefix)
+}
+
+// DatabaseEnv returns the connection variables of a database of kind at host:port (add-ons and apps
+// marked as databases).
+func DatabaseEnv(kind, host string, portNum int, c AddonCredentials, prefix string) map[string]string {
+	port := strconv.Itoa(portNum)
 	env := map[string]string{}
-	switch a.Kind {
+	switch kind {
 	case "postgres":
 		env["DATABASE_URL"] = "postgres://" + url.UserPassword(c.User, c.Password).String() + "@" + host + ":" + port + "/" + c.Database + "?sslmode=disable"
 		env["PGHOST"], env["PGPORT"], env["PGUSER"], env["PGPASSWORD"], env["PGDATABASE"] = host, port, c.User, c.Password, c.Database

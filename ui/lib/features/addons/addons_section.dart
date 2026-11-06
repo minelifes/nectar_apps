@@ -12,6 +12,7 @@ import '../../generated/l10n.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/status.dart';
+import '../apps/app_database.dart';
 
 IconData addonIcon(String kind) =>
     kind == 'redis' ? Icons.bolt_rounded : Icons.storage_rounded;
@@ -22,10 +23,14 @@ class AddonsSection extends ConsumerWidget {
     super.key,
     required this.projectId,
     required this.canCreate,
+    this.databaseApps = const [],
   });
 
   final int projectId;
   final bool canCreate;
+
+  /// Apps marked as databases (listed after the add-ons, opened as apps).
+  final List<App> databaseApps;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -50,7 +55,7 @@ class AddonsSection extends ConsumerWidget {
           loadingHeight: 80,
           onRetry: () => ref.invalidate(projectAddonsProvider(projectId)),
           data: (list) {
-            if (list.isEmpty) {
+            if (list.isEmpty && databaseApps.isEmpty) {
               return NCard(
                 child: Text(
                   s.addonPostgresqlMysqlMariadbOrRedis,
@@ -81,6 +86,25 @@ class AddonsSection extends ConsumerWidget {
                       ),
                       trailing: StatusPill(status: list[i].liveStatus),
                       onTap: () => context.go('/addons/${list[i].id}'),
+                    ),
+                  ],
+                  for (var i = 0; i < databaseApps.length; i++) ...[
+                    if (list.isNotEmpty || i > 0) const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(
+                        addonIcon(databaseApps[i].database!.engine),
+                        color: NectarTokens.amber,
+                      ),
+                      title: Text(
+                        databaseApps[i].name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        '${s.appDbAppTag(appDatabaseEngineName(databaseApps[i].database!.engine))} · ${databaseApps[i].slug}',
+                        style: TextStyle(color: c.muted, fontSize: 12.5),
+                      ),
+                      trailing: StatusPill(status: databaseApps[i].status),
+                      onTap: () => context.go('/apps/${databaseApps[i].id}'),
                     ),
                   ],
                 ],

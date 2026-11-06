@@ -28,3 +28,24 @@ Change CPU, memory and storage on the Overview tab. Storage can only grow. **Res
 for any client (`psql`, `mysql`, TablePlus, DBeaver…). See [CLI](cli.md#connecting-to-a-database-from-your-computer).
 
 Databases can be backed up (a dump on a schedule) and restored from the panel — see [Backups](backups.md).
+
+## Apps as databases
+
+A database you run as an app (an imported MySQL, a PostgreSQL or Redis image, a one-click template) can be
+**marked as a database**: app page → ⋮ → **Mark as database…**. The panel suggests the engine and the
+variables that hold the user, password and database name (`POSTGRES_*`, `MYSQL_*`, `MARIADB_*`,
+`REDIS_PASSWORD`); the password is always read from the app's own variable, never copied.
+
+It stays an app — deploys, logs, charts, scaling, settings — and also gets:
+
+- **`nectar db list` / `nectar db connect project/app`**, like the built-in databases (audited).
+- **Backups that are dumps**: a backup plan on the app runs `pg_dump` / `mysqldump` / `mariadb-dump` /
+  `redis-cli --rdb` in the app's own image. Restores load the dump into the running database (Redis: the app
+  is stopped and `dump.rdb` replaced in its `/data` volume).
+- **Links**: *Link to app* gives another app `DATABASE_URL`, `PGHOST`… / `MYSQL_*` / `REDIS_URL` (optionally
+  with a prefix) as references (`${mydb.DATABASE_URL}`), resolved on each deploy of that app. Any app can
+  also reference single values the same way.
+- A place in the project's **Databases** section.
+
+Unmarking keeps the app running; linked apps keep their variables, whose references then fail on their next
+deploy until removed.

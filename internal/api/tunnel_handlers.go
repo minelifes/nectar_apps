@@ -37,6 +37,11 @@ func (s *Server) addonTunnel(w http.ResponseWriter, r *http.Request, p *principa
 		return
 	}
 	addr := net.JoinHostPort(a.Slug+"."+proj.Namespace+".svc.cluster.local", strconv.Itoa(k.Port))
+	s.serveTunnel(w, r, p, addr, "addon.tunnel", proj.Slug+"/"+a.Slug)
+}
+
+// serveTunnel dials addr inside the cluster and carries the connection over the request's WebSocket.
+func (s *Server) serveTunnel(w http.ResponseWriter, r *http.Request, p *principal, addr, action, target string) {
 	dial := s.tunnelDial
 	if dial == nil {
 		dial = (&net.Dialer{Timeout: 10 * time.Second}).DialContext
@@ -55,7 +60,7 @@ func (s *Server) addonTunnel(w http.ResponseWriter, r *http.Request, p *principa
 		return
 	}
 	defer conn.Close()
-	s.audit(r, p, "addon.tunnel", proj.Slug+"/"+a.Slug, map[string]any{"from": clientIP(r)})
+	s.audit(r, p, action, target, map[string]any{"from": clientIP(r)})
 
 	done := make(chan struct{})
 	// client → database
@@ -104,7 +109,7 @@ func (s *Server) addonTunnel(w http.ResponseWriter, r *http.Request, p *principa
 		}
 		if err != nil {
 			if err != io.EOF {
-				s.log.Debug("tunnel", "addon", proj.Slug+"/"+a.Slug, "err", err)
+				s.log.Debug("tunnel", "target", target, "err", err)
 			}
 			return
 		}
