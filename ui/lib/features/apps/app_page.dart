@@ -32,6 +32,7 @@ import 'settings_tab.dart';
 import 'terminal_tab.dart';
 import 'deploy_progress.dart';
 import 'domain_dialog.dart';
+import 'path_routes.dart';
 
 /// App detail: Overview (live state, domains, configuration) and Deployments (history, rollback).
 class AppPage extends ConsumerStatefulWidget {
@@ -396,7 +397,10 @@ class _Overview extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final liveCard = _LiveCard(app: app);
-    final domains = app.isWeb ? _DomainsCard(app: app) : null;
+    // web apps, and workers with a port (served under a path of another app's domain, or their own)
+    final domains = app.isWeb || (app.kind == 'worker' && app.port > 0)
+        ? _DomainsCard(app: app)
+        : null;
     final config = _ConfigCard(app: app);
     final alerts = ref.watch(appAlertsProvider(app.id));
     final layout = LayoutBuilder(
@@ -617,7 +621,7 @@ class _DomainsCard extends ConsumerWidget {
         loadingHeight: 60,
         data: (list) => list.isEmpty
             ? Text(
-                l.appNoDomainSetABase,
+                app.isWeb ? l.appNoDomainSetABase : l.domainWorkerNoDomain,
                 style: TextStyle(color: c.muted, fontSize: 13.5),
               )
             : Column(
@@ -698,6 +702,7 @@ class _DomainsCard extends ConsumerWidget {
                         ],
                       ),
                     ),
+                  PathRoutesSection(app: app, domains: list),
                 ],
               ),
       ),

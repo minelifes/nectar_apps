@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -313,8 +314,96 @@ func dbCommand(ctx context.Context, c *Client, args []string, env Env) error {
 			}
 		}
 		return ServeTunnel(ctx, ln, func(ctx context.Context) (*wsock.Conn, error) { return c.OpenDatabaseTunnel(ctx, d) }, env.Stderr)
+
+	case "exec", "execute":
+		return dbExecCommand(ctx, c, args, env)
 	}
-	return fmt.Errorf("unknown command: nectar db %s (list, connect)", sub)
+	return fmt.Errorf("unknown command: nectar db %s (list, connect, exec)", sub)
+}
+
+// dbExecCommand runs `nectar db exec DB -f file.sql | -- "SELECT 1;"`.
+func dbExecCommand(ctx context.Context, c *Client, args []string, env Env) error {
+	if len(args) == 0 {
+		return errors.New("usage: nectar db exec DB -f FILE [--project SLUG] | nectar db exec DB -- \"SQL\"")
+	}
+	fs := newFlagSet("nectar db exec", env)
+	project := fs.String("project", "", "project slug")
+	file := fs.String("f", "", "SQL file to execute (- for stdin)")
+	pos, err := parse(fs, args)
+	if err != nil {
+		return err
+	}
+	if len(pos) != 1 {
+		return errors.New("usage: nectar db exec DB -f FILE [--project SLUG] | nectar db exec DB -- \"SQL\"")
+	}
+	dbRef := pos[0]
+
+	// Get SQL content
+	var sql string
+	if *file != "" {
+		if *file == "-" {
+			data, err := io.ReadAll(env.Stdin)
+			if err != nil {
+				return fmt.Errorf("read stdin: %w", err)
+			}
+			sql = string(data)
+		} else {
+			data, err := os.ReadFile(*file)
+			if err != nil {
+				return fmt.Errorf("read file: %w", err)
+			}
+			sql = string(data)
+		}
+	} else if len(fs.Args()) > 0 {
+		// fs.Args() has the SQL (passed after --)
+		sql = fs.Args()[0]
+	} else {
+		return errors.New("no SQL provided: use -f FILE or -- \"SQL\"")
+	}
+
+	// Resolve the database
+	d, proj, err := c.ResolveDatabase(ctx, dbRef, *project)
+	if err != nil {
+		return err
+	}
+	if d.Stopped {
+		return fmt.Errorf("%s/%s is stopped: start it on the panel first", proj.Slug, d.Slug)
+	}
+
+	// Execute SQL
+	result, err := c.ExecuteSQL(ctx, d, sql)
+	if err != nil {
+		return err
+	}
+
+	// Print results
+	fmt.Fprintf(env.Stdout, "-- %s/%s (%s)\n", proj.Slug, d.Slug, d.KindName)
+	if result.Columns != nil && len(result.Columns) > 0 {
+		// Print as table
+		tw := newTable(env.Stdout)
+		hdr := make([]string, len(result.Columns))
+		for i, col := range result.Columns {
+			hdr[i] = col
+		}
+		fmt.Fprintln(tw, strings.Join(hdr, "\t"))
+		for _, row := range result.Rows {
+			vals := make([]string, len(result.Columns))
+			for i, col := range result.Columns {
+				v := row[col]
+				if v == nil {
+					vals[i] = "NULL"
+				} else {
+					vals[i] = fmt.Sprintf("%v", v)
+				}
+			}
+			fmt.Fprintln(tw, strings.Join(vals, "\t"))
+		}
+		tw.Flush()
+	}
+	if result.Affected > 0 {
+		fmt.Fprintf(env.Stdout, "-- %d rows affected\n", result.Affected)
+	}
+	return nil
 }
 
 func newFlagSet(name string, env Env) *flag.FlagSet {

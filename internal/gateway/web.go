@@ -31,6 +31,9 @@ type Web struct {
 	HSTS           int  `json:"hsts,omitempty"`
 	HSTSSubdomains bool `json:"hsts_subdomains,omitempty"`
 	HSTSPreload    bool `json:"hsts_preload,omitempty"`
+	// StripPrefix removes the route's path prefix before proxying (/api/users → /users); nectar-gateway
+	// feature "strip-prefix".
+	StripPrefix bool `json:"strip_prefix,omitempty"`
 }
 
 // RedirectRule redirects one path (Prefix=false) or every path under it (Prefix=true).
@@ -54,7 +57,7 @@ type CORS struct {
 // IsZero reports whether no option is set.
 func (w *Web) IsZero() bool {
 	return w == nil || (len(w.Redirects) == 0 && len(w.AllowIPs) == 0 && len(w.ResponseHeaders) == 0 &&
-		len(w.RequestHeaders) == 0 && w.CORS == nil && !w.Compress && w.HSTS == 0)
+		len(w.RequestHeaders) == 0 && w.CORS == nil && !w.Compress && w.HSTS == 0 && !w.StripPrefix)
 }
 
 var headerNameRe = regexp.MustCompile("^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,100}$")
@@ -202,6 +205,9 @@ func DecodeWeb(s string) *Web {
 
 // FeatureWebOptions: the gateway supports Route.Web.
 const FeatureWebOptions = "web-options"
+
+// FeatureStripPrefix is the nectar-gateway feature for the web option strip_prefix.
+const FeatureStripPrefix = "strip-prefix"
 
 // FeatureDNSRecords: the gateway manages A/AAAA records with its DNS provider (PUT /api/dns/records).
 const FeatureDNSRecords = "dns-records"

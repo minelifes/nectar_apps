@@ -44,6 +44,8 @@ Usage:
   nectar db list [--project SLUG]                                 databases of a project
   nectar db connect DB [--project SLUG] [--port N] [--show-password]
                                                                   open DB on 127.0.0.1 through the panel (any client: psql, mysql, TablePlus…)
+  nectar db exec DB -f FILE [--project SLUG]                      execute a SQL file against a database
+  nectar db exec DB -- "SQL"                                      execute a SQL statement against a database
   nectar external                                                 namespaces running on the cluster that Nectar does not manage
   nectar adopt NAMESPACE… [--all] [--slug S] [--name N]           make existing namespaces projects (their workloads are not changed)
   nectar templates                                                one-click apps

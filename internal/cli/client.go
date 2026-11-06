@@ -348,6 +348,26 @@ func (c *Client) Logs(ctx context.Context, appID int64, tail int, w io.Writer) e
 	return c.do(ctx, http.MethodGet, fmt.Sprintf("/apps/%d/logs?format=text&tail=%d", appID, tail), nil, "", w)
 }
 
+// SQLResult holds the result of a SQL execution.
+type SQLResult struct {
+	Rows     []map[string]any `json:"rows"`
+	Columns  []string         `json:"columns"`
+	Affected int64            `json:"affected_rows"`
+	Error    string           `json:"error,omitempty"`
+}
+
+// ExecuteSQL runs SQL against a database (add-on or app) and returns the result.
+func (c *Client) ExecuteSQL(ctx context.Context, d Database, sql string) (*SQLResult, error) {
+	var res SQLResult
+	if err := c.postJSON(ctx, d.path()+"/sql", map[string]string{"sql": sql}, &res); err != nil {
+		return nil, err
+	}
+	if res.Error != "" {
+		return &res, fmt.Errorf("database error: %s", res.Error)
+	}
+	return &res, nil
+}
+
 // WaitRelease polls until release n of the app is live or failed.
 func (c *Client) WaitRelease(ctx context.Context, appID int64, n int, poll time.Duration, progress func(Release)) (Release, error) {
 	last := ""
