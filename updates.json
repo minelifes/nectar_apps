@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.21",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:8c0a19421358a1c6490892cebd84536f04656f55bd9ef18dc71dab543b0087d2",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- custom domains. tunel issue. proxy path to another app",
+          "previous": "1.0.20",
+          "published_at": "2026-11-06T15:13:28+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.20",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:2fc33779a6cfca461b0e0570dc6f63b5bdcbb1836f58f345c0b2805f14b6f35c",
@@ -425,6 +445,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.21",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:8c0a19421358a1c6490892cebd84536f04656f55bd9ef18dc71dab543b0087d2",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- custom domains. tunel issue. proxy path to another app",
+          "previous": "1.0.20",
+          "published_at": "2026-11-06T15:13:28+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.20",
@@ -848,5 +888,5 @@
       ]
     }
   },
-  "updated_at": "2026-11-06T02:54:33+00:00"
+  "updated_at": "2026-11-06T15:13:28+00:00"
 }
