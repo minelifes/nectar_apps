@@ -860,6 +860,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#unable-to-open-config-file-or-permission-denied-although-the-file-is-there-ubuntu-2604" class="md-nav__link">
+    <span class="md-ellipsis">
+      "Unable to open config file" (or permission denied) although the file is there — Ubuntu 26.04
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1061,6 +1070,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#unable-to-open-config-file-or-permission-denied-although-the-file-is-there-ubuntu-2604" class="md-nav__link">
+    <span class="md-ellipsis">
+      "Unable to open config file" (or permission denied) although the file is there — Ubuntu 26.04
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1119,9 +1137,33 @@ are empty anyway).</p>
 sudo<span class="w"> </span>firewall-cmd<span class="w"> </span>--permanent<span class="w"> </span>--add-port<span class="o">=</span><span class="m">30000</span>-32767/tcp<span class="w"> </span>--add-port<span class="o">=</span><span class="m">30000</span>-32767/udp<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>firewall-cmd<span class="w"> </span>--reload
 </code></pre></div>
 <ul>
+<li><strong>ufw drops forwarded traffic</strong>: k3s forwards a node port to the pod's address (10.42.x.x), so the packet
+  passes ufw's FORWARD chain, whose default policy is DROP. <code>tcpdump -ni &lt;nic&gt; tcp port 30001</code> then shows the
+  SYN arriving and no answer. Installers since this fix add:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>ufw<span class="w"> </span>route<span class="w"> </span>allow<span class="w"> </span>to<span class="w"> </span><span class="m">10</span>.42.0.0/16
+sudo<span class="w"> </span>ufw<span class="w"> </span>route<span class="w"> </span>allow<span class="w"> </span>from<span class="w"> </span><span class="m">10</span>.42.0.0/16
+</code></pre></div>
+<ul>
 <li><strong>the cloud provider's firewall</strong> (security group, Hetzner/DO/AWS firewall): add an inbound rule for the
   port or range there too.</li>
 </ul>
+<h2 id="unable-to-open-config-file-or-permission-denied-although-the-file-is-there-ubuntu-2604">"Unable to open config file" (or permission denied) although the file is there — Ubuntu 26.04<a class="headerlink" href="#unable-to-open-config-file-or-permission-denied-although-the-file-is-there-ubuntu-2604" title="Permanent link">&para;</a></h2>
+<p>On Ubuntu 25.10+/26.04 with recent k3s, container processes carry a stacked AppArmor label, and a host
+profile that attaches to a program's path also confines that program inside containers. Ubuntu ships
+profiles for programs that are usually not installed (for example <code>mosquitto</code>), which then deny the
+container's own files. The kernel log shows it:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>journalctl<span class="w"> </span>-k<span class="w"> </span>--no-pager<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">'apparmor="DENIED"'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail
+<span class="c1"># … profile="mosquitto" name="/mosquitto/config/mosquitto.conf" …</span>
+</code></pre></div>
+<p>The installer (<code>--apparmor-fix</code>, automatic on these systems) disables profiles whose program does not exist
+on the host. By hand, for one profile:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>ln<span class="w"> </span>-s<span class="w"> </span>/etc/apparmor.d/mosquitto<span class="w"> </span>/etc/apparmor.d/disable/
+sudo<span class="w"> </span>apparmor_parser<span class="w"> </span>-R<span class="w"> </span>/etc/apparmor.d/mosquitto
+</code></pre></div>
+<p>Panels before this fix also blocked opened ports in the project's NetworkPolicy (k3s checks it with the
+client's address, not the node's): redeploy the app after updating, which adds the NetworkPolicy
+<code>&lt;app&gt;-ports</code> allowing those ports from anywhere.</p>
 
 
 
