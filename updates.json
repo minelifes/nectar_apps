@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.19",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:cef27e2cf0557f9ac4e66547790a87e3107902c43adf71e24773e02ede7b91c5",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- Fix port isolation issue.",
+          "previous": "1.0.18",
+          "published_at": "2026-11-06T02:24:47+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.18",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:6ec6f7f44be30501e61274def68077eaef0753016a5d7af9c0288bd5c2552489",
@@ -385,6 +405,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.19",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:cef27e2cf0557f9ac4e66547790a87e3107902c43adf71e24773e02ede7b91c5",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- Fix port isolation issue.",
+          "previous": "1.0.18",
+          "published_at": "2026-11-06T02:24:47+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.18",
@@ -768,5 +808,5 @@
       ]
     }
   },
-  "updated_at": "2026-11-06T00:06:10+00:00"
+  "updated_at": "2026-11-06T02:24:47+00:00"
 }
