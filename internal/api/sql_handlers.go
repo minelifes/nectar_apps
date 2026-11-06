@@ -14,11 +14,11 @@ import (
 
 // sqlResult is the JSON response for SQL execution.
 type sqlResult struct {
-	Rows       []map[string]any `json:"rows"`
-	Columns    []string         `json:"columns"`
-	Affected   int64            `json:"affected_rows"`
-	Error      string           `json:"error,omitempty"`
-	IsQuery    bool             `json:"is_query,omitempty"`
+	Rows     []map[string]any `json:"rows"`
+	Columns  []string         `json:"columns"`
+	Affected int64            `json:"affected_rows"`
+	Error    string           `json:"error,omitempty"`
+	IsQuery  bool             `json:"is_query,omitempty"`
 }
 
 // sqlExecAddon: POST /api/addons/{aid}/sql — execute SQL against an add-on database.
