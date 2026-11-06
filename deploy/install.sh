@@ -679,7 +679,9 @@ disable_orphan_apparmor_profiles() {
 			continue
 		fi
 		mkdir -p /etc/apparmor.d/disable
-		ln -s "$f" "/etc/apparmor.d/disable/$name" && apparmor_parser -R "$f" >/dev/null 2>&1 || true
+		if ln -s "$f" "/etc/apparmor.d/disable/$name"; then
+			apparmor_parser -R "$f" >/dev/null 2>&1 || true
+		fi
 		disabled="$disabled $name"
 	done
 	[ -n "$disabled" ] && info "Disabled AppArmor profiles of programs not installed on this server (they confined the same programs in containers):$disabled"
