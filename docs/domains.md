@@ -42,3 +42,17 @@ In the domain dialog:
 
 Server → Gateway shows every route with its health check, certificate and rate limit, the latest requests over
 all domains (filter by domain, status class or client IP; block an IP from its row), certificates and blocked IPs.
+
+## Your own domain, editing, and paths to other apps
+
+- **New app:** the *Name & domain* step takes an optional own domain; it is added next to the generated
+  default domain (`<app>-<project>.<base domain>`), which always stays.
+- **Edit a domain:** on the app page, Domains → the settings icon. Host and path can be changed (the domain is
+  replaced by one with the same settings and gets a fresh certificate); the generated default keeps its name.
+- **Route a path to another app:** on app1's Domains card, *Route a path to another app*: e.g.
+  `app1.com/myCustomRoute` → `app2` (a web app, or a **worker with a port**), optionally on another of its
+  ports. *Remove the path before forwarding* sends `/myCustomRoute/users` to app2 as `/users`; off, app2 gets
+  the full path. The longest matching path wins, so the rest of `app1.com` still goes to app1. The route is a
+  domain of app2 (host app1.com, path /myCustomRoute) and is listed on both apps.
+- Removing the path needs nectar-gateway with the `strip-prefix` feature; an older gateway leaves such a
+  route inactive with a message instead of sending app2 paths it does not expect.

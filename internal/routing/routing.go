@@ -109,12 +109,15 @@ func (s *Syncer) desiredRoute(ctx context.Context, d store.Domain) (*gateway.Rou
 			Web: webFor(d),
 		}, StatusActive, ""
 	}
-	if app.Kind != runtimes.KindWeb {
-		return nil, StatusError, "only web apps can have domains"
+	if app.Kind != runtimes.KindWeb && app.Kind != runtimes.KindWorker {
+		return nil, StatusError, "only web apps and workers with a port can have domains"
 	}
 	live, err := s.store.LiveRelease(ctx, app.ID)
 	if err != nil {
 		return nil, StatusWaiting, "deploy the app to activate this domain"
+	}
+	if live.Config.Port == 0 && d.TargetPort == 0 {
+		return nil, StatusError, "the app has no port to route to"
 	}
 	p, err := s.store.GetProject(ctx, app.ProjectID)
 	if err != nil {
@@ -235,6 +238,7 @@ func (s *Syncer) Sync(ctx context.Context) error {
 	}
 
 	webOK := s.hasFeature(ctx, gateway.FeatureWebOptions)
+	stripOK := s.hasFeature(ctx, gateway.FeatureStripPrefix)
 	var errs []error
 	wanted := map[string]bool{}
 	for _, d := range domains {
@@ -243,6 +247,11 @@ func (s *Syncer) Sync(ctx context.Context) error {
 		if want == nil {
 			_ = s.store.SetDomainState(ctx, d.ID, status, msg, nil, 0)
 			continue // its route (if any) is deleted below
+		}
+		if want.Web != nil && want.Web.StripPrefix && !stripOK {
+			// without stripping, the app would get paths it does not expect: do not route at all
+			_ = s.store.SetDomainState(ctx, d.ID, StatusError, "removing the path prefix needs the latest nectar-gateway (update it)", nil, 0)
+			continue
 		}
 		wanted[owner] = true
 		have, exists := byOwner[owner]

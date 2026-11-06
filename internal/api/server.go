@@ -423,6 +423,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/addons/{aid}/logs/ws", s.onAddon("app.logs", s.addonLogsWS))
 	mux.Handle("GET /api/addons/{aid}/exec/ws", s.onAddon("app.exec", s.addonExecWS))
 	mux.Handle("GET /api/addons/{aid}/tunnel", s.onAddon("env.secrets.view", s.addonTunnel)) // nectar db connect
+	mux.Handle("POST /api/addons/{aid}/sql", s.onAddon("env.secrets.view", s.sqlExecAddon))
+	mux.Handle("POST /api/apps/{id}/database/sql", s.onApp("env.secrets.view", s.sqlExecApp))
 	mux.Handle("GET /api/apps/{id}/files", s.onApp("env.view", s.getFiles))
 	mux.Handle("PUT /api/apps/{id}/files", s.onApp("env.edit", s.putFiles))
 

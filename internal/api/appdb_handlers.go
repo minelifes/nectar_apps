@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"slices"
 	"sort"
@@ -151,7 +150,8 @@ func (s *Server) appDatabaseTunnel(w http.ResponseWriter, r *http.Request, p *pr
 		writeError(w, http.StatusConflict, "the app is stopped: start it first")
 		return
 	}
-	addr := net.JoinHostPort(app.Slug+"."+proj.Namespace+".svc.cluster.local", strconv.Itoa(deploy.AppDatabasePort(app)))
+	port := deploy.AppDatabasePort(app)
+	addr := netJoinHostPort(app.Slug, proj.Namespace, port)
 	s.serveTunnel(w, r, p, addr, "app.database.tunnel", proj.Slug+"/"+app.Slug)
 }
 

@@ -8325,6 +8325,241 @@ class S {
       args: [engine],
     );
   }
+
+  /// `The generated default domain keeps its name; add your own next to it.`
+  String get domainDefaultKeepsName {
+    return Intl.message(
+      'The generated default domain keeps its name; add your own next to it.',
+      name: 'domainDefaultKeepsName',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Path (optional)`
+  String get domainPathPrefix {
+    return Intl.message(
+      'Path (optional)',
+      name: 'domainPathPrefix',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Only requests under this path come here, e.g. /api. Empty = the whole domain.`
+  String get domainPathPrefixHelp {
+    return Intl.message(
+      'Only requests under this path come here, e.g. /api. Empty = the whole domain.',
+      name: 'domainPathPrefixHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Remove the path before forwarding`
+  String get domainStripPrefix {
+    return Intl.message(
+      'Remove the path before forwarding',
+      name: 'domainStripPrefix',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{path}/users reaches the app as /users`
+  String domainStripPrefixOn(String path) {
+    return Intl.message(
+      '$path/users reaches the app as /users',
+      name: 'domainStripPrefixOn',
+      desc: '',
+      args: [path],
+    );
+  }
+
+  /// `{path}/users reaches the app as {path}/users`
+  String domainStripPrefixOff(String path) {
+    return Intl.message(
+      '$path/users reaches the app as $path/users',
+      name: 'domainStripPrefixOff',
+      desc: '',
+      args: [path],
+    );
+  }
+
+  /// `No domain yet. A worker with a port can get its own domain, or a path of another app's domain (on that app: Route a path to another app).`
+  String get domainWorkerNoDomain {
+    return Intl.message(
+      'No domain yet. A worker with a port can get its own domain, or a path of another app\'s domain (on that app: Route a path to another app).',
+      name: 'domainWorkerNoDomain',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Your domain (optional)`
+  String get domainCustomOptional {
+    return Intl.message(
+      'Your domain (optional)',
+      name: 'domainCustomOptional',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Added next to the generated default domain, with HTTPS from Let's Encrypt. Point its DNS A record to this server.`
+  String get domainCustomHelp {
+    return Intl.message(
+      'Added next to the generated default domain, with HTTPS from Let\'s Encrypt. Point its DNS A record to this server.',
+      name: 'domainCustomHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Added. Change it on the app page under Domains.`
+  String get domainCustomAdded {
+    return Intl.message(
+      'Added. Change it on the app page under Domains.',
+      name: 'domainCustomAdded',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The app was created, but {host} was not added: {error}. Add it on the app page.`
+  String domainCustomFailed(String host, String error) {
+    return Intl.message(
+      'The app was created, but $host was not added: $error. Add it on the app page.',
+      name: 'domainCustomFailed',
+      desc: '',
+      args: [host, error],
+    );
+  }
+
+  /// `Paths served by other apps`
+  String get pathRoutesTitle {
+    return Intl.message(
+      'Paths served by other apps',
+      name: 'pathRoutesTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Route a path to another app`
+  String get pathRoutesAdd {
+    return Intl.message(
+      'Route a path to another app',
+      name: 'pathRoutesAdd',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `None: every path of these domains goes to this app.`
+  String get pathRoutesNone {
+    return Intl.message(
+      'None: every path of these domains goes to this app.',
+      name: 'pathRoutesNone',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{path} removed before forwarding`
+  String pathRoutesStripped(String path) {
+    return Intl.message(
+      '$path removed before forwarding',
+      name: 'pathRoutesStripped',
+      desc: '',
+      args: [path],
+    );
+  }
+
+  /// `path kept`
+  String get pathRoutesKept {
+    return Intl.message(
+      'path kept',
+      name: 'pathRoutesKept',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Remove route`
+  String get pathRoutesRemove {
+    return Intl.message(
+      'Remove route',
+      name: 'pathRoutesRemove',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Remove {route}?`
+  String pathRoutesRemoveTitle(String route) {
+    return Intl.message(
+      'Remove $route?',
+      name: 'pathRoutesRemoveTitle',
+      desc: '',
+      args: [route],
+    );
+  }
+
+  /// `Requests to this path go to {app} again.`
+  String pathRoutesRemoveBody(String app) {
+    return Intl.message(
+      'Requests to this path go to $app again.',
+      name: 'pathRoutesRemoveBody',
+      desc: '',
+      args: [app],
+    );
+  }
+
+  /// `Requests to this path of the domain go to another app of the project instead — a web app or a worker with a port. The longest matching path wins.`
+  String get pathRoutesHelp {
+    return Intl.message(
+      'Requests to this path of the domain go to another app of the project instead — a web app or a worker with a port. The longest matching path wins.',
+      name: 'pathRoutesHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No other app of this project has a port.`
+  String get pathRoutesNoTargets {
+    return Intl.message(
+      'No other app of this project has a port.',
+      name: 'pathRoutesNoTargets',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `To app`
+  String get pathRoutesTarget {
+    return Intl.message('To app', name: 'pathRoutesTarget', desc: '', args: []);
+  }
+
+  /// `Port`
+  String get pathRoutesPort {
+    return Intl.message('Port', name: 'pathRoutesPort', desc: '', args: []);
+  }
+
+  /// `{route} now goes to {app}`
+  String pathRoutesAdded(String route, String app) {
+    return Intl.message(
+      '$route now goes to $app',
+      name: 'pathRoutesAdded',
+      desc: '',
+      args: [route, app],
+    );
+  }
+
+  /// `Route`
+  String get pathRoutesCreate {
+    return Intl.message('Route', name: 'pathRoutesCreate', desc: '', args: []);
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

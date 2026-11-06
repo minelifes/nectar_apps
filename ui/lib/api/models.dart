@@ -702,10 +702,18 @@ class Domain {
     this.web,
     this.dnsState = '',
     this.dnsMessage = '',
+    this.targetPort = 0,
+    this.stripPrefix = false,
   });
 
   /// Redirect rules, IP allowlist, headers, CORS, compression, HSTS (null = none).
   final WebOptions? web;
+
+  /// The app's port the domain goes to (0 = its main port).
+  final int targetPort;
+
+  /// The path prefix is removed before the app gets the request (/api/users → /users).
+  final bool stripPrefix;
 
   /// Automatic DNS record: '' | managed | covered | conflict | error.
   final String dnsState;
@@ -754,6 +762,8 @@ class Domain {
       web: m['web'] == null ? null : WebOptions.fromJson(m['web']),
       dnsState: _str(m['dns_state']),
       dnsMessage: _str(m['dns_message']),
+      targetPort: _int(m['target_port']),
+      stripPrefix: _bool(_map(m['web'])['strip_prefix']),
     );
   }
 }

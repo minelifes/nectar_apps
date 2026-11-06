@@ -85,6 +85,9 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
   final _slug = TextEditingController();
   bool _slugEdited = false;
   final _port = TextEditingController();
+  // optional own domain of a web app (added next to the generated default one)
+  final _customDomain = TextEditingController();
+  bool _customDomainAdded = false;
   final _schedule = TextEditingController(text: '*/15 * * * *');
 
   // the app is created when leaving the name step
@@ -133,6 +136,7 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
       _name,
       _slug,
       _port,
+      _customDomain,
       _schedule,
       _healthPath,
       _args,
@@ -320,6 +324,23 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
             data: {'name': _name.text.trim()},
           ),
         );
+      }
+      final own = _customDomain.text.trim().toLowerCase();
+      if (_kind == 'web' && own.isNotEmpty && !_customDomainAdded) {
+        try {
+          await api.post('/apps/${_app!.id}/domains', data: {'host': own});
+          _customDomainAdded = true;
+          ref.invalidate(domainsProvider(_app!.id));
+        } on Object catch (e) {
+          // the app exists: say what went wrong with the domain, it can be added on the app page
+          if (mounted) {
+            showSnack(
+              context,
+              S.of(context).domainCustomFailed(own, describeError(e)),
+              error: true,
+            );
+          }
+        }
       }
       return true;
     } on Object catch (e) {
@@ -1018,6 +1039,23 @@ class _NewAppPageState extends ConsumerState<NewAppPage> {
                 ),
               );
             },
+          ),
+        ],
+        if (_kind == 'web') ...[
+          const SizedBox(height: 14),
+          TextField(
+            controller: _customDomain,
+            enabled: !_customDomainAdded,
+            keyboardType: TextInputType.url,
+            style: monoStyle(context, size: 14),
+            decoration: InputDecoration(
+              labelText: s.domainCustomOptional,
+              hintText: 'shop.example.com',
+              helperText: _customDomainAdded
+                  ? s.domainCustomAdded
+                  : s.domainCustomHelp,
+              helperMaxLines: 3,
+            ),
           ),
         ],
         if (_kind == 'cron') ...[

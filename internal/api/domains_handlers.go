@@ -196,6 +196,8 @@ type domainInput struct {
 	BasicAuthUsers  *[]auth.BasicAuthUser `json:"basic_auth_users"` // [] removes basic auth
 	// WithWWW (create only) also adds www.<host> redirecting to https://<host>.
 	WithWWW bool `json:"with_www"`
+	// StripPrefix removes the path prefix before the app gets the request (/api/users → /users).
+	StripPrefix *bool `json:"strip_prefix"`
 }
 
 // applyOptions merges the input onto o and validates. It returns an error message or "".
@@ -266,14 +268,26 @@ func applyOptions(in domainInput, o *store.DomainOptions, minRate int) string {
 	if in.RateLimit != nil && o.RateLimit > 0 && o.RateLimit < minRate { // only when it is being set: older domains keep theirs
 		return fmt.Sprintf("rate_limit must be 0 (unlimited) or at least %d requests per second: this nectar-gateway blocks clients over it for 24 hours (update it to answer 429 instead)", minRate)
 	}
+	strip := o.Web != nil && o.Web.StripPrefix // web options from the UI do not carry it: keep it
 	if in.Web != nil {
 		if err := in.Web.Normalize(); err != nil {
 			return err.Error()
 		}
 		o.Web = in.Web
-		if o.Web.IsZero() {
-			o.Web = nil
+	}
+	if in.StripPrefix != nil {
+		strip = *in.StripPrefix
+	}
+	if strip {
+		if o.Web == nil {
+			o.Web = &gateway.Web{}
 		}
+		o.Web.StripPrefix = true
+	} else if o.Web != nil {
+		o.Web.StripPrefix = false
+	}
+	if o.Web.IsZero() {
+		o.Web = nil
 	}
 	if in.BasicAuthUsers != nil {
 		h, err := auth.Htpasswd(*in.BasicAuthUsers, o.BasicAuth)
@@ -294,9 +308,14 @@ func (s *Server) resync(r *http.Request) {
 	}
 }
 
+// canHaveDomains: web apps, and workers with a port (an API behind another app's domain, e.g. app1.com/api).
+func canHaveDomains(app store.App) bool {
+	return app.Kind == runtimes.KindWeb || (app.Kind == runtimes.KindWorker && app.Config.Port > 0)
+}
+
 func (s *Server) createDomain(w http.ResponseWriter, r *http.Request, p *principal, app store.App, proj store.Project) {
-	if app.Kind != runtimes.KindWeb {
-		writeError(w, http.StatusBadRequest, "only web apps can have domains")
+	if !canHaveDomains(app) {
+		writeError(w, http.StatusBadRequest, "only web apps and workers with a port can have domains")
 		return
 	}
 	var in domainInput
@@ -399,8 +418,26 @@ func (s *Server) updateDomain(w http.ResponseWriter, r *http.Request, p *princip
 	if !decode(w, r, &in) {
 		return
 	}
-	if in.Host != "" || in.PathPrefix != "" {
-		writeError(w, http.StatusBadRequest, "host and path cannot be changed — add a new domain instead")
+	// a new host or path: the domain is replaced by one with the same settings (a fresh gateway route and
+	// certificate; a certificate never moves to another host)
+	host, path := d.Host, d.PathPrefix
+	if in.Host != "" {
+		host = store.NormalizeHost(in.Host)
+		if !hostRe.MatchString(host) {
+			writeError(w, http.StatusBadRequest, "host must be a domain like shop.example.com (or *.example.com)")
+			return
+		}
+	}
+	if in.PathPrefix != "" {
+		path = store.NormalizePath(in.PathPrefix)
+		if strings.ContainsAny(path, " ?#*") || len(path) > 200 {
+			writeError(w, http.StatusBadRequest, "invalid path prefix")
+			return
+		}
+	}
+	moved := host != d.Host || path != d.PathPrefix
+	if moved && d.IsDefault {
+		writeError(w, http.StatusBadRequest, "the generated default domain keeps its name: add your own domain next to it")
 		return
 	}
 	port, tls, force := d.TargetPort, d.TLS, d.ForceHTTPS
@@ -417,7 +454,7 @@ func (s *Server) updateDomain(w http.ResponseWriter, r *http.Request, p *princip
 	if in.ForceHTTPS != nil {
 		force = *in.ForceHTTPS
 	}
-	if strings.HasPrefix(d.Host, "*.") {
+	if strings.HasPrefix(host, "*.") {
 		tls, force = false, false
 	}
 	opts := d.DomainOptions
@@ -427,6 +464,29 @@ func (s *Server) updateDomain(w http.ResponseWriter, r *http.Request, p *princip
 	}
 	if in.WithWWW {
 		writeError(w, http.StatusBadRequest, "with_www is only for new domains — add www as its own redirect domain")
+		return
+	}
+	if moved {
+		nd, err := s.store.CreateDomain(r.Context(), store.Domain{AppID: app.ID, Host: host, PathPrefix: path, TargetPort: port, TLS: tls, ForceHTTPS: force, DomainOptions: opts})
+		if errors.Is(err, store.ErrConflict) {
+			writeError(w, http.StatusConflict, "this host and path are already used by another app")
+			return
+		}
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		if err := s.store.DeleteDomain(r.Context(), d.ID); err != nil {
+			_ = s.store.DeleteDomain(r.Context(), nd.ID)
+			s.serverError(w, r, err)
+			return
+		}
+		s.releaseDNS(r.Context(), d)
+		s.autoDNS(nd)
+		s.resync(r)
+		nd, _ = s.store.GetDomain(r.Context(), nd.ID)
+		s.audit(r, p, "domain.update", proj.Slug+"/"+app.Slug, map[string]any{"from": d.Host + d.PathPrefix, "host": host, "path": path})
+		writeJSON(w, http.StatusOK, nd)
 		return
 	}
 	d, err := s.store.UpdateDomainSettings(r.Context(), d.ID, port, tls, force)

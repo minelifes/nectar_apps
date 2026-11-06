@@ -32,6 +32,12 @@ class _DomainDialog extends ConsumerStatefulWidget {
 
 class _DomainDialogState extends ConsumerState<_DomainDialog> {
   late final _host = TextEditingController(text: widget.domain?.host ?? '');
+  late final _path = TextEditingController(
+    text: widget.domain == null || widget.domain!.pathPrefix == '/'
+        ? ''
+        : widget.domain!.pathPrefix,
+  );
+  late bool _strip = widget.domain?.stripPrefix ?? false;
   late final _rate = TextEditingController(
     text: '${widget.domain?.rateLimit ?? 0}',
   );
@@ -49,7 +55,7 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
 
   @override
   void dispose() {
-    for (final c in [_host, _rate, _body, _timeout]) {
+    for (final c in [_host, _path, _rate, _body, _timeout]) {
       c.dispose();
     }
     _web.dispose();
@@ -61,8 +67,14 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
   Future<void> _save() async {
     setState(() => _busy = true);
     final d = widget.domain;
+    final host = _host.text.trim().toLowerCase();
+    final path = _path.text.trim().isEmpty ? '/' : _path.text.trim();
     final body = {
-      if (d == null) 'host': _host.text.trim(),
+      if (d == null || host != d.host) 'host': host,
+      if (d == null || path != (d.pathPrefix.isEmpty ? '/' : d.pathPrefix))
+        'path_prefix': path,
+      if (path != '/' || (d?.stripPrefix ?? false))
+        'strip_prefix': path != '/' && _strip,
       if (d == null && _www) 'with_www': true,
       'tls': _tls,
       'force_https': _tls && _force,
@@ -82,6 +94,7 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
         await api.patch('/apps/${widget.appId}/domains/${d.id}', data: body);
       }
       ref.invalidate(domainsProvider(widget.appId));
+      ref.invalidate(domainsOverviewProvider);
       if (mounted) Navigator.pop(context);
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
@@ -128,14 +141,44 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (d == null) ...[
-                TextField(
-                  controller: _host,
-                  decoration: InputDecoration(
-                    labelText: s.gatewayDomain,
-                    hintText: 'shop.example.com',
-                  ),
+              TextField(
+                controller: _host,
+                enabled: d == null || !d.isDefault,
+                decoration: InputDecoration(
+                  labelText: s.gatewayDomain,
+                  hintText: 'shop.example.com',
+                  helperText: d != null && d.isDefault
+                      ? s.domainDefaultKeepsName
+                      : null,
                 ),
+              ),
+              if (appDomain) ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _path,
+                  enabled: d == null || !d.isDefault,
+                  decoration: InputDecoration(
+                    labelText: s.domainPathPrefix,
+                    hintText: '/api',
+                    helperText: s.domainPathPrefixHelp,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                if (_path.text.trim().isNotEmpty && _path.text.trim() != '/')
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _strip,
+                    onChanged: (v) => setState(() => _strip = v),
+                    title: Text(s.domainStripPrefix),
+                    subtitle: Text(
+                      _strip
+                          ? s.domainStripPrefixOn(_path.text.trim())
+                          : s.domainStripPrefixOff(_path.text.trim()),
+                      style: TextStyle(color: c.muted, fontSize: 12.5),
+                    ),
+                  ),
+              ],
+              if (d == null) ...[
                 const SizedBox(height: 4),
                 Text(
                   s.appPointItsDnsARecord,
