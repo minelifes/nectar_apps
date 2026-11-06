@@ -571,6 +571,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#apps-as-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Apps as databases
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1043,6 +1052,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#apps-as-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Apps as databases
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1085,6 +1103,24 @@ database, the link's prefix wins. Like a link, sharing takes effect when each ap
 <p><strong>From your computer:</strong> <code>nectar db connect project/db</code> opens the database on <code>127.0.0.1</code> through the panel,
 for any client (<code>psql</code>, <code>mysql</code>, TablePlus, DBeaver…). See <a href="../cli/#connecting-to-a-database-from-your-computer">CLI</a>.</p>
 <p>Databases can be backed up (a dump on a schedule) and restored from the panel — see <a href="../backups/">Backups</a>.</p>
+<h2 id="apps-as-databases">Apps as databases<a class="headerlink" href="#apps-as-databases" title="Permanent link">&para;</a></h2>
+<p>A database you run as an app (an imported MySQL, a PostgreSQL or Redis image, a one-click template) can be
+<strong>marked as a database</strong>: app page → ⋮ → <strong>Mark as database…</strong>. The panel suggests the engine and the
+variables that hold the user, password and database name (<code>POSTGRES_*</code>, <code>MYSQL_*</code>, <code>MARIADB_*</code>,
+<code>REDIS_PASSWORD</code>); the password is always read from the app's own variable, never copied.</p>
+<p>It stays an app — deploys, logs, charts, scaling, settings — and also gets:</p>
+<ul>
+<li><strong><code>nectar db list</code> / <code>nectar db connect project/app</code></strong>, like the built-in databases (audited).</li>
+<li><strong>Backups that are dumps</strong>: a backup plan on the app runs <code>pg_dump</code> / <code>mysqldump</code> / <code>mariadb-dump</code> /
+  <code>redis-cli --rdb</code> in the app's own image. Restores load the dump into the running database (Redis: the app
+  is stopped and <code>dump.rdb</code> replaced in its <code>/data</code> volume).</li>
+<li><strong>Links</strong>: <em>Link to app</em> gives another app <code>DATABASE_URL</code>, <code>PGHOST</code>… / <code>MYSQL_*</code> / <code>REDIS_URL</code> (optionally
+  with a prefix) as references (<code>${mydb.DATABASE_URL}</code>), resolved on each deploy of that app. Any app can
+  also reference single values the same way.</li>
+<li>A place in the project's <strong>Databases</strong> section.</li>
+</ul>
+<p>Unmarking keeps the app running; linked apps keep their variables, whose references then fail on their next
+deploy until removed.</p>
 
 
 
