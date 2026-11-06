@@ -320,12 +320,16 @@ class App {
     required this.schedule,
     this.config = const {},
     this.updatedAt,
+    this.database,
   });
 
   final int id;
   final int projectId;
   final String slug;
   final String name;
+
+  /// Set when the app is marked as a database.
+  final AppDatabaseMark? database;
 
   /// web | worker | cron | task
   final String kind;
@@ -384,6 +388,44 @@ class App {
       schedule: _str(cfg['schedule']),
       config: cfg,
       updatedAt: _time(m['updated_at']),
+      database: m['database'] == null
+          ? null
+          : AppDatabaseMark.fromJson(m['database']),
+    );
+  }
+}
+
+/// How an app marked as a database is reached: engine, port and the variables its credentials come from.
+class AppDatabaseMark {
+  const AppDatabaseMark({
+    required this.engine,
+    this.port = 0,
+    this.user = '',
+    this.userVar = '',
+    this.passwordVar = '',
+    this.database = '',
+    this.databaseVar = '',
+  });
+
+  /// postgres | mysql | mariadb | redis
+  final String engine;
+  final int port;
+  final String user;
+  final String userVar;
+  final String passwordVar;
+  final String database;
+  final String databaseVar;
+
+  factory AppDatabaseMark.fromJson(Object? j) {
+    final m = _map(j);
+    return AppDatabaseMark(
+      engine: _str(m['engine']),
+      port: _int(m['port']),
+      user: _str(m['user']),
+      userVar: _str(m['user_var']),
+      passwordVar: _str(m['password_var']),
+      database: _str(m['database']),
+      databaseVar: _str(m['database_var']),
     );
   }
 }

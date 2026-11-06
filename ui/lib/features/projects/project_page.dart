@@ -147,14 +147,24 @@ class ProjectPage extends ConsumerWidget {
               final appsSection = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // apps marked as databases are listed with the databases
                   _AppsSection(
                     projectId: id,
                     canCreate: canCreate,
-                    apps: apps,
+                    apps: apps.whenData(
+                      (l) => l.where((a) => a.database == null).toList(),
+                    ),
                     onRetry: refresh,
                   ),
                   const SizedBox(height: NectarTokens.gapLarge),
-                  AddonsSection(projectId: id, canCreate: canCreate),
+                  AddonsSection(
+                    projectId: id,
+                    canCreate: canCreate,
+                    databaseApps: [
+                      for (final a in apps.value ?? const <App>[])
+                        if (a.database != null) a,
+                    ],
+                  ),
                   if (p.adopted) ProjectExternalWorkloads(projectId: id),
                 ],
               );

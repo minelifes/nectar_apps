@@ -107,15 +107,30 @@ type App struct {
 	StatusMessage  string    `json:"status_message,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	// Database marks the app as a database (nil = an ordinary app).
+	Database *AppDatabase `json:"database,omitempty"`
 }
 
-const appCols = `id, project_id, slug, name, kind, runtime_id, runtime_version, config, status, status_message, created_at, updated_at`
+// AppDatabase says how to reach an app that is a database. The password is never stored here: it is
+// read from the app's variable PasswordVar when needed. User and database come from a variable (…Var)
+// or are given literally.
+type AppDatabase struct {
+	Engine      string `json:"engine"`         // postgres | mysql | mariadb | redis
+	Port        int    `json:"port,omitempty"` // 0 = the engine's usual port
+	User        string `json:"user,omitempty"`
+	UserVar     string `json:"user_var,omitempty"`
+	PasswordVar string `json:"password_var,omitempty"`
+	Database    string `json:"database,omitempty"`
+	DatabaseVar string `json:"database_var,omitempty"`
+}
+
+const appCols = `id, project_id, slug, name, kind, runtime_id, runtime_version, config, status, status_message, created_at, updated_at, database_json`
 
 func scanApp(r scanner) (App, error) {
 	var a App
-	var cfg string
+	var cfg, dbJSON string
 	var created, updated int64
-	err := r.Scan(&a.ID, &a.ProjectID, &a.Slug, &a.Name, &a.Kind, &a.RuntimeID, &a.RuntimeVersion, &cfg, &a.Status, &a.StatusMessage, &created, &updated)
+	err := r.Scan(&a.ID, &a.ProjectID, &a.Slug, &a.Name, &a.Kind, &a.RuntimeID, &a.RuntimeVersion, &cfg, &a.Status, &a.StatusMessage, &created, &updated, &dbJSON)
 	if errors.Is(err, sql.ErrNoRows) {
 		return a, ErrNotFound
 	}
@@ -123,7 +138,33 @@ func scanApp(r scanner) (App, error) {
 		return a, err
 	}
 	a.CreatedAt, a.UpdatedAt = ts(created), ts(updated)
+	if dbJSON != "" {
+		a.Database = &AppDatabase{}
+		if err := json.Unmarshal([]byte(dbJSON), a.Database); err != nil {
+			return a, err
+		}
+	}
 	return a, json.Unmarshal([]byte(cfg), &a.Config)
+}
+
+// SetAppDatabase marks an app as a database (nil unmarks it).
+func (s *Store) SetAppDatabase(ctx context.Context, id int64, db *AppDatabase) error {
+	v := ""
+	if db != nil {
+		b, err := json.Marshal(db)
+		if err != nil {
+			return err
+		}
+		v = string(b)
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE apps SET database_json = ?, updated_at = ? WHERE id = ?`, v, s.unix(), id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // CreateApp inserts an app. Returns ErrConflict if the slug is taken in the project.

@@ -24,6 +24,7 @@ import '../observe/event_list.dart';
 import '../observe/log_history.dart';
 import '../projects/environments.dart';
 import 'app_actions.dart';
+import 'app_database.dart';
 import 'builds_tab.dart';
 import 'env_tab.dart';
 import 'ops_widgets.dart';
@@ -320,6 +321,8 @@ class _Menu extends ConsumerWidget {
             );
           case 'clone':
             await showCloneAppDialog(context, app);
+          case 'database':
+            await showAppDatabaseDialog(context, ref, app);
           case 'delete':
             if (await deleteApp(context, ref, app) && context.mounted) {
               context.go('/projects/${app.projectId}');
@@ -365,6 +368,15 @@ class _Menu extends ConsumerWidget {
             child: Text(s.appPromoteTo(envLabel(t))),
           ),
         PopupMenuItem(value: 'clone', child: Text(s.appCopyApp)),
+        if (session.can('app.edit', projectId: app.projectId) &&
+            app.hasReplicas &&
+            app.port > 0)
+          PopupMenuItem(
+            value: 'database',
+            child: Text(
+              app.database == null ? s.appDbMarkMenu : s.appDbSettingsMenu,
+            ),
+          ),
         if (canDelete) const PopupMenuDivider(),
         if (canDelete)
           PopupMenuItem(value: 'delete', child: Text(s.appDeleteApp)),
@@ -442,6 +454,10 @@ class _Overview extends ConsumerWidget {
             canDeploy: canDeploy,
             onStarted: onStarted,
           ),
+        if (app.database != null) ...[
+          AppDatabaseCard(app: app),
+          const SizedBox(height: NectarTokens.gap),
+        ],
         layout,
       ],
     );

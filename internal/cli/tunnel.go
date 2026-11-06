@@ -17,7 +17,7 @@ import (
 	"nectar_apps/internal/wsock"
 )
 
-// Database is a database add-on of a project.
+// Database is a database of a project: an add-on, or an app marked as a database (App).
 type Database struct {
 	ID        int64  `json:"id"`
 	ProjectID int64  `json:"project_id"`
@@ -29,12 +29,32 @@ type Database struct {
 	Port      int    `json:"port"`
 	Stopped   bool   `json:"stopped"`
 	Shared    bool   `json:"shared"`
+	App       bool   `json:"app"`
 }
 
-// Databases lists the databases of a project.
+// path is the database's API path: /addons/ID or /apps/ID/database.
+func (d Database) path() string {
+	if d.App {
+		return "/apps/" + strconv.FormatInt(d.ID, 10) + "/database"
+	}
+	return "/addons/" + strconv.FormatInt(d.ID, 10)
+}
+
+// Databases lists the databases of a project: add-ons, then apps marked as databases.
 func (c *Client) Databases(ctx context.Context, projectID int64) ([]Database, error) {
-	var ds []Database
-	return ds, c.getJSON(ctx, "/projects/"+strconv.FormatInt(projectID, 10)+"/addons", &ds)
+	var ds, apps []Database
+	pid := strconv.FormatInt(projectID, 10)
+	if err := c.getJSON(ctx, "/projects/"+pid+"/addons", &ds); err != nil {
+		return nil, err
+	}
+	// panels before database apps have no such list: only add-ons then
+	if err := c.getJSON(ctx, "/projects/"+pid+"/app-databases", &apps); err == nil {
+		for i := range apps {
+			apps[i].App = true
+		}
+		ds = append(ds, apps...)
+	}
+	return ds, nil
 }
 
 // ResolveDatabase finds a database by slug in a project ("project/db" or --project; "" = the only project).
@@ -69,15 +89,25 @@ type DatabaseCredentials struct {
 	Database string `json:"database"`
 }
 
-// Credentials returns a database's user, password and database name.
+// Credentials returns a database add-on's user, password and database name.
 func (c *Client) Credentials(ctx context.Context, id int64) (DatabaseCredentials, error) {
-	var cr DatabaseCredentials
-	return cr, c.getJSON(ctx, "/addons/"+strconv.FormatInt(id, 10)+"/credentials", &cr)
+	return c.DatabaseCredentials(ctx, Database{ID: id})
 }
 
-// OpenTunnel opens one TCP connection to a database through the panel (a WebSocket carrying raw bytes).
+// DatabaseCredentials returns a database's user, password and database name.
+func (c *Client) DatabaseCredentials(ctx context.Context, d Database) (DatabaseCredentials, error) {
+	var cr DatabaseCredentials
+	return cr, c.getJSON(ctx, d.path()+"/credentials", &cr)
+}
+
+// OpenTunnel opens one TCP connection to a database add-on through the panel.
 func (c *Client) OpenTunnel(ctx context.Context, id int64) (*wsock.Conn, error) {
-	u := c.URL + "/api/addons/" + strconv.FormatInt(id, 10) + "/tunnel"
+	return c.OpenDatabaseTunnel(ctx, Database{ID: id})
+}
+
+// OpenDatabaseTunnel opens one TCP connection to a database through the panel (a WebSocket carrying raw bytes).
+func (c *Client) OpenDatabaseTunnel(ctx context.Context, d Database) (*wsock.Conn, error) {
+	u := c.URL + "/api" + d.path() + "/tunnel"
 	switch {
 	case strings.HasPrefix(u, "https://"):
 		u = "wss://" + strings.TrimPrefix(u, "https://")
@@ -223,7 +253,11 @@ func dbCommand(ctx context.Context, c *Client, args []string, env Env) error {
 			if d.Shared {
 				state += ", shared with the project"
 			}
-			fmt.Fprintf(tw, "%s/%s\t%s %s\t%s\n", proj.Slug, d.Slug, d.KindName, d.Version, state)
+			kind := d.KindName + " " + d.Version
+			if d.App {
+				kind = d.KindName + " (app)"
+			}
+			fmt.Fprintf(tw, "%s/%s\t%s\t%s\n", proj.Slug, d.Slug, strings.TrimSpace(kind), state)
 		}
 		return tw.Flush()
 
@@ -254,14 +288,14 @@ func dbCommand(ctx context.Context, c *Client, args []string, env Env) error {
 		}
 		local := ln.Addr().(*net.TCPAddr).Port
 		// check the tunnel once before printing: a missing permission or a stopped database fails now
-		probe, err := c.OpenTunnel(ctx, d.ID)
+		probe, err := c.OpenDatabaseTunnel(ctx, d)
 		if err != nil {
 			ln.Close()
 			return err
 		}
 		probe.Close()
-		cr, credErr := c.Credentials(ctx, d.ID)
-		fmt.Fprintf(env.Stdout, "%s/%s (%s %s) is on 127.0.0.1:%d — press Ctrl+C to close\n", proj.Slug, d.Slug, d.KindName, d.Version, local)
+		cr, credErr := c.DatabaseCredentials(ctx, d)
+		fmt.Fprintf(env.Stdout, "%s/%s (%s) is on 127.0.0.1:%d — press Ctrl+C to close\n", proj.Slug, d.Slug, strings.TrimSpace(d.KindName+" "+d.Version), local)
 		if credErr == nil {
 			if cr.User != "" {
 				fmt.Fprintf(env.Stdout, "  user      %s\n", cr.User)
@@ -278,7 +312,7 @@ func dbCommand(ctx context.Context, c *Client, args []string, env Env) error {
 				fmt.Fprintf(env.Stdout, "  connect   %s\n", cmd)
 			}
 		}
-		return ServeTunnel(ctx, ln, func(ctx context.Context) (*wsock.Conn, error) { return c.OpenTunnel(ctx, d.ID) }, env.Stderr)
+		return ServeTunnel(ctx, ln, func(ctx context.Context) (*wsock.Conn, error) { return c.OpenDatabaseTunnel(ctx, d) }, env.Stderr)
 	}
 	return fmt.Errorf("unknown command: nectar db %s (list, connect)", sub)
 }
