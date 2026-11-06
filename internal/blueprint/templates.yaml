@@ -228,17 +228,24 @@ templates:
           port: 1883
           internal_ports: [9001]
           memory_mb: 64
-          # starts as root to write its config and the root-owned password file, then mosquitto drops to its
-          # own user (1883) itself; the data volume belongs to that user
+          # runs as mosquitto's own user (1883): recent 2.0.x builds read their config and password file as that
+          # user even when started as root, so everything is written by it (the image's /mosquitto/config belongs
+          # to 1883; fsGroup makes the data volume writable)
+          security_context:
+            run_as_non_root: true
+            run_as_user: 1883
+            run_as_group: 1883
+            allow_privilege_escalation: false
           command:
             - sh
             - -c
             - |
               set -e
+              umask 077
+              rm -f /mosquitto/config/passwd
               mosquitto_passwd -b -c /mosquitto/config/passwd "$MQTT_USER" "$MQTT_PASSWORD"
-              chown root:root /mosquitto/config/passwd
+              chown mosquitto /mosquitto/config/passwd
               chmod 0700 /mosquitto/config/passwd
-              chown -R mosquitto:mosquitto /mosquitto/data
               printf 'listener 1883\nlistener 9001\nprotocol websockets\nallow_anonymous false\npassword_file /mosquitto/config/passwd\npersistence true\npersistence_location /mosquitto/data/\nlog_dest stdout\n' > /mosquitto/config/mosquitto.conf
               exec mosquitto -c /mosquitto/config/mosquitto.conf
           env:

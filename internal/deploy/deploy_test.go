@@ -100,7 +100,7 @@ func TestDeployJavaWebApp(t *testing.T) {
 
 	ns := "prj-shop"
 	for _, k := range []string{"Namespace//prj-shop", "LimitRange/" + ns + "/defaults", "NetworkPolicy/" + ns + "/nectar-isolation",
-		"ServiceAccount/" + ns + "/app", "Secret/" + ns + "/api-env", "Deployment/" + ns + "/api", "Service/" + ns + "/api", "Service/" + ns + "/api-ports"} {
+		"ServiceAccount/" + ns + "/app", "Secret/" + ns + "/api-env", "Deployment/" + ns + "/api", "Service/" + ns + "/api", "Service/" + ns + "/api-ports", "NetworkPolicy/" + ns + "/api-ports"} {
 		if parts := strings.SplitN(k, "/", 3); !e.k.Has(parts[0], parts[1], parts[2]) {
 			t.Errorf("missing %s", k)
 		}
@@ -146,6 +146,9 @@ func TestDeployJavaWebApp(t *testing.T) {
 	}
 	if rel2 = e.waitRelease(t, rel2.ID); rel2.Status != store.ReleaseLive || *rel2.ArtifactID != artID {
 		t.Fatalf("rel2 = %+v", rel2)
+	}
+	if e.k.Get("NetworkPolicy", ns, "api-ports") != nil {
+		t.Fatal("the opened ports' NetworkPolicy must be pruned with them")
 	}
 	if e.k.Get("Service", ns, "api-ports") != nil {
 		t.Error("NodePort service should have been pruned")
