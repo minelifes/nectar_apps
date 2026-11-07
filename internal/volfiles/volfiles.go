@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"path"
 	"strconv"
 	"strings"
@@ -37,6 +38,7 @@ type Kube interface {
 	GetObject(ctx context.Context, kind, namespace, name string, out any) error
 	Delete(ctx context.Context, kind, namespace, name string) error
 	ExecRun(ctx context.Context, namespace, pod, container string, command []string, stdin []byte, maxOut int) (kube.ExecResult, error)
+	ExecStream(ctx context.Context, namespace, pod, container string, command []string, stdin io.Reader, maxOut int) (kube.ExecResult, error)
 }
 
 // Browser opens helper pods.
@@ -129,6 +131,25 @@ func (b *Browser) Open(ctx context.Context, namespace, claim string) (*Session, 
 		return nil, err
 	}
 	return &Session{b: b, namespace: namespace, pod: name}, nil
+}
+
+// OpenFor is Open for long work: a running helper pod with less than minLeft of its lifetime left is
+// replaced by a fresh one, so it is not stopped in the middle.
+func (b *Browser) OpenFor(ctx context.Context, namespace, claim string, minLeft time.Duration) (*Session, error) {
+	name := PodName(claim)
+	var cur kube.Object
+	if err := b.Kube.GetObject(ctx, "Pod", namespace, name, &cur); err == nil && kube.Str(cur, "status", "phase") == "Running" {
+		started, err := time.Parse(time.RFC3339, kube.Str(cur, "status", "startTime"))
+		if err != nil || time.Until(started.Add(Lifetime)) < minLeft {
+			if err := b.Kube.Delete(ctx, "Pod", namespace, name); err != nil && !kube.IsNotFound(err) {
+				return nil, err
+			}
+			if err := b.waitGone(ctx, namespace, name); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return b.Open(ctx, namespace, claim)
 }
 
 // Close deletes the helper pod of a claim (before the volume is deleted).

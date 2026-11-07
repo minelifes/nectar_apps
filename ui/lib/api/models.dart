@@ -704,7 +704,17 @@ class Domain {
     this.dnsMessage = '',
     this.targetPort = 0,
     this.stripPrefix = false,
+    this.targetHost = '',
+    this.targetHttps = false,
   });
+
+  /// Proxy domains (no app): the address and port the gateway forwards to.
+  final String targetHost;
+  final bool targetHttps;
+
+  /// Where a proxy goes, e.g. https://127.0.0.1:5000.
+  String get target =>
+      '${targetHttps ? 'https' : 'http'}://$targetHost:$targetPort';
 
   /// Redirect rules, IP allowlist, headers, CORS, compression, HSTS (null = none).
   final WebOptions? web;
@@ -734,7 +744,7 @@ class Domain {
   final String status;
   final String statusMessage;
 
-  /// app | redirect
+  /// app | redirect | proxy
   final String kind;
   final String redirectTo;
   final DateTime? certNotAfter;
@@ -764,6 +774,8 @@ class Domain {
       dnsMessage: _str(m['dns_message']),
       targetPort: _int(m['target_port']),
       stripPrefix: _bool(_map(m['web'])['strip_prefix']),
+      targetHost: _str(m['target_host']),
+      targetHttps: _bool(m['target_https']),
     );
   }
 }

@@ -8560,6 +8560,181 @@ class S {
   String get pathRoutesCreate {
     return Intl.message('Route', name: 'pathRoutesCreate', desc: '', args: []);
   }
+
+  /// `Proxies`
+  String get proxiesTitle {
+    return Intl.message('Proxies', name: 'proxiesTitle', desc: '', args: []);
+  }
+
+  /// `Add proxy`
+  String get proxiesAdd {
+    return Intl.message('Add proxy', name: 'proxiesAdd', desc: '', args: []);
+  }
+
+  /// `No proxies yet.`
+  String get proxiesNone {
+    return Intl.message(
+      'No proxies yet.',
+      name: 'proxiesNone',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Domains that go straight to an address and port, without an app: a service on this server, another machine on the network, or a Service Nectar does not manage.`
+  String get proxiesSubtitle {
+    return Intl.message(
+      'Domains that go straight to an address and port, without an app: a service on this server, another machine on the network, or a Service Nectar does not manage.',
+      name: 'proxiesSubtitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Address`
+  String get proxyTargetHost {
+    return Intl.message('Address', name: 'proxyTargetHost', desc: '', args: []);
+  }
+
+  /// `Port`
+  String get proxyTargetPort {
+    return Intl.message('Port', name: 'proxyTargetPort', desc: '', args: []);
+  }
+
+  /// `127.0.0.1 is this server (the gateway runs on the host network; with several gateway nodes, each one's own). Or another machine's IP, or a host name such as grafana.monitoring.svc.cluster.local.`
+  String get proxyTargetHostHelp {
+    return Intl.message(
+      '127.0.0.1 is this server (the gateway runs on the host network; with several gateway nodes, each one\'s own). Or another machine\'s IP, or a host name such as grafana.monitoring.svc.cluster.local.',
+      name: 'proxyTargetHostHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The target uses HTTPS`
+  String get proxyTargetHttps {
+    return Intl.message(
+      'The target uses HTTPS',
+      name: 'proxyTargetHttps',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connect to it over HTTPS (its certificate is not checked).`
+  String get proxyTargetHttpsHelp {
+    return Intl.message(
+      'Connect to it over HTTPS (its certificate is not checked).',
+      name: 'proxyTargetHttpsHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Get certificate now`
+  String get proxyIssueCertificate {
+    return Intl.message(
+      'Get certificate now',
+      name: 'proxyIssueCertificate',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Upload .zip`
+  String get appUploadZip {
+    return Intl.message(
+      'Upload .zip',
+      name: 'appUploadZip',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Unpack`
+  String get appUnzipConfirm {
+    return Intl.message('Unpack', name: 'appUnzipConfirm', desc: '', args: []);
+  }
+
+  /// `Unpack {name} here?`
+  String appUnzipTitle(String name) {
+    return Intl.message(
+      'Unpack $name here?',
+      name: 'appUnzipTitle',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `Its files go into {path}. Files with the same names are replaced; nothing else is deleted.`
+  String appUnzipBody(String path) {
+    return Intl.message(
+      'Its files go into $path. Files with the same names are replaced; nothing else is deleted.',
+      name: 'appUnzipBody',
+      desc: '',
+      args: [path],
+    );
+  }
+
+  /// `Unpacked: {count} files and folders`
+  String appUnzipDone(int count) {
+    return Intl.message(
+      'Unpacked: $count files and folders',
+      name: 'appUnzipDone',
+      desc: '',
+      args: [count],
+    );
+  }
+
+  /// `skipped links and special files: {count}`
+  String appUnzipSkipped(int count) {
+    return Intl.message(
+      'skipped links and special files: $count',
+      name: 'appUnzipSkipped',
+      desc: '',
+      args: [count],
+    );
+  }
+
+  /// `Starting the upload…`
+  String get appUnzipStarting {
+    return Intl.message(
+      'Starting the upload…',
+      name: 'appUnzipStarting',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Checking the archive and the free space…`
+  String get appUnzipChecking {
+    return Intl.message(
+      'Checking the archive and the free space…',
+      name: 'appUnzipChecking',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Uploading {done} of {total}`
+  String appUnzipUploading(String done, String total) {
+    return Intl.message(
+      'Uploading $done of $total',
+      name: 'appUnzipUploading',
+      desc: '',
+      args: [done, total],
+    );
+  }
+
+  /// `Unpacking… {percent} %`
+  String appUnzipUnpacking(String percent) {
+    return Intl.message(
+      'Unpacking… $percent %',
+      name: 'appUnzipUnpacking',
+      desc: '',
+      args: [percent],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

@@ -234,23 +234,33 @@ class _TerminalTabState extends ConsumerState<TerminalTab> {
             borderRadius: BorderRadius.circular(NectarTokens.radius),
             border: Border.all(color: c.border),
           ),
-          // Space is "scroll / activate" for the app's default shortcuts (browsers especially), which took
-          // it before the terminal saw it: let it through as typed text like a text field does
-          child: Shortcuts(
-            shortcuts: const {
-              SingleActivator(LogicalKeyboardKey.space):
-                  DoNothingAndStopPropagationTextIntent(),
-              SingleActivator(LogicalKeyboardKey.space, shift: true):
-                  DoNothingAndStopPropagationTextIntent(),
+          // The terminal types a space through its text input, so the key event itself goes up the tree,
+          // where the app's default shortcuts turn Space into "activate" (the card's ripple) or "scroll",
+          // and the space never arrives. Stop it here without consuming it, like a text field does. The
+          // action must be registered here too: DoNothingAndStopPropagationTextIntent only has one inside
+          // EditableText, so on its own the shortcut found no action and Space went through.
+          child: Actions(
+            actions: {
+              DoNothingAndStopPropagationTextIntent: DoNothingAction(
+                consumesKey: false,
+              ),
             },
-            child: TerminalView(
-              _terminal,
-              controller: _controller,
-              autofocus: true,
-              backgroundOpacity: 0,
-              textStyle: const TerminalStyle(
-                fontSize: 13,
-                fontFamily: NectarTokens.fontMono,
+            child: Shortcuts(
+              shortcuts: const {
+                SingleActivator(LogicalKeyboardKey.space):
+                    DoNothingAndStopPropagationTextIntent(),
+                SingleActivator(LogicalKeyboardKey.space, shift: true):
+                    DoNothingAndStopPropagationTextIntent(),
+              },
+              child: TerminalView(
+                _terminal,
+                controller: _controller,
+                autofocus: true,
+                backgroundOpacity: 0,
+                textStyle: const TerminalStyle(
+                  fontSize: 13,
+                  fontFamily: NectarTokens.fontMono,
+                ),
               ),
             ),
           ),

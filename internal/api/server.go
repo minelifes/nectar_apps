@@ -129,6 +129,7 @@ type Server struct {
 	ssoClient   *sso.Client
 	sso         ssoFlows
 	passkeys    passkeyFlows
+	zips        zipUploads // .zip files being uploaded into volumes and unpacked
 }
 
 // New creates the API server.
@@ -398,6 +399,13 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/apps/{id}/volumes/{name}/files/content", s.onApp("volume.manage", s.uploadFile)) // clients that stream with POST
 	mux.Handle("POST /api/apps/{id}/volumes/{name}/files", s.onApp("volume.manage", s.fileAction))
 	mux.Handle("POST /api/apps/{id}/volumes/{name}/files/close", s.onApp("volume.manage", s.closeFiles))
+	// a .zip uploaded in chunks, then unpacked into a folder of the volume in the background
+	mux.Handle("POST /api/apps/{id}/volumes/{name}/zip-uploads", s.onApp("volume.manage", s.zipUploadCreate))
+	mux.Handle("GET /api/apps/{id}/volumes/{name}/zip-uploads/{uid}", s.onApp("volume.manage", s.zipUploadStatus))
+	mux.Handle("POST /api/apps/{id}/volumes/{name}/zip-uploads/{uid}", s.onApp("volume.manage", s.zipUploadChunk))
+	mux.Handle("PUT /api/apps/{id}/volumes/{name}/zip-uploads/{uid}", s.onApp("volume.manage", s.zipUploadChunk))
+	mux.Handle("POST /api/apps/{id}/volumes/{name}/zip-uploads/{uid}/unzip", s.onApp("volume.manage", s.zipUploadUnzip))
+	mux.Handle("DELETE /api/apps/{id}/volumes/{name}/zip-uploads/{uid}", s.onApp("volume.manage", s.zipUploadDelete))
 	mux.Handle("POST /api/apps/{id}/volumes/{name}/files/chmod-chown", s.onApp("volume.manage", s.fileChownChmod))
 	mux.Handle("GET /api/server/volumes", s.can("server.view", s.serverVolumes))
 	mux.Handle("GET /api/server/storage-classes", s.authed(s.storageClasses))
@@ -443,6 +451,13 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/apps/{id}/domains/{did}/certificate", s.onApp("domain.tls", s.issueDomainCert))
 	mux.Handle("POST /api/apps/{id}/domains/{did}/dns", s.onApp("domain.manage", s.createDomainDNS))
 	mux.Handle("GET /api/domains", s.authed(s.listAllDomains))
+	mux.Handle("GET /api/proxies", s.can("server.view", s.listProxies)) // domains without an app
+	mux.Handle("POST /api/proxies", s.can("settings.manage", s.createProxy))
+	mux.Handle("PATCH /api/proxies/{did}", s.can("settings.manage", s.updateProxy))
+	mux.Handle("DELETE /api/proxies/{did}", s.can("settings.manage", s.deleteProxy))
+	mux.Handle("POST /api/proxies/{did}/check", s.can("server.view", s.checkProxy))
+	mux.Handle("POST /api/proxies/{did}/certificate", s.can("settings.manage", s.issueProxyCert))
+	mux.Handle("POST /api/proxies/{did}/dns", s.can("settings.manage", s.createProxyDNS))
 	mux.Handle("GET /api/apps/{id}/metrics", s.onApp("app.metrics", s.appMetrics))
 	mux.Handle("GET /api/apps/{id}/access-log", s.onApp("app.logs", s.appAccessLog))
 

@@ -157,3 +157,11 @@ func b2i(b bool) int {
 	}
 	return 0
 }
+
+// nonZero returns &v, or nil for 0 (stored as NULL).
+func nonZero(v int64) *int64 {
+	if v == 0 {
+		return nil
+	}
+	return &v
+}
