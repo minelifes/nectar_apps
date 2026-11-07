@@ -902,6 +902,72 @@ paths:
       x-permission: volume.manage
       responses:
         "204": { description: Stopped }
+  /apps/{id}/volumes/{name}/zip-uploads:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [apps]
+      summary: Start a .zip upload that will be unpacked into a folder of the volume
+      description: |
+        Large archives: send the file in chunks (POST …/{uid}?offset=N, at most 32 MB each, chunk_size
+        suggested), then POST …/{uid}/unzip and poll GET …/{uid}. The zip is kept in the panel's data folder
+        until it is unpacked (limit NECTAR_MAX_ZIP_MB, default 10240; the panel's free disk is checked). Unpacking
+        checks every entry first (absolute or .. paths refuse the archive; symlinks/special entries skipped;
+        __MACOSX and .DS_Store left out), then the volume's free space, then streams the files into the folder:
+        same names replaced, nothing else deleted, a file never replaces a folder (or the other way round),
+        new entries get the folder's owner. Uploads are kept in memory (a panel restart drops them).
+      x-permission: volume.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [size], properties: { size: { type: integer, format: int64 }, filename: { type: string } } } } }
+      responses:
+        "201": { description: Started, content: { application/json: { schema: { $ref: "#/components/schemas/ZipUpload" } } } }
+        "413": { description: Larger than NECTAR_MAX_ZIP_MB }
+        "429": { description: Too many uploads at once }
+        "507": { description: Not enough free disk on the panel }
+  /apps/{id}/volumes/{name}/zip-uploads/{uid}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: uid, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [apps]
+      summary: Progress of the upload / unpacking
+      x-permission: volume.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ZipUpload" } } } }
+    post:
+      tags: [apps]
+      summary: One chunk at ?offset= (also PUT)
+      x-permission: volume.manage
+      parameters: [{ name: offset, in: query, required: true, schema: { type: integer, format: int64 } }]
+      requestBody: { required: true, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+      responses:
+        "200": { description: Stored, content: { application/json: { schema: { type: object, properties: { offset: { type: integer, format: int64 }, size: { type: integer, format: int64 } } } } } }
+        "400": { description: Chunk too large or broken (offset tells where to resume) }
+        "409": { description: Wrong offset (the answer has the server's offset) }
+    delete:
+      tags: [apps]
+      summary: Cancel (stops unpacking, deletes the uploaded zip)
+      x-permission: volume.manage
+      responses:
+        "204": { description: Cancelled }
+  /apps/{id}/volumes/{name}/zip-uploads/{uid}/unzip:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: uid, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [apps]
+      summary: Unpack the complete upload into a folder (in the background; poll the status)
+      x-permission: volume.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [path], properties: { path: { type: string, example: /site } } } } }
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { $ref: "#/components/schemas/ZipUpload" } } } }
+        "409": { description: Not completely uploaded yet }
   /apps/{id}/files:
     parameters: [{ $ref: "#/components/parameters/Id" }]
     get:
@@ -1099,6 +1165,69 @@ paths:
                   dns_auto: { type: boolean }
                   dns_available: { type: boolean, description: the gateway can create DNS records }
                   base_host: { type: string, description: "a host under the base domain custom domains can CNAME to (works with the *.<base> record)" }
+  /proxies:
+    get:
+      tags: [domains]
+      summary: Domains without an app (kind proxy or redirect)
+      x-permission: server.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Domain" } } } } }
+    post:
+      tags: [domains]
+      summary: Add a proxy domain — host (+ path) straight to target_host:target_port, no app
+      description: |
+        target_host is an IP address or host name the gateway can reach: 127.0.0.1 is the gateway's own node
+        (it runs with the host network), or another machine, or a Service name (x.ns.svc.cluster.local).
+        kind=redirect makes a redirect domain without an app instead. The other domain options (TLS, limits,
+        web options, basic auth, strip_prefix) work as for app domains; with_www is not accepted.
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ProxyInput" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Domain" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { description: The host and path are used by an app domain or another proxy }
+  /proxies/{did}:
+    parameters: [{ name: did, in: path, required: true, schema: { type: integer, format: int64 } }]
+    patch:
+      tags: [domains]
+      summary: Change a proxy (a new host or path replaces it with a new route)
+      x-permission: settings.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ProxyInput" } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Domain" } } } }
+    delete:
+      tags: [domains]
+      x-permission: settings.manage
+      responses:
+        "204": { description: Deleted }
+  /proxies/{did}/check:
+    parameters: [{ name: did, in: path, required: true, schema: { type: integer, format: int64 } }]
+    post:
+      tags: [domains]
+      summary: Resolve the host and compare with the server's IPs (same answer as for app domains)
+      x-permission: server.view
+      responses:
+        "200": { description: Result }
+  /proxies/{did}/certificate:
+    parameters: [{ name: did, in: path, required: true, schema: { type: integer, format: int64 } }]
+    post:
+      tags: [domains]
+      summary: Issue (or renew) the proxy's certificate now
+      x-permission: settings.manage
+      responses:
+        "200": { description: Issued, content: { application/json: { schema: { $ref: "#/components/schemas/Domain" } } } }
+  /proxies/{did}/dns:
+    parameters: [{ name: did, in: path, required: true, schema: { type: integer, format: int64 } }]
+    post:
+      tags: [domains]
+      summary: Create or update the proxy's DNS records (same answer as for app domains)
+      x-permission: settings.manage
+      responses:
+        "200": { description: Result }
 
   /apps/{id}/usage:
     parameters: [{ $ref: "#/components/parameters/Id" }]
@@ -3512,7 +3641,7 @@ components:
         gateway_route_id: { type: integer, format: int64 }
         cert_not_after: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
-        kind: { type: string, enum: [app, redirect], default: app }
+        kind: { type: string, enum: [app, redirect, proxy], default: app, description: "proxy = no app (app_id 0), forwarded to target_host:target_port" }
         redirect_to: { type: string, description: "kind=redirect: target domain or URL (example.com → https://example.com); path and query are kept unless the URL has its own path" }
         redirect_code: { type: integer, enum: [301, 302, 307, 308], default: 301 }
         backend_protocol: { type: string, enum: [http1, h2c], default: http1, description: h2c = cleartext HTTP/2 to the app (gRPC) }
@@ -3523,6 +3652,35 @@ components:
         web: { $ref: "#/components/schemas/WebOptions" }
         dns_state: { type: string, enum: ["", managed, covered, conflict, error], description: "automatic DNS record: managed = created by the gateway, covered = served by *.<base domain>" }
         dns_message: { type: string }
+        target_host: { type: string, description: "kind=proxy: IP or host name the gateway forwards to" }
+        target_https: { type: boolean, description: "kind=proxy: connect to the target over HTTPS (certificate not verified)" }
+    ZipUpload:
+      type: object
+      properties:
+        id: { type: string }
+        filename: { type: string }
+        size: { type: integer, format: int64 }
+        offset: { type: integer, format: int64, description: bytes received }
+        state: { type: string, enum: [uploading, checking, unpacking, done, error] }
+        path: { type: string, description: folder it is unpacked into }
+        percent: { type: number, description: of the upload while uploading, of the unpacking while unpacking }
+        sent: { type: integer, format: int64 }
+        total: { type: integer, format: int64 }
+        files: { type: integer }
+        dirs: { type: integer }
+        skipped: { type: integer, description: symlinks and special entries left out }
+        unpacked_bytes: { type: integer, format: int64 }
+        message: { type: string, description: why it failed }
+        chunk_size: { type: integer }
+    ProxyInput:
+      allOf:
+        - { $ref: "#/components/schemas/DomainInput" }
+        - type: object
+          properties:
+            kind: { type: string, enum: [proxy, redirect], default: proxy }
+            target_host: { type: string, example: 127.0.0.1 }
+            target_port: { type: integer, minimum: 1, maximum: 65535 }
+            target_https: { type: boolean, default: false }
     TrafficSummary:
       type: object
       properties:
