@@ -44,6 +44,10 @@ class _DomainsPageState extends ConsumerState<DomainsPage> {
               _DnsSetup(overview: o),
               const SizedBox(height: NectarTokens.gap),
               _list(context, o),
+              if (ref.watch(sessionProvider).can('server.view')) ...[
+                const SizedBox(height: NectarTokens.gap),
+                _ProxiesCard(overview: o),
+              ],
             ],
           ),
         ),
@@ -462,5 +466,208 @@ class _DomainTileState extends ConsumerState<_DomainTile> {
       domain: widget.row.domain,
     );
     ref.invalidate(domainsOverviewProvider);
+  }
+}
+
+/// Domains without an app: host (+ path) → an address and port the gateway can reach.
+class _ProxiesCard extends ConsumerWidget {
+  const _ProxiesCard({required this.overview});
+
+  final DomainsOverview overview;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = S.of(context);
+    final c = NectarColors.of(context);
+    final canManage = ref.watch(sessionProvider).can('settings.manage');
+    final proxies = ref.watch(proxiesProvider);
+    return NCard(
+      title: s.proxiesTitle,
+      trailing: canManage
+          ? TextButton.icon(
+              onPressed: () => showDomainDialog(context),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(s.proxiesAdd),
+            )
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            s.proxiesSubtitle,
+            style: TextStyle(color: c.muted, fontSize: 12.5),
+          ),
+          const SizedBox(height: 8),
+          AsyncBlock(
+            value: proxies,
+            onRetry: () => ref.invalidate(proxiesProvider),
+            data: (list) => list.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      s.proxiesNone,
+                      style: TextStyle(color: c.muted),
+                    ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final d in list) ...[
+                        const Divider(height: 1),
+                        _ProxyTile(
+                          domain: d,
+                          overview: overview,
+                          canManage: canManage,
+                        ),
+                      ],
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProxyTile extends ConsumerStatefulWidget {
+  const _ProxyTile({
+    required this.domain,
+    required this.overview,
+    required this.canManage,
+  });
+
+  final Domain domain;
+  final DomainsOverview overview;
+  final bool canManage;
+
+  @override
+  ConsumerState<_ProxyTile> createState() => _ProxyTileState();
+}
+
+class _ProxyTileState extends ConsumerState<_ProxyTile> {
+  bool _busy = false;
+
+  Future<void> _post(String action, {bool refresh = false}) async {
+    final d = widget.domain;
+    setState(() => _busy = true);
+    try {
+      final res = await ref.read(apiProvider).post('/proxies/${d.id}/$action');
+      if (refresh) ref.invalidate(proxiesProvider);
+      if (mounted && res is Map && res['message'] != null) {
+        showSnack(
+          context,
+          '${res['message']}',
+          error: res['ok'] == false || res['state'] == 'conflict',
+        );
+      }
+    } on Object catch (e) {
+      if (refresh) ref.invalidate(proxiesProvider);
+      if (mounted) showSnack(context, describeError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final c = NectarColors.of(context);
+    final d = widget.domain;
+    final details = [
+      if (d.kind == 'redirect')
+        'redirect → ${d.redirectTo}'
+      else
+        '→ ${d.target}',
+      if (d.stripPrefix) s.pathRoutesStripped(d.pathPrefix),
+      if (d.tls && d.certNotAfter != null)
+        'HTTPS until ${d.certNotAfter!.toLocal().toString().substring(0, 10)}'
+      else if (d.tls)
+        'HTTPS pending'
+      else
+        'HTTP only',
+      if (d.web != null && !d.web!.isEmpty) d.web!.summary,
+    ].join(' · ');
+    final problem = [
+      if (d.status == 'error' || d.statusMessage.isNotEmpty) d.statusMessage,
+      if (d.dnsState == 'conflict' || d.dnsState == 'error') d.dnsMessage,
+    ].where((m) => m.isNotEmpty).join(' · ');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: StatusDot(status: d.status),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${d.host}${d.pathPrefix == '/' ? '' : d.pathPrefix}',
+                  style: monoStyle(context, size: 13.5),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(details, style: TextStyle(color: c.muted, fontSize: 12)),
+                if (problem.isNotEmpty)
+                  Text(
+                    problem,
+                    style: TextStyle(
+                      color: d.status == 'error' || d.dnsState == 'error'
+                          ? c.failed
+                          : c.warning,
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (_busy)
+            const Padding(
+              padding: EdgeInsets.all(10),
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            PopupMenuButton<String>(
+              tooltip: s.domainActions,
+              onSelected: (v) => switch (v) {
+                'check' => _post('check'),
+                'dns' => _post('dns', refresh: true),
+                'cert' => _post('certificate', refresh: true),
+                'edit' => showDomainDialog(context, domain: d),
+                _ => null,
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(value: 'check', child: Text(s.domainCheckDns)),
+                if (widget.canManage &&
+                    widget.overview.dnsAvailable &&
+                    !d.host.startsWith('*.') &&
+                    d.dnsState != 'covered')
+                  PopupMenuItem(
+                    value: 'dns',
+                    child: Text(
+                      d.dnsState == 'managed'
+                          ? 'Update DNS record'
+                          : 'Create DNS record',
+                    ),
+                  ),
+                if (widget.canManage && d.tls && d.certNotAfter == null)
+                  PopupMenuItem(
+                    value: 'cert',
+                    child: Text(s.proxyIssueCertificate),
+                  ),
+                if (widget.canManage)
+                  PopupMenuItem(value: 'edit', child: Text(s.backupEdit)),
+              ],
+            ),
+        ],
+      ),
+    );
   }
 }

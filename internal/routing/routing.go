@@ -93,10 +93,6 @@ func ServiceHost(app store.App, p store.Project) string {
 
 // desiredRoute builds the gateway route for a domain, or returns a status explaining why there is none.
 func (s *Syncer) desiredRoute(ctx context.Context, d store.Domain) (*gateway.Route, string, string) {
-	app, err := s.store.GetApp(ctx, d.AppID)
-	if err != nil {
-		return nil, StatusError, "app not found"
-	}
 	wildcard := strings.HasPrefix(d.Host, "*.")
 	htpasswd := d.BasicAuth
 	if d.Kind == store.DomainRedirect {
@@ -108,6 +104,13 @@ func (s *Syncer) desiredRoute(ctx context.Context, d store.Domain) (*gateway.Rou
 			BasicAuthHtpasswd: &htpasswd, AuthFingerprint: gateway.AuthFingerprint(htpasswd),
 			Web: webFor(d),
 		}, StatusActive, ""
+	}
+	if d.AppID == 0 || d.Kind == store.DomainProxy {
+		return proxyRoute(d)
+	}
+	app, err := s.store.GetApp(ctx, d.AppID)
+	if err != nil {
+		return nil, StatusError, "app not found"
 	}
 	if app.Kind != runtimes.KindWeb && app.Kind != runtimes.KindWorker {
 		return nil, StatusError, "only web apps and workers with a port can have domains"
@@ -163,6 +166,26 @@ func (s *Syncer) desiredRoute(ctx context.Context, d store.Domain) (*gateway.Rou
 	return r, StatusActive, ""
 }
 
+// proxyRoute is the route of a domain without an app: straight to TargetHost:TargetPort.
+func proxyRoute(d store.Domain) (*gateway.Route, string, string) {
+	if d.Kind != store.DomainProxy || d.TargetHost == "" || d.TargetPort < 1 || d.TargetPort > 65535 {
+		return nil, StatusError, "set the address and port to proxy to"
+	}
+	wildcard := strings.HasPrefix(d.Host, "*.")
+	htpasswd := d.BasicAuth
+	r := &gateway.Route{
+		Domain: d.Host, PathPrefix: d.PathPrefix, Mode: "proxy",
+		TargetIP: d.TargetHost, TargetPort: d.TargetPort, TargetHTTPS: d.TargetHTTPS,
+		ACME: d.TLS && !wildcard, ForceSSL: d.TLS && d.ForceHTTPS && !wildcard,
+		ManagedBy: gateway.ManagedBy, Owner: Owner(d.ID), HCInterval: 30, HCPath: "/",
+		BackendProtocol: orDefault(d.BackendProtocol, "http1"), TimeoutSeconds: d.TimeoutSeconds,
+		MaxBodyMB: d.MaxBodyMB, RateLimit: d.RateLimit,
+		BasicAuthHtpasswd: &htpasswd, AuthFingerprint: gateway.AuthFingerprint(htpasswd),
+		Web: webFor(d),
+	}
+	return r, StatusActive, ""
+}
+
 // webFor returns the domain's web options for the route (nil = none). Redirect domains only use HSTS and
 // the allowlist; the gateway checks redirect rules before the route's own redirect anyway.
 func webFor(d store.Domain) *gateway.Web {
@@ -178,6 +201,7 @@ func differs(want, have gateway.Route) bool {
 		return true
 	}
 	return want.Domain != have.Domain || want.PathPrefix != have.PathPrefix || want.TargetIP != have.TargetIP ||
+		want.TargetHTTPS != have.TargetHTTPS ||
 		want.TargetPort != have.TargetPort || want.ACME != have.ACME || want.ForceSSL != have.ForceSSL ||
 		want.Maintenance != have.Maintenance || want.HCEnabled != have.HCEnabled || want.HCPath != have.HCPath ||
 		want.Mode != have.Mode || want.RedirectURL != have.RedirectURL || want.RedirectCode != have.RedirectCode ||

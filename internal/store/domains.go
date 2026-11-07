@@ -13,7 +13,7 @@ import (
 // Domain routes a host (+ path prefix) to an app through the gateway.
 type Domain struct {
 	ID             int64      `json:"id"`
-	AppID          int64      `json:"app_id"`
+	AppID          int64      `json:"app_id"` // 0 = a proxy domain (kind proxy or redirect, no app)
 	Host           string     `json:"host"`
 	PathPrefix     string     `json:"path_prefix"`
 	TargetPort     int        `json:"target_port"` // 0 = the app's port
@@ -29,17 +29,21 @@ type Domain struct {
 	DNSState   string `json:"dns_state"`
 	DNSMessage string `json:"dns_message,omitempty"`
 	DomainOptions
+	// Proxy domains (no app): the address the gateway forwards to. TargetPort is the port.
+	TargetHost  string `json:"target_host,omitempty"`
+	TargetHTTPS bool   `json:"target_https,omitempty"`
 }
 
 // Domain kinds.
 const (
 	DomainApp      = "app"      // proxied to the app
 	DomainRedirect = "redirect" // answers with a redirect (e.g. www.example.com → https://example.com)
+	DomainProxy    = "proxy"    // no app: proxied to TargetHost:TargetPort
 )
 
 // DomainOptions are the per-domain gateway options.
 type DomainOptions struct {
-	Kind            string `json:"kind"`                  // app | redirect
+	Kind            string `json:"kind"`                  // app | redirect | proxy
 	RedirectTo      string `json:"redirect_to,omitempty"` // redirect target URL
 	RedirectCode    int    `json:"redirect_code,omitempty"`
 	BackendProtocol string `json:"backend_protocol"` // http1 | h2c (gRPC)
@@ -55,16 +59,17 @@ type DomainOptions struct {
 
 const domainCols = `id, app_id, host, path_prefix, target_port, tls, force_https, is_default, status, status_message,
 	gateway_route_id, cert_not_after, created_at, kind, redirect_to, redirect_code, backend_protocol, timeout_seconds,
-	max_body_mb, basic_auth, rate_limit, web, dns_state, dns_message`
+	max_body_mb, basic_auth, rate_limit, web, dns_state, dns_message, target_host, target_https`
 
 func scanDomain(r scanner) (Domain, error) {
 	var d Domain
-	var gw sql.NullInt64
+	var gw, appID sql.NullInt64
 	var notAfter, created int64
 	var web string
-	err := r.Scan(&d.ID, &d.AppID, &d.Host, &d.PathPrefix, &d.TargetPort, &d.TLS, &d.ForceHTTPS, &d.IsDefault,
+	err := r.Scan(&d.ID, &appID, &d.Host, &d.PathPrefix, &d.TargetPort, &d.TLS, &d.ForceHTTPS, &d.IsDefault,
 		&d.Status, &d.StatusMessage, &gw, &notAfter, &created, &d.Kind, &d.RedirectTo, &d.RedirectCode,
-		&d.BackendProtocol, &d.TimeoutSeconds, &d.MaxBodyMB, &d.BasicAuth, &d.RateLimit, &web, &d.DNSState, &d.DNSMessage)
+		&d.BackendProtocol, &d.TimeoutSeconds, &d.MaxBodyMB, &d.BasicAuth, &d.RateLimit, &web, &d.DNSState, &d.DNSMessage, &d.TargetHost, &d.TargetHTTPS)
+	d.AppID = appID.Int64
 	d.Web = gateway.DecodeWeb(web)
 	if errors.Is(err, sql.ErrNoRows) {
 		return d, ErrNotFound
@@ -100,10 +105,12 @@ func (s *Store) CreateDomain(ctx context.Context, d Domain) (Domain, error) {
 	now := s.unix()
 	o := d.DomainOptions.withDefaults()
 	res, err := s.db.ExecContext(ctx, `INSERT INTO domains (app_id, host, path_prefix, target_port, tls, force_https, is_default, status,
-		created_at, updated_at, kind, redirect_to, redirect_code, backend_protocol, timeout_seconds, max_body_mb, basic_auth, rate_limit, web)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		d.AppID, NormalizeHost(d.Host), NormalizePath(d.PathPrefix), d.TargetPort, b2i(d.TLS), b2i(d.ForceHTTPS), b2i(d.IsDefault), now, now,
-		o.Kind, o.RedirectTo, o.RedirectCode, o.BackendProtocol, o.TimeoutSeconds, o.MaxBodyMB, o.BasicAuth, o.RateLimit, o.Web.Encode())
+		created_at, updated_at, kind, redirect_to, redirect_code, backend_protocol, timeout_seconds, max_body_mb, basic_auth, rate_limit, web,
+		target_host, target_https)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		nullInt(nonZero(d.AppID)), NormalizeHost(d.Host), NormalizePath(d.PathPrefix), d.TargetPort, b2i(d.TLS), b2i(d.ForceHTTPS), b2i(d.IsDefault), now, now,
+		o.Kind, o.RedirectTo, o.RedirectCode, o.BackendProtocol, o.TimeoutSeconds, o.MaxBodyMB, o.BasicAuth, o.RateLimit, o.Web.Encode(),
+		strings.TrimSpace(d.TargetHost), b2i(d.TargetHTTPS))
 	if isUnique(err) {
 		return Domain{}, ErrConflict
 	}
@@ -119,7 +126,35 @@ func (s *Store) GetDomain(ctx context.Context, id int64) (Domain, error) {
 	return scanDomain(s.db.QueryRowContext(ctx, `SELECT `+domainCols+` FROM domains WHERE id = ?`, id))
 }
 
-// ListDomains returns the domains of an app (appID 0 = all domains).
+// ListProxyDomains returns the domains without an app.
+func (s *Store) ListProxyDomains(ctx context.Context) ([]Domain, error) {
+	all, err := s.ListDomains(ctx, 0)
+	if err != nil {
+		return nil, err
+	}
+	out := []Domain{}
+	for _, d := range all {
+		if d.AppID == 0 {
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
+
+// UpdateDomainTarget changes where a proxy domain goes.
+func (s *Store) UpdateDomainTarget(ctx context.Context, id int64, host string, port int, https bool) (Domain, error) {
+	res, err := s.db.ExecContext(ctx, `UPDATE domains SET target_host = ?, target_port = ?, target_https = ?, updated_at = ? WHERE id = ?`,
+		strings.TrimSpace(host), port, b2i(https), s.unix(), id)
+	if err != nil {
+		return Domain{}, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return Domain{}, ErrNotFound
+	}
+	return s.GetDomain(ctx, id)
+}
+
+// ListDomains returns the domains of an app (appID 0 = all domains, proxy domains included).
 func (s *Store) ListDomains(ctx context.Context, appID int64) ([]Domain, error) {
 	q, args := `SELECT `+domainCols+` FROM domains ORDER BY host, path_prefix`, []any{}
 	if appID != 0 {

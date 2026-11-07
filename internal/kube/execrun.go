@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"time"
 
@@ -26,8 +27,22 @@ var ErrOutputTooLarge = errors.New("output too large")
 // up to maxOut bytes. Commands that read stdin must stop by themselves (e.g. "head -c N"): the
 // v4 exec protocol cannot close stdin. A non-zero exit is not an error (see ExitCode).
 func (c *Client) ExecRun(ctx context.Context, namespace, pod, container string, command []string, stdin []byte, maxOut int) (ExecResult, error) {
-	var res ExecResult
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	var in io.Reader
+	if len(stdin) > 0 {
+		in = bytes.NewReader(stdin)
+	}
+	return c.ExecStream(ctx, namespace, pod, container, command, in, maxOut)
+}
+
+// ExecStream is ExecRun with stdin read from a stream (nil = none) and no time limit of its own (ctx
+// decides): for long transfers such as unpacking a large archive. Stdin is sent while the output is
+// read, so a command that fails early is noticed at once. The same rule about stdin applies: the
+// command must stop reading by itself.
+func (c *Client) ExecStream(ctx context.Context, namespace, pod, container string, command []string, stdin io.Reader, maxOut int) (ExecResult, error) {
+	var res ExecResult
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	conn, err := c.Exec(ctx, namespace, pod, container, command, false)
 	if err != nil {
@@ -36,22 +51,44 @@ func (c *Client) ExecRun(ctx context.Context, namespace, pod, container string, 
 	defer conn.Close()
 	go func() {
 		<-ctx.Done()
-		conn.Close() // unblocks ReadMessage on timeout
+		conn.Close() // unblocks ReadMessage on cancel / timeout
 	}()
-	for len(stdin) > 0 {
-		n := min(len(stdin), 32<<10)
-		if err := conn.WriteMessage(wsock.Binary, append([]byte{ExecStdin}, stdin[:n]...)); err != nil {
-			return res, err
-		}
-		stdin = stdin[n:]
+	writeErr := make(chan error, 1)
+	if stdin != nil {
+		go func() {
+			buf := make([]byte, 1+32<<10)
+			buf[0] = ExecStdin
+			for {
+				n, err := stdin.Read(buf[1:])
+				if n > 0 {
+					if werr := conn.WriteMessage(wsock.Binary, buf[:1+n]); werr != nil {
+						writeErr <- werr
+						return
+					}
+				}
+				if errors.Is(err, io.EOF) {
+					return
+				}
+				if err != nil {
+					writeErr <- err
+					cancel()
+					return
+				}
+			}
+		}()
 	}
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
+			select {
+			case werr := <-writeErr:
+				return res, fmt.Errorf("sending input: %w", werr)
+			default:
+			}
 			if ctx.Err() != nil {
-				return res, fmt.Errorf("command timed out")
+				return res, fmt.Errorf("command timed out or was cancelled")
 			}
 			return res, err
 		}

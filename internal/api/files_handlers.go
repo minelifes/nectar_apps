@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"io"
 	"mime"
@@ -8,6 +9,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"nectar_apps/internal/deploy"
 	"nectar_apps/internal/store"
@@ -23,29 +25,41 @@ func (s *Server) volumeSession(w http.ResponseWriter, r *http.Request, app store
 	if !s.needKube(w) {
 		return nil, false
 	}
-	name := r.PathValue("name")
-	found := false
-	vols, err := s.deployer.Volumes(r.Context(), app, proj)
+	sess, code, err := s.openVolume(r.Context(), app, proj, r.PathValue("name"), 0)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, "kubernetes: "+err.Error())
+		writeError(w, code, err.Error())
 		return nil, false
 	}
+	return sess, true
+}
+
+// openVolume opens the helper pod of an app volume (minLeft > 0: with at least that much lifetime left).
+// The int is the HTTP status for the error.
+func (s *Server) openVolume(ctx context.Context, app store.App, proj store.Project, name string, minLeft time.Duration) (*volfiles.Session, int, error) {
+	vols, err := s.deployer.Volumes(ctx, app, proj)
+	if err != nil {
+		return nil, http.StatusBadGateway, errors.New("kubernetes: " + err.Error())
+	}
+	found := false
 	for _, v := range vols {
 		if v.Name == name && v.Phase != "" {
 			found = true
 		}
 	}
 	if !found {
-		writeError(w, http.StatusNotFound, "volume not found (it is created with the next deploy)")
-		return nil, false
+		return nil, http.StatusNotFound, errors.New("volume not found (it is created with the next deploy)")
 	}
 	b := &volfiles.Browser{Kube: s.kube, Image: deploy.InitImage}
-	sess, err := b.Open(r.Context(), proj.Namespace, deploy.AppVolumeClaim(app, name))
-	if err != nil {
-		writeError(w, http.StatusBadGateway, err.Error())
-		return nil, false
+	var sess *volfiles.Session
+	if minLeft > 0 {
+		sess, err = b.OpenFor(ctx, proj.Namespace, deploy.AppVolumeClaim(app, name), minLeft)
+	} else {
+		sess, err = b.Open(ctx, proj.Namespace, deploy.AppVolumeClaim(app, name))
 	}
-	return sess, true
+	if err != nil {
+		return nil, http.StatusBadGateway, err
+	}
+	return sess, 0, nil
 }
 
 // filePath reads and checks ?path= (or a JSON field).

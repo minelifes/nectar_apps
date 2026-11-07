@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,7 +24,12 @@ func (l localExec) Apply(context.Context, kube.Object) (kube.Object, error)     
 func (l localExec) GetObject(context.Context, string, string, string, any) error { return nil }
 func (l localExec) Delete(context.Context, string, string, string) error         { return nil }
 
-func (l localExec) ExecRun(ctx context.Context, _, _, _ string, command []string, stdin []byte, maxOut int) (kube.ExecResult, error) {
+func (l localExec) ExecRun(ctx context.Context, ns, pod, c string, command []string, stdin []byte, maxOut int) (kube.ExecResult, error) {
+	return l.ExecStream(ctx, ns, pod, c, command, bytes.NewReader(stdin), maxOut)
+}
+
+// ExecStream never closes stdin before the command ends, like the real exec API.
+func (l localExec) ExecStream(ctx context.Context, _, _, _ string, command []string, stdin io.Reader, maxOut int) (kube.ExecResult, error) {
 	args := make([]string, len(command))
 	for i, a := range command {
 		if strings.HasPrefix(a, Root) {
@@ -32,10 +38,20 @@ func (l localExec) ExecRun(ctx context.Context, _, _, _ string, command []string
 		args[i] = a
 	}
 	cmd := exec.CommandContext(ctx, l.busybox, args...)
-	cmd.Stdin = bytes.NewReader(stdin)
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
-	err := cmd.Run()
+	in, err := cmd.StdinPipe()
+	if err != nil {
+		return kube.ExecResult{}, err
+	}
+	if err := cmd.Start(); err != nil {
+		return kube.ExecResult{}, err
+	}
+	if stdin != nil {
+		// the pipe stays open after the data (no EOF), like the exec API; Wait closes it at the exit
+		go func() { _, _ = io.Copy(in, stdin) }()
+	}
+	err = cmd.Wait()
 	res := kube.ExecResult{Stdout: out.Bytes(), Stderr: errb.String()}
 	var ee *exec.ExitError
 	if errors.As(err, &ee) {

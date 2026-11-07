@@ -575,6 +575,12 @@ final domainsOverviewProvider = FutureProvider.autoDispose<DomainsOverview>((
   return DomainsOverview.fromJson(await api.get('/domains'));
 });
 
+/// Domains without an app that go straight to an address:port (server.view).
+final proxiesProvider = FutureProvider.autoDispose<List<Domain>>((ref) async {
+  final api = ref.watch(apiProvider);
+  return listOf(await api.get('/proxies'), Domain.fromJson);
+});
+
 /// Storage classes volumes can use.
 final storageClassesProvider =
     FutureProvider.autoDispose<List<StorageClassInfo>>((ref) async {

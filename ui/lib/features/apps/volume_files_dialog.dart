@@ -16,6 +16,7 @@ import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/syntax_highlighter.dart';
+import 'zip_upload_dialog.dart';
 
 /// Browse, upload, download, edit, rename and delete the files of an app volume.
 Future<void> showVolumeFiles(
@@ -120,6 +121,47 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
       return;
     }
     await _write(_join(f.name), f.bytes!, 'Uploaded ${f.name}');
+  }
+
+  /// Uploads a .zip (streamed in chunks, any size up to the server's limit) and unpacks it into the
+  /// current folder; the server keeps no copy of the zip.
+  Future<void> _uploadZip() async {
+    final s = S.of(context);
+    final res = await FilePicker.platform.pickFiles(
+      withReadStream: true,
+      type: FileType.custom,
+      allowedExtensions: const ['zip'],
+    );
+    final f = res?.files.single;
+    if (f == null || f.readStream == null || !mounted) return;
+    if (!await confirmAction(
+      context,
+      s.appUnzipTitle(f.name),
+      s.appUnzipBody(_path),
+      s.appUnzipConfirm,
+    )) {
+      return;
+    }
+    if (!mounted) return;
+    final done = await showZipUploadDialog(
+      context,
+      base: '/apps/${widget.appId}/volumes/${widget.volume}',
+      path: _path,
+      file: f,
+    );
+    if (done != null && mounted) {
+      final n =
+          ((done['files'] as num?)?.toInt() ?? 0) +
+          ((done['dirs'] as num?)?.toInt() ?? 0);
+      final skipped = (done['skipped'] as num?)?.toInt() ?? 0;
+      showSnack(
+        context,
+        skipped > 0
+            ? '${s.appUnzipDone(n)} · ${s.appUnzipSkipped(skipped)}'
+            : s.appUnzipDone(n),
+      );
+    }
+    await _load();
   }
 
   Future<void> _write(String path, Uint8List bytes, String done) async {
@@ -353,6 +395,12 @@ class _VolumeFilesDialogState extends ConsumerState<_VolumeFilesDialog> {
                   onPressed: _busy || _entries == null ? null : _upload,
                   icon: const Icon(Icons.upload_rounded, size: 18),
                   label: Text(s.appUpload),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: _busy || _entries == null ? null : _uploadZip,
+                  icon: const Icon(Icons.folder_zip_outlined, size: 18),
+                  label: Text(s.appUploadZip),
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton.icon(

@@ -53,6 +53,9 @@ type Config struct {
 	SystemNamespace string
 	// MaxArtifactBytes limits uploads (NECTAR_MAX_ARTIFACT_MB, default 2048).
 	MaxArtifactBytes int64
+	// MaxZipBytes limits a .zip uploaded into a volume to be unpacked there (NECTAR_MAX_ZIP_MB, default
+	// 10240). It is stored under DataDir while it is unpacked, so the panel's disk needs that much room.
+	MaxZipBytes int64
 	// Dev enables development mode: text logs, insecure cookies, a fixed dev master key (NECTAR_DEV=1).
 	Dev bool
 	// LogLevel is debug|info|warn|error (NECTAR_LOG_LEVEL, default info).
@@ -106,6 +109,11 @@ func Load() (Config, error) {
 		return c, errors.New("NECTAR_MAX_ARTIFACT_MB must be a positive number")
 	}
 	c.MaxArtifactBytes = mb << 20
+	zmb, err := strconv.ParseInt(env("NECTAR_MAX_ZIP_MB", "10240"), 10, 64)
+	if err != nil || zmb <= 0 {
+		return c, errors.New("NECTAR_MAX_ZIP_MB must be a positive number")
+	}
+	c.MaxZipBytes = zmb << 20
 
 	if v := strings.TrimSpace(env("NECTAR_INGRESS_SYNC", "nectar")); v != "off" && v != "" {
 		for _, cl := range strings.Split(v, ",") {
