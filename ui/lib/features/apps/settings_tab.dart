@@ -47,11 +47,21 @@ class _Vol {
     this.existing = false,
     this.storageClass = '',
     this.shared = false,
+    this.claim = '',
+    this.from = '',
+    this.readOnly = false,
   });
 
   final TextEditingController name;
   final TextEditingController mount;
   final TextEditingController size;
+
+  /// Set by the server (imported workloads, shared volumes): sent back unchanged.
+  final String claim;
+
+  /// "app/volume" of another app of the project; its size and storage follow that volume.
+  final String from;
+  bool readOnly;
 
   /// Fixed once the volume exists.
   String storageClass;
@@ -110,6 +120,9 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
         existing: true,
         storageClass: v.storageClass,
         shared: v.shared,
+        claim: v.claim,
+        from: v.from,
+        readOnly: v.readOnly,
       ),
   ];
   bool _dirty = false;
@@ -218,6 +231,9 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           'size_mb': _int(v.size) ?? 0,
           if (v.storageClass.isNotEmpty) 'storage_class': v.storageClass,
           if (v.shared) 'shared': true,
+          if (v.claim.isNotEmpty && v.from.isEmpty) 'claim': v.claim,
+          if (v.from.isNotEmpty) 'from': v.from,
+          if (v.readOnly) 'read_only': true,
         },
     ];
     if (_name.text.trim().isEmpty) err ??= 'The name cannot be empty';
@@ -720,7 +736,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                     width: 120,
                     child: TextField(
                       controller: v.size,
-                      enabled: canEdit,
+                      enabled: canEdit && v.from.isEmpty,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
@@ -743,6 +759,15 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               ),
             ),
             _volumeStorage(context, v, canEdit, classes),
+            if (infos[v.name.text.trim()] case final info?
+                when info.usedBy.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  s.appVolumeUsedBy(info.usedBy.join(', ')),
+                  style: TextStyle(color: c.muted, fontSize: 12),
+                ),
+              ),
             if (infos[v.name.text.trim()] case final info?
                 when info.usedBytes > 0 && info.requestedMb > 0)
               Padding(
@@ -788,6 +813,15 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                 label: Text(s.appAddVolume),
               ),
             ),
+          if (canEdit)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _addSharedVolume,
+                icon: const Icon(Icons.link_rounded, size: 18),
+                label: Text(s.appUseAnotherAppsVolume),
+              ),
+            ),
           if (!canEdit && widget.app.volumes.isEmpty)
             Text(
               s.appNoVolumes,
@@ -831,6 +865,36 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
   ) {
     final s = S.of(context);
     final c = NectarColors.of(context);
+    if (v.from.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Wrap(
+          spacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              s.appSharedFrom(v.from),
+              style: TextStyle(color: c.muted, fontSize: 12),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Checkbox(
+                  value: v.readOnly,
+                  onChanged: canEdit
+                      ? (val) => setState(() {
+                          v.readOnly = val ?? false;
+                          _dirty = true;
+                        })
+                      : null,
+                ),
+                Text(s.appReadOnly, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
     if (v.existing || !canEdit) {
       final cls = v.storageClass.isEmpty ? 'default storage' : v.storageClass;
       return Padding(
@@ -908,6 +972,50 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     );
   }
 
+  /// Adds a volume of another app of the project (both apps see the same files).
+  Future<void> _addSharedVolume() async {
+    final s = S.of(context);
+    final apps = await ref.read(
+      projectAppsProvider(widget.app.projectId).future,
+    );
+    if (!mounted) return;
+    final taken = {for (final v in _vols) v.from};
+    final options = [
+      for (final a in apps)
+        if (a.id != widget.app.id)
+          for (final v in a.volumes)
+            if (v.from.isEmpty && !taken.contains('${a.slug}/${v.name}'))
+              (app: a, vol: v),
+    ];
+    final picked = await showDialog<({String from, String path, bool ro})>(
+      context: context,
+      builder: (_) => _SharedVolumeDialog(options: options),
+    );
+    if (picked == null || !mounted) return;
+    final owner = options.firstWhere(
+      (o) => '${o.app.slug}/${o.vol.name}' == picked.from,
+    );
+    var name = owner.vol.name;
+    for (var i = 2; _vols.any((v) => v.name.text.trim() == name); i++) {
+      name = '${owner.vol.name}-$i';
+    }
+    setState(() {
+      _vols.add(
+        _Vol(
+          TextEditingController(text: name),
+          TextEditingController(text: picked.path),
+          TextEditingController(text: '${owner.vol.sizeMb}'),
+          storageClass: owner.vol.storageClass,
+          shared: owner.vol.shared,
+          from: picked.from,
+          readOnly: picked.ro,
+        ),
+      );
+      _dirty = true;
+    });
+    if (mounted) showSnack(context, s.appSharedVolumeAdded);
+  }
+
   Future<void> _deleteVolume(VolumeInfo v) async {
     final s = S.of(context);
     final ok = await confirmAction(
@@ -927,5 +1035,108 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
     } on Object catch (e) {
       if (mounted) showSnack(context, describeError(e), error: true);
     }
+  }
+}
+
+/// Picks a volume of another app of the project, where to mount it and whether read-only.
+class _SharedVolumeDialog extends StatefulWidget {
+  const _SharedVolumeDialog({required this.options});
+
+  final List<({App app, AppVolume vol})> options;
+
+  @override
+  State<_SharedVolumeDialog> createState() => _SharedVolumeDialogState();
+}
+
+class _SharedVolumeDialogState extends State<_SharedVolumeDialog> {
+  String? _from;
+  final _path = TextEditingController();
+  bool _ro = false;
+
+  @override
+  void dispose() {
+    _path.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final c = NectarColors.of(context);
+    final path = _path.text.trim();
+    final valid = _from != null && path.startsWith('/') && path.length > 1;
+    return AlertDialog(
+      title: Text(s.appUseAnotherAppsVolume),
+      content: SizedBox(
+        width: 460,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              s.appSharedVolumeHelp,
+              style: TextStyle(color: c.muted, fontSize: 12.5),
+            ),
+            const SizedBox(height: 12),
+            if (widget.options.isEmpty)
+              Text(s.appSharedVolumeNone, style: TextStyle(color: c.muted))
+            else ...[
+              DropdownButtonFormField<String>(
+                initialValue: _from,
+                isExpanded: true,
+                decoration: InputDecoration(labelText: s.appVolumeLabel),
+                items: [
+                  for (final o in widget.options)
+                    DropdownMenuItem(
+                      value: '${o.app.slug}/${o.vol.name}',
+                      child: Text(
+                        '${o.app.name} · ${o.vol.name} (${o.vol.mountPath}, ${formatMb(o.vol.sizeMb)})',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (v) => setState(() {
+                  _from = v;
+                  final o = widget.options.firstWhere(
+                    (o) => '${o.app.slug}/${o.vol.name}' == v,
+                  );
+                  if (_path.text.trim().isEmpty) _path.text = o.vol.mountPath;
+                }),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _path,
+                style: monoStyle(context, size: 13.5),
+                decoration: InputDecoration(
+                  labelText: s.appMountedAt,
+                  hintText: '/data',
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _ro,
+                onChanged: (v) => setState(() => _ro = v ?? false),
+                title: Text(s.appReadOnly),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(s.actionCancel),
+        ),
+        FilledButton(
+          onPressed: valid
+              ? () =>
+                    Navigator.pop(context, (from: _from!, path: path, ro: _ro))
+              : null,
+          child: Text(s.appSharedVolumeAdd),
+        ),
+      ],
+    );
   }
 }

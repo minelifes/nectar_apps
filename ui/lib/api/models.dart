@@ -1701,11 +1701,21 @@ class AppVolume {
     required this.sizeMb,
     this.storageClass = '',
     this.shared = false,
+    this.claim = '',
+    this.from = '',
+    this.readOnly = false,
   });
 
   String name;
   String mountPath;
   int sizeMb;
+
+  /// An existing claim (imported workloads); set by the server.
+  String claim;
+
+  /// "app/volume": the volume belongs to another app of the project and is mounted here.
+  String from;
+  bool readOnly;
 
   /// '' = the cluster default (k3s: local-path).
   String storageClass;
@@ -1719,6 +1729,9 @@ class AppVolume {
     'size_mb': sizeMb,
     if (storageClass.isNotEmpty) 'storage_class': storageClass,
     if (shared) 'shared': true,
+    if (claim.isNotEmpty) 'claim': claim,
+    if (from.isNotEmpty) 'from': from,
+    if (readOnly) 'read_only': true,
   };
 
   factory AppVolume.fromJson(Object? j) {
@@ -1729,6 +1742,9 @@ class AppVolume {
       sizeMb: _int(m['size_mb']),
       storageClass: _str(m['storage_class']),
       shared: _bool(m['shared']),
+      claim: _str(m['claim']),
+      from: _str(m['from']),
+      readOnly: _bool(m['read_only']),
     );
   }
 }
@@ -1868,10 +1884,20 @@ class VolumeInfo {
     required this.phase,
     required this.inConfig,
     required this.mounted,
+    this.from = '',
+    this.readOnly = false,
+    this.usedBy = const [],
   });
 
   final String name;
   final String claim;
+
+  /// "app/volume" when it belongs to another app.
+  final String from;
+  final bool readOnly;
+
+  /// Other apps that mount this volume.
+  final List<String> usedBy;
   final String mountPath;
   final int requestedMb;
   final int capacityBytes;
@@ -1895,6 +1921,9 @@ class VolumeInfo {
       phase: _str(m['phase']),
       inConfig: _bool(m['in_config']),
       mounted: _bool(m['mounted']),
+      from: _str(m['from']),
+      readOnly: _bool(m['read_only']),
+      usedBy: _list(m['used_by']).map(_str).toList(),
     );
   }
 }

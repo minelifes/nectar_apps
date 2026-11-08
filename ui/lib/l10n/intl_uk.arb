@@ -983,5 +983,14 @@
   "appUnzipStarting": "Починаємо завантаження…",
   "appUnzipChecking": "Перевіряємо архів і вільне місце…",
   "appUnzipUploading": "Завантажено {done} з {total}",
-  "appUnzipUnpacking": "Розпаковуємо… {percent} %"
+  "appUnzipUnpacking": "Розпаковуємо… {percent} %",
+  "appUseAnotherAppsVolume": "Використати том іншого застосунку",
+  "appSharedVolumeHelp": "Обидва застосунки бачать ті самі файли. Том лишається за своїм застосунком: розмір, сховище й резервні копії налаштовуються там, і його не можна там видалити, поки цей застосунок його монтує. Неспільний том (ReadWriteOnce) живе на одному вузлі, тож цей застосунок запускається на тому самому вузлі.",
+  "appSharedVolumeNone": "Жоден інший застосунок цього проєкту не має тому.",
+  "appVolumeLabel": "Том",
+  "appReadOnly": "Лише читання",
+  "appSharedVolumeAdded": "Додано: збережіть налаштування й розгорніть знову, щоб змонтувати.",
+  "appSharedVolumeAdd": "Додати",
+  "appSharedFrom": "Спільний з {from}",
+  "appVolumeUsedBy": "Також змонтовано в {apps}"
 }

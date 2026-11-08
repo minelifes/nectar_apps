@@ -132,7 +132,18 @@ func (s *Server) applyBlueprint(r *http.Request, proj store.Project, b blueprint
 		add("addon", a.Slug, "created", a.Kind+" "+a.Version)
 	}
 
-	for _, a := range b.Apps {
+	// apps that mount another app's volume come after the apps that own them
+	ordered := slices.Clone(b.Apps)
+	slices.SortStableFunc(ordered, func(x, y blueprint.App) int {
+		share := func(a blueprint.App) int {
+			if slices.ContainsFunc(a.Volumes, func(v blueprint.Volume) bool { return v.From != "" }) {
+				return 1
+			}
+			return 0
+		}
+		return share(x) - share(y)
+	})
+	for _, a := range ordered {
 		cfg := map[string]any{"image": a.Image, "port": a.Port, "command": a.Command, "args": a.Args, "schedule": a.Schedule,
 			"release_command": a.ReleaseCommand, "internal_ports": a.InternalPorts}
 		if a.Replicas != nil {
@@ -158,7 +169,11 @@ func (s *Server) applyBlueprint(r *http.Request, proj store.Project, b blueprint
 				if size == 0 {
 					size = 1024
 				}
-				vols = append(vols, map[string]any{"name": v.Name, "mount_path": v.MountPath, "size_mb": size, "storage_class": v.StorageClass})
+				vol := map[string]any{"name": v.Name, "mount_path": v.MountPath, "size_mb": size, "storage_class": v.StorageClass}
+				if v.From != "" {
+					vol = map[string]any{"name": v.Name, "mount_path": v.MountPath, "from": v.From, "read_only": v.ReadOnly}
+				}
+				vols = append(vols, vol)
 			}
 			cfg["volumes"] = vols
 		}
@@ -550,6 +565,10 @@ func (s *Server) exportProject(w http.ResponseWriter, r *http.Request, p *princi
 			ba.HealthPath = c.Health.Path
 		}
 		for _, v := range c.Volumes {
+			if v.From != "" {
+				ba.Volumes = append(ba.Volumes, blueprint.Volume{Name: v.Name, MountPath: v.MountPath, From: v.From, ReadOnly: v.ReadOnly})
+				continue
+			}
 			ba.Volumes = append(ba.Volumes, blueprint.Volume{Name: v.Name, MountPath: v.MountPath, SizeMB: v.SizeMB, StorageClass: v.StorageClass})
 		}
 		for _, e := range c.Expose {

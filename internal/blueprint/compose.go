@@ -105,6 +105,7 @@ func FromCompose(data []byte, opts ImportOptions) (Blueprint, []string, error) {
 	var notes []string
 	note := func(format string, a ...any) { notes = append(notes, fmt.Sprintf(format, a...)) }
 	used := map[string]bool{}
+	sharedVols := map[string]string{} // compose volume / bind path → "app/volume" of the first service using it
 	for _, name := range names {
 		svc := f.Services[name]
 		slug := composeSlug(name)
@@ -212,6 +213,12 @@ func FromCompose(data []byte, opts ImportOptions) (Blueprint, []string, error) {
 				if vname == "" || vname == "." || vname == "/" {
 					vname = "data" + strconv.Itoa(len(app.Volumes)+1)
 				}
+				if ref, ok := sharedVols[src]; ok {
+					note("%s: bind mount %s → %s mounts volume %s (shared with that app)", name, src, target, ref)
+					app.Volumes = append(app.Volumes, Volume{Name: vname, MountPath: target, From: ref})
+					continue
+				}
+				sharedVols[src] = slug + "/" + vname
 				note("%s: bind mount %s → %s became volume %q (size %d MB, populate via Settings → Volumes → Files)", name, src, target, vname, opts.VolumeSizeMB)
 				app.Volumes = append(app.Volumes, Volume{Name: vname, MountPath: target, SizeMB: opts.VolumeSizeMB})
 				continue
@@ -219,6 +226,14 @@ func FromCompose(data []byte, opts ImportOptions) (Blueprint, []string, error) {
 			vname := composeSlug(src)
 			if vname == "" {
 				vname = "data" + strconv.Itoa(len(app.Volumes)+1)
+			}
+			if ref, ok := sharedVols[src]; ok && src != "" {
+				note("%s: volume %s → %s is shared with %s", name, src, target, ref)
+				app.Volumes = append(app.Volumes, Volume{Name: vname, MountPath: target, From: ref})
+				continue
+			}
+			if src != "" {
+				sharedVols[src] = slug + "/" + vname
 			}
 			app.Volumes = append(app.Volumes, Volume{Name: vname, MountPath: target, SizeMB: opts.VolumeSizeMB})
 		}

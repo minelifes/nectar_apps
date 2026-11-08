@@ -70,6 +70,12 @@ type Volume struct {
 	// Claim is an existing PersistentVolumeClaim used instead of "<app>-<name>" (a workload imported from
 	// the cluster keeps its disk). The panel never creates, resizes or deletes it.
 	Claim string `json:"claim,omitempty"`
+	// From mounts a volume of another app of the project ("app-slug/volume") instead of a disk of its
+	// own: both apps see the same files. Claim, size, class and Shared then follow that volume (set by the
+	// API); this app never creates, resizes, backs up or deletes it.
+	From string `json:"from,omitempty"`
+	// ReadOnly mounts it read-only (only for volumes shared from another app).
+	ReadOnly bool `json:"read_only,omitempty"`
 }
 
 // Resources per replica. NoLimit = requests only (the app may use any free capacity).

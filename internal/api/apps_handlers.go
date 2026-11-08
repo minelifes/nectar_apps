@@ -464,12 +464,16 @@ func (s *Server) createApp(w http.ResponseWriter, r *http.Request, p *principal,
 		}
 		cfg.Image = s.registry.PullRef(proj.Namespace+"/"+in.Slug, pendingTag) // replaced by the first build
 	}
+	if msg := s.resolveSharedVolumes(r.Context(), proj.ID, in.Slug, cfg.Volumes); msg != "" {
+		writeError(w, http.StatusBadRequest, msg)
+		return
+	}
 	if msg := validateConfig(rt, in.Kind, cfg); msg != "" {
 		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
 	for _, v := range cfg.Volumes {
-		if v.Claim != "" {
+		if v.Claim != "" && v.From == "" {
 			writeError(w, http.StatusBadRequest, "volume "+v.Name+": an existing claim is set only when a workload is imported")
 			return
 		}
@@ -556,6 +560,10 @@ func (s *Server) updateApp(w http.ResponseWriter, r *http.Request, p *principal,
 			return
 		}
 	}
+	if msg := s.resolveSharedVolumes(r.Context(), app.ProjectID, app.Slug, app.Config.Volumes); msg != "" {
+		writeError(w, http.StatusBadRequest, msg)
+		return
+	}
 	if msg := validateConfig(rt, app.Kind, app.Config); msg != "" {
 		writeError(w, http.StatusBadRequest, msg)
 		return
@@ -564,6 +572,10 @@ func (s *Server) updateApp(w http.ResponseWriter, r *http.Request, p *principal,
 	if volumesChanged {
 		if msg := validateVolumes(app.Config.Volumes, oldVolumes); msg != "" {
 			writeError(w, http.StatusBadRequest, msg)
+			return
+		}
+		if msg := s.sharedVolumeProblem(r.Context(), app, oldVolumes, app.Config.Volumes); msg != "" {
+			writeError(w, http.StatusConflict, msg)
 			return
 		}
 		if !p.eff.Can("volume.manage", &app.ProjectID) {
@@ -579,6 +591,7 @@ func (s *Server) updateApp(w http.ResponseWriter, r *http.Request, p *principal,
 	var notes []string
 	if volumesChanged {
 		notes = s.resizeVolumes(r, app, proj, oldVolumes)
+		s.syncSharedSizes(r.Context(), app)
 	}
 	s.audit(r, p, "app.update", proj.Slug+"/"+app.Slug, nil)
 	if len(notes) > 0 {
@@ -591,6 +604,16 @@ func (s *Server) deleteApp(w http.ResponseWriter, r *http.Request, p *principal,
 	if s.deployer != nil && s.deployer.Busy(app.ID) {
 		writeError(w, http.StatusConflict, deploy.ErrBusy.Error())
 		return
+	}
+	// its volumes go with it: not while another app mounts one
+	for _, v := range app.Config.Volumes {
+		if v.From != "" {
+			continue
+		}
+		if users := s.volumeUsers(r.Context(), app.ProjectID, app.Slug, v.Name); len(users) > 0 {
+			writeError(w, http.StatusConflict, fmt.Sprintf("volume %s is mounted by %s: remove it there first", v.Name, strings.Join(users, ", ")))
+			return
+		}
 	}
 	// its preview environments go with it
 	if previews, err := s.store.ListPreviews(r.Context(), app.ID); err == nil {

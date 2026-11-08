@@ -135,10 +135,13 @@ func validateVolumes(vs []store.Volume, old []store.Volume) string {
 		if v.StorageClass != "" && !storageClassRe.MatchString(v.StorageClass) {
 			return fmt.Sprintf("volume %s: invalid storage class %q", v.Name, v.StorageClass)
 		}
-		if old != nil && prevVol[v.Name].Claim != v.Claim {
+		if was, ok := prevVol[v.Name]; ok && (was.From == "") != (v.From == "") {
+			return "volume " + v.Name + ": a volume of the app can't become another app's (or the other way round) — use a new name"
+		}
+		if old != nil && v.From == "" && prevVol[v.Name].Claim != v.Claim {
 			return "volume " + v.Name + ": an existing claim is set only when a workload is imported"
 		}
-		if was, ok := prevVol[v.Name]; ok && (was.StorageClass != v.StorageClass || was.Shared != v.Shared) {
+		if was, ok := prevVol[v.Name]; ok && v.From == "" && (was.StorageClass != v.StorageClass || was.Shared != v.Shared) {
 			return "volume " + v.Name + ": the storage class and sharing of an existing volume cannot change — add a new volume and copy the data"
 		}
 		if !volumeNameRe.MatchString(v.Name) {
@@ -158,7 +161,7 @@ func validateVolumes(vs []store.Volume, old []store.Volume) string {
 		if v.SizeMB < 64 || v.SizeMB > 1<<20 {
 			return "volume " + v.Name + ": size must be 64 MiB – 1 TiB"
 		}
-		if was, ok := prev[v.Name]; ok && v.SizeMB < was {
+		if was, ok := prev[v.Name]; ok && v.SizeMB < was && v.From == "" {
 			return "volume " + v.Name + ": volumes can only grow"
 		}
 	}
@@ -174,6 +177,11 @@ func (s *Server) listVolumes(w http.ResponseWriter, r *http.Request, _ *principa
 		writeError(w, http.StatusBadGateway, "kubernetes: "+err.Error())
 		return
 	}
+	for i, v := range vols {
+		if v.From == "" {
+			vols[i].UsedBy = s.volumeUsers(r.Context(), app.ProjectID, app.Slug, v.Name)
+		}
+	}
 	writeJSON(w, http.StatusOK, vols)
 }
 
@@ -184,6 +192,10 @@ func (s *Server) deleteVolume(w http.ResponseWriter, r *http.Request, p *princip
 	name := r.PathValue("name")
 	if !volumeNameRe.MatchString(name) {
 		writeError(w, http.StatusNotFound, "volume not found")
+		return
+	}
+	if users := s.volumeUsers(r.Context(), app.ProjectID, app.Slug, name); len(users) > 0 {
+		writeError(w, http.StatusConflict, fmt.Sprintf("volume %s is mounted by %s: remove it there first", name, strings.Join(users, ", ")))
 		return
 	}
 	if err := s.deployer.DeleteVolume(r.Context(), app, proj, name); err != nil {

@@ -1745,5 +1745,16 @@
   "appUnzipUploading": "Uploading {done} of {total}",
   "@appUnzipUploading": {"placeholders": {"done": {"type": "String"}, "total": {"type": "String"}}},
   "appUnzipUnpacking": "Unpacking… {percent} %",
-  "@appUnzipUnpacking": {"placeholders": {"percent": {"type": "String"}}}
+  "@appUnzipUnpacking": {"placeholders": {"percent": {"type": "String"}}},
+  "appUseAnotherAppsVolume": "Use a volume of another app",
+  "appSharedVolumeHelp": "Both apps see the same files. The volume stays with its app: its size, storage and backups are set there, and it can't be removed there while this app mounts it. A volume that is not shared (ReadWriteOnce) lives on one node, so this app is placed on that node.",
+  "appSharedVolumeNone": "No other app of this project has a volume.",
+  "appVolumeLabel": "Volume",
+  "appReadOnly": "Read-only",
+  "appSharedVolumeAdded": "Added: save the settings and redeploy to mount it.",
+  "appSharedVolumeAdd": "Add",
+  "appSharedFrom": "Shared from {from}",
+  "@appSharedFrom": {"placeholders": {"from": {"type": "String"}}},
+  "appVolumeUsedBy": "Also mounted by {apps}",
+  "@appVolumeUsedBy": {"placeholders": {"apps": {"type": "String"}}}
 }
