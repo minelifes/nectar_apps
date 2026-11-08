@@ -814,6 +814,9 @@ paths:
                     storage_class: { type: string }
                     in_config: { type: boolean }
                     mounted: { type: boolean, description: used by the live release }
+                    from: { type: string, description: "app/volume when it belongs to another app" }
+                    read_only: { type: boolean }
+                    used_by: { type: array, items: { type: string }, description: other apps of the project that mount this volume }
   /apps/{id}/volumes/{name}:
     parameters:
       - { $ref: "#/components/parameters/Id" }
@@ -3454,6 +3457,9 @@ components:
               size_mb: { type: integer, minimum: 64 }
               storage_class: { type: string, description: "storage class (empty = cluster default, k3s local-path); e.g. longhorn or nfs. Fixed once the volume exists" }
               shared: { type: boolean, description: "ReadWriteMany (several replicas on several nodes; needs e.g. nfs). Fixed once the volume exists" }
+              claim: { type: string, readOnly: true, description: "existing PVC (imported workloads; for `from` volumes the owner's)" }
+              from: { type: string, example: web/uploads, description: "mount a volume of another app of the project (\"app/volume\") instead of a disk of its own; size, class and shared follow it. The owner can't remove or delete it (nor be deleted) while it is mounted elsewhere. No chains. A ReadWriteOnce volume makes the app prefer the owner's node" }
+              read_only: { type: boolean, description: "mount read-only (only with from)" }
         internal_ports: { type: array, maxItems: 10, items: { type: integer }, description: "more TCP ports the project's apps reach at <app>:<port> (never from outside); workers with a port get an internal Service too" }
         resume_replicas: { type: integer, readOnly: true, description: replicas before the last stop }
     App:
