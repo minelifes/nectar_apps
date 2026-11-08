@@ -138,3 +138,51 @@ func TestVolumesFilesScaleRestartPending(t *testing.T) {
 		t.Fatal("releaseClaim deleted the wrong pods")
 	}
 }
+
+// A volume shared from another app: mounts the owner's claim (read-only here), creates no PVC of its
+// own, prefers the owner's node (ReadWriteOnce), and lists the owner's claim in Volumes.
+func TestSharedVolumeManifests(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	a := javaApp()
+	a.Slug, a.Config.Expose = "worker", nil
+	a.Config.Volumes = []store.Volume{
+		{Name: "files", MountPath: "/srv/files", SizeMB: 1024, From: "api/data", Claim: "api-data", ReadOnly: true},
+		{Name: "nfs", MountPath: "/nfs", SizeMB: 512, From: "api/shared", Claim: "api-shared", Shared: true},
+	}
+	a, _ = e.app(t, a)
+	e.k.Apply(ctx, kube.Object{"apiVersion": "v1", "kind": "PersistentVolumeClaim",
+		"metadata": map[string]any{"name": "api-data", "namespace": e.p.Namespace},
+		"spec":     map[string]any{"storageClassName": "local-path"},
+		"status":   map[string]any{"phase": "Bound", "capacity": map[string]any{"storage": "1Gi"}}})
+	rel, err := e.d.Deploy(ctx, DeployRequest{App: a})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel = e.waitRelease(t, rel.ID); rel.Status != store.ReleaseLive {
+		t.Fatalf("release %s %s", rel.Status, rel.Message)
+	}
+	ns := e.p.Namespace
+	if e.k.Get("PersistentVolumeClaim", ns, "worker-files") != nil || e.k.Get("PersistentVolumeClaim", ns, "worker-nfs") != nil {
+		t.Fatal("a PVC was created for a shared volume")
+	}
+	pod, _ := json.Marshal(kube.Field(e.k.Get("Deployment", ns, "worker"), "spec", "template", "spec"))
+	for _, want := range []string{`"claimName":"api-data"`, `"claimName":"api-shared"`,
+		`"mountPath":"/srv/files","name":"vol-files","readOnly":true`,
+		`"podAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"labelSelector":{"matchLabels":{"` + LabelApp + `":"api"}},"topologyKey":"kubernetes.io/hostname"},"weight":100}]}`} {
+		if !strings.Contains(string(pod), want) {
+			t.Errorf("pod spec lacks %s\n%s", want, pod)
+		}
+	}
+	if strings.Contains(string(pod), `"mountPath":"/nfs","name":"vol-nfs","readOnly"`) {
+		t.Error("the nfs volume is read-only")
+	}
+	vols, err := e.d.Volumes(ctx, a, e.p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(vols) != 2 || vols[0].Claim != "api-data" || vols[0].From != "api/data" || !vols[0].ReadOnly || vols[0].Phase != "Bound" ||
+		vols[0].StorageClass != "local-path" {
+		t.Fatalf("volumes: %+v", vols)
+	}
+}

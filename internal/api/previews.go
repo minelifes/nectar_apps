@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -146,8 +147,17 @@ func (s *Server) createPreview(r *http.Request, parent store.App, proj store.Pro
 			}
 		}
 	}
+	save := false
+	if !src.PreviewDatabases && slices.ContainsFunc(app.Config.Volumes, func(v store.Volume) bool { return v.From != "" }) {
+		// nor into the volumes it shares with other apps: the preview gets empty ones
+		app.Config.Volumes, _ = ownVolumes(app.Config.Volumes)
+		save = true
+	}
 	if app.Config.Replicas > 1 {
 		app.Config.Replicas = 1
+		save = true
+	}
+	if save {
 		if app, err = s.store.SaveApp(ctx, app); err != nil {
 			return fail(err)
 		}

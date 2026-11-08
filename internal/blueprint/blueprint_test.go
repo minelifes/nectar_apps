@@ -224,3 +224,36 @@ func TestComposeCPUs(t *testing.T) {
 		}
 	}
 }
+
+// Services that use the same named volume (or bind path) share one volume: the first service (by name)
+// owns it, the others mount it with "from".
+func TestComposeSharedVolumes(t *testing.T) {
+	b, _, err := FromCompose([]byte(`
+services:
+  web:
+    image: nginx:1
+    ports: ["80:80"]
+    volumes: ["uploads:/usr/share/nginx/html/uploads", "./static:/static"]
+  worker:
+    image: busybox:1
+    volumes: ["uploads:/data/uploads", "./static:/srv/static", "cache:/cache"]
+volumes:
+  uploads: {}
+  cache: {}
+`), ImportOptions{VolumeSizeMB: 512})
+	if err != nil {
+		t.Fatal(err)
+	}
+	vols := map[string][]Volume{}
+	for _, a := range b.Apps {
+		vols[a.Slug] = a.Volumes
+	}
+	if w := vols["web"]; len(w) != 2 || w[0].From != "" || w[0].SizeMB != 512 || w[1].From != "" {
+		t.Fatalf("web: %+v", w)
+	}
+	wk := vols["worker"]
+	if len(wk) != 3 || wk[0].From != "web/uploads" || wk[0].MountPath != "/data/uploads" || wk[0].SizeMB != 0 ||
+		wk[1].From != "web/static" || wk[2].From != "" || wk[2].Name != "cache" {
+		t.Fatalf("worker: %+v", wk)
+	}
+}

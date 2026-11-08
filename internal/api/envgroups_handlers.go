@@ -194,6 +194,12 @@ func (s *Server) cloneAppInto(r *http.Request, src store.App, srcProj, dst store
 	var notes []string
 	cfg := src.Config
 	cfg.ResumeReplicas = 0
+	if dst.ID != srcProj.ID && addonMap == nil {
+		// a single app copied to another project: the app it shares a volume with is not there
+		var vnotes []string
+		cfg.Volumes, vnotes = ownVolumes(cfg.Volumes)
+		notes = append(notes, vnotes...)
+	}
 	if dst.ID != srcProj.ID && len(cfg.EnvGroups) > 0 {
 		// groups are per project: keep those that exist in the target
 		var kept []string

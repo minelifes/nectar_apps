@@ -200,7 +200,41 @@ func ClaimOf(appSlug string, v store.Volume) string {
 	if v.Claim != "" {
 		return v.Claim
 	}
+	if owner, name, ok := SharedFrom(v); ok {
+		return VolumeClaimName(owner, name) // the API sets Claim; this is the fallback
+	}
 	return VolumeClaimName(appSlug, v.Name)
+}
+
+// SharedFrom splits Volume.From ("app/volume"); false for a volume of the app's own.
+func SharedFrom(v store.Volume) (app, volume string, ok bool) {
+	if v.From == "" {
+		return "", "", false
+	}
+	app, volume, ok = strings.Cut(v.From, "/")
+	return app, volume, ok && app != "" && volume != ""
+}
+
+// sharedAffinity prefers the nodes running the apps whose ReadWriteOnce volumes this app mounts: such a
+// disk can be attached to one node only (k3s local-path pins it to its node anyway).
+func sharedAffinity(vols []store.Volume) map[string]any {
+	var terms []any
+	seen := map[string]bool{}
+	for _, v := range vols {
+		owner, _, ok := SharedFrom(v)
+		if !ok || v.Shared || seen[owner] {
+			continue
+		}
+		seen[owner] = true
+		terms = append(terms, map[string]any{"weight": 100, "podAffinityTerm": map[string]any{
+			"labelSelector": map[string]any{"matchLabels": map[string]any{LabelApp: owner}},
+			"topologyKey":   "kubernetes.io/hostname",
+		}})
+	}
+	if len(terms) == 0 {
+		return nil
+	}
+	return map[string]any{"podAffinity": map[string]any{"preferredDuringSchedulingIgnoredDuringExecution": terms}}
 }
 
 // AppVolumeClaim is the PVC of the app volume called name (the app's own naming when it is not configured).
@@ -259,8 +293,8 @@ func AppObjects(s AppSpec) ([]obj, error) {
 		})
 	}
 	for _, v := range s.Config.Volumes {
-		if v.Claim != "" {
-			continue // an existing claim (imported workload): not the panel's
+		if v.Claim != "" || v.From != "" {
+			continue // an existing claim (imported workload) or another app's volume: not this app's to create
 		}
 		spec := map[string]any{
 			"accessModes": []any{"ReadWriteOnce"},
@@ -482,7 +516,11 @@ func (s AppSpec) podSpec(command []string, role string) (map[string]any, error) 
 	}
 	for _, v := range cfg.Volumes {
 		volumes = append(volumes, map[string]any{"name": "vol-" + v.Name, "persistentVolumeClaim": map[string]any{"claimName": ClaimOf(s.App.Slug, v)}})
-		mounts = append(mounts, map[string]any{"name": "vol-" + v.Name, "mountPath": v.MountPath})
+		m := map[string]any{"name": "vol-" + v.Name, "mountPath": v.MountPath}
+		if v.ReadOnly {
+			m["readOnly"] = true
+		}
+		mounts = append(mounts, m)
 	}
 
 	c := map[string]any{
@@ -572,6 +610,9 @@ func (s AppSpec) podSpec(command []string, role string) (map[string]any, error) 
 	}
 	if len(volumes) > 0 {
 		spec["volumes"] = volumes
+	}
+	if aff := sharedAffinity(cfg.Volumes); aff != nil {
+		spec["affinity"] = aff
 	}
 	return spec, nil
 }

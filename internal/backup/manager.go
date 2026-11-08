@@ -183,7 +183,9 @@ func (m *Manager) subject(ctx context.Context, scope string, id int64) (subject,
 			s.Name += " (" + a.Database.Engine + ")"
 		}
 		for _, v := range a.Config.Volumes {
-			s.Volumes = append(s.Volumes, v.Name)
+			if v.From == "" { // a volume shared from another app is backed up with that app
+				s.Volumes = append(s.Volumes, v.Name)
+			}
 		}
 		return s, nil
 	case ScopeAddon:

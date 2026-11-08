@@ -132,6 +132,11 @@ type VolumeInfo struct {
 	StorageClass string `json:"storage_class,omitempty"`
 	InConfig     bool   `json:"in_config"` // part of the app settings
 	Mounted      bool   `json:"mounted"`   // used by the live release
+	// From: the volume belongs to another app of the project ("app/volume"), this app mounts it.
+	From     string `json:"from,omitempty"`
+	ReadOnly bool   `json:"read_only,omitempty"`
+	// UsedBy: other apps of the project that mount this volume (filled by the API).
+	UsedBy []string `json:"used_by,omitempty"`
 }
 
 // rawGetter is implemented by the real Kubernetes client (kubelet summaries for volume usage).
@@ -144,7 +149,8 @@ func (d *Deployer) Volumes(ctx context.Context, a store.App, p store.Project) ([
 	byName := map[string]*VolumeInfo{}
 	var order []string
 	for _, v := range a.Config.Volumes {
-		byName[v.Name] = &VolumeInfo{Name: v.Name, Claim: ClaimOf(a.Slug, v), MountPath: v.MountPath, RequestedMB: v.SizeMB, InConfig: true}
+		byName[v.Name] = &VolumeInfo{Name: v.Name, Claim: ClaimOf(a.Slug, v), MountPath: v.MountPath, RequestedMB: v.SizeMB, InConfig: true,
+			From: v.From, ReadOnly: v.ReadOnly}
 		order = append(order, v.Name)
 	}
 	if live, err := d.store.LiveRelease(ctx, a.ID); err == nil {
@@ -152,7 +158,8 @@ func (d *Deployer) Volumes(ctx context.Context, a store.App, p store.Project) ([
 			if vi, ok := byName[v.Name]; ok {
 				vi.Mounted = true
 			} else {
-				byName[v.Name] = &VolumeInfo{Name: v.Name, Claim: ClaimOf(a.Slug, v), MountPath: v.MountPath, RequestedMB: v.SizeMB, Mounted: true}
+				byName[v.Name] = &VolumeInfo{Name: v.Name, Claim: ClaimOf(a.Slug, v), MountPath: v.MountPath, RequestedMB: v.SizeMB, Mounted: true,
+					From: v.From, ReadOnly: v.ReadOnly}
 				order = append(order, v.Name)
 			}
 		}
@@ -182,6 +189,23 @@ func (d *Deployer) Volumes(ctx context.Context, a store.App, p store.Project) ([
 			if q, err := kube.ParseQuantity(kube.Str(pvc, "spec", "resources", "requests", "storage")); err == nil {
 				vi.RequestedMB = int64(q) / (1 << 20)
 			}
+		}
+		claims[vi.Claim] = vi
+	}
+	// volumes of other apps (and imported claims) carry no label of this app: look them up by name
+	for _, n := range order {
+		vi := byName[n]
+		if vi.Phase != "" || vi.Claim == "" {
+			continue
+		}
+		var pvc kube.Object
+		if err := d.kube.GetObject(ctx, "PersistentVolumeClaim", p.Namespace, vi.Claim, &pvc); err != nil {
+			continue
+		}
+		vi.Phase = kube.Str(pvc, "status", "phase")
+		vi.StorageClass = kube.Str(pvc, "spec", "storageClassName")
+		if q, err := kube.ParseQuantity(kube.Str(pvc, "status", "capacity", "storage")); err == nil {
+			vi.CapacityB = int64(q)
 		}
 		claims[vi.Claim] = vi
 	}

@@ -8735,6 +8735,81 @@ class S {
       args: [percent],
     );
   }
+
+  /// `Use a volume of another app`
+  String get appUseAnotherAppsVolume {
+    return Intl.message(
+      'Use a volume of another app',
+      name: 'appUseAnotherAppsVolume',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Both apps see the same files. The volume stays with its app: its size, storage and backups are set there, and it can't be removed there while this app mounts it. A volume that is not shared (ReadWriteOnce) lives on one node, so this app is placed on that node.`
+  String get appSharedVolumeHelp {
+    return Intl.message(
+      'Both apps see the same files. The volume stays with its app: its size, storage and backups are set there, and it can\'t be removed there while this app mounts it. A volume that is not shared (ReadWriteOnce) lives on one node, so this app is placed on that node.',
+      name: 'appSharedVolumeHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No other app of this project has a volume.`
+  String get appSharedVolumeNone {
+    return Intl.message(
+      'No other app of this project has a volume.',
+      name: 'appSharedVolumeNone',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Volume`
+  String get appVolumeLabel {
+    return Intl.message('Volume', name: 'appVolumeLabel', desc: '', args: []);
+  }
+
+  /// `Read-only`
+  String get appReadOnly {
+    return Intl.message('Read-only', name: 'appReadOnly', desc: '', args: []);
+  }
+
+  /// `Added: save the settings and redeploy to mount it.`
+  String get appSharedVolumeAdded {
+    return Intl.message(
+      'Added: save the settings and redeploy to mount it.',
+      name: 'appSharedVolumeAdded',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add`
+  String get appSharedVolumeAdd {
+    return Intl.message('Add', name: 'appSharedVolumeAdd', desc: '', args: []);
+  }
+
+  /// `Shared from {from}`
+  String appSharedFrom(String from) {
+    return Intl.message(
+      'Shared from $from',
+      name: 'appSharedFrom',
+      desc: '',
+      args: [from],
+    );
+  }
+
+  /// `Also mounted by {apps}`
+  String appVolumeUsedBy(String apps) {
+    return Intl.message(
+      'Also mounted by $apps',
+      name: 'appVolumeUsedBy',
+      desc: '',
+      args: [apps],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

@@ -97,6 +97,9 @@ type Volume struct {
 	MountPath    string `json:"mount_path" yaml:"mount_path"`
 	SizeMB       int64  `json:"size_mb,omitempty" yaml:"size_mb,omitempty"`
 	StorageClass string `json:"storage_class,omitempty" yaml:"storage_class,omitempty"`
+	// From mounts a volume of another app of the blueprint ("app/volume") instead (size and class follow it).
+	From     string `json:"from,omitempty" yaml:"from,omitempty"`
+	ReadOnly bool   `json:"read_only,omitempty" yaml:"read_only,omitempty"`
 }
 
 // Port is an extra TCP/UDP port opened on the server.
