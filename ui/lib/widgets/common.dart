@@ -84,24 +84,61 @@ class PageScaffold extends StatelessWidget {
     final wide = MediaQuery.sizeOf(context).width >= 720;
     final pad = wide ? 32.0 : 16.0;
     final theme = Theme.of(context);
-    Widget list = ListView(
-      padding: EdgeInsets.fromLTRB(pad, wide ? 28 : 16, pad, 32),
-      children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+    Widget list = LayoutBuilder(
+      builder: (_, snap) {
+        final width = snap.maxWidth;
+        return ListView(
+          padding: EdgeInsets.fromLTRB(pad, wide ? 28 : 16, pad, 32),
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (leading != null) ...[
-                      leading!,
-                      const SizedBox(width: 8),
-                    ],
-                    Expanded(
-                      child: Column(
+                    if (width > 560)
+                      Row(
+                        children: [
+                          if (leading != null) ...[
+                            leading!,
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: wide
+                                      ? theme.textTheme.headlineMedium
+                                      : theme.textTheme.headlineSmall,
+                                ),
+                                if (subtitle != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    subtitle!,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: NectarColors.of(context).muted,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            width: width * .6,
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.end,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: actions,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (width <= 560) ...[
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -121,18 +158,24 @@ class PageScaffold extends StatelessWidget {
                           ],
                         ],
                       ),
-                    ),
-                    if (actions.isNotEmpty)
-                      Wrap(spacing: 8, runSpacing: 8, children: actions),
+                      SizedBox(height: NectarTokens.gapLarge),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.start,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: actions,
+                      ),
+                    ],
+                    const SizedBox(height: NectarTokens.gapLarge),
+                    ...children,
                   ],
                 ),
-                const SizedBox(height: NectarTokens.gapLarge),
-                ...children,
-              ],
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
     if (onRefresh != null) {
       list = RefreshIndicator(
