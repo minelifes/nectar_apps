@@ -593,6 +593,24 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#proxies-a-domain-without-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      Proxies (a domain without an app)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sleeping-when-idle-scale-to-zero" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sleeping when idle (scale to zero)
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -638,6 +656,29 @@
   
   <span class="md-ellipsis">
     Volumes and logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../helm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Helm charts
     
   </span>
   
@@ -1133,6 +1174,24 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#proxies-a-domain-without-an-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      Proxies (a domain without an app)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sleeping-when-idle-scale-to-zero" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sleeping when idle (scale to zero)
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1201,6 +1260,33 @@ all domains (filter by domain, status class or client IP; block an IP from its r
   domain of app2 (host app1.com, path /myCustomRoute) and is listed on both apps.</li>
 <li>Removing the path needs nectar-gateway with the <code>strip-prefix</code> feature; an older gateway leaves such a
   route inactive with a message instead of sending app2 paths it does not expect.</li>
+</ul>
+<h2 id="proxies-a-domain-without-an-app">Proxies (a domain without an app)<a class="headerlink" href="#proxies-a-domain-without-an-app" title="Permanent link">&para;</a></h2>
+<p>Domains page → <strong>Proxies</strong> → <em>Add proxy</em>: a domain (and optional path) that the gateway forwards straight to
+an address and port — no app needed:</p>
+<ul>
+<li><code>127.0.0.1:9000</code> — a service running directly on the server (the gateway uses the host network; with
+  several gateway nodes each forwards to its own <code>127.0.0.1</code>),</li>
+<li><code>10.0.0.5:8080</code> — another machine the server reaches,</li>
+<li><code>grafana.monitoring.svc.cluster.local:3000</code> — a Kubernetes Service Nectar does not manage.</li>
+</ul>
+<p>Tick <em>The target uses HTTPS</em> when the target only speaks HTTPS (its certificate is not checked). Everything
+else works as for app domains: HTTPS certificates, DNS records, rate limits, body size, web options, password,
+removing the path. Choose <strong>Redirect</strong> instead to send a domain elsewhere (301/302/307/308; without a path of
+its own the request's path and query are kept). Changing proxies needs <code>settings.manage</code>; the CLI has
+<code>nectar proxy list|add|set|rm</code>.</p>
+<h2 id="sleeping-when-idle-scale-to-zero">Sleeping when idle (scale to zero)<a class="headerlink" href="#sleeping-when-idle-scale-to-zero" title="Permanent link">&para;</a></h2>
+<p>App → Settings → <em>Network and health check</em> → <strong>Sleep when idle</strong>: a web app that gets no requests through
+its domains for the chosen time (5–1440 minutes) scales to zero and shows <em>Sleeping</em>. It frees its CPU and
+memory; its volumes stay. The next visitor wakes it: nectar-gateway holds the request (up to 90 s) while the
+app starts and then passes it on; a browser that gives up first sees a short "This app is starting" page that
+retries. <strong>Wake now</strong> on the app page, a deploy, a start, or turning the setting off wake it too.</p>
+<ul>
+<li>Needs nectar-gateway with the <code>wake</code> feature (update the gateway); not with the Ingress provider.</li>
+<li>Only requests through the gateway count and wake the app. Other apps calling it inside the cluster
+  (<code>http://&lt;app&gt;.&lt;namespace&gt;.svc</code>) neither keep it awake nor wake it — don't use it for internal APIs.</li>
+<li>While it sleeps the gateway's health checks for its domains are off, so it doesn't raise "down" alerts.</li>
+<li>The setting takes effect without a deploy.</li>
 </ul>
 
 

@@ -16,7 +16,7 @@
         <link rel="prev" href="../databases/">
       
       
-        <link rel="next" href="../blueprints/">
+        <link rel="next" href="../helm/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -628,6 +628,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../helm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Helm charts
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../blueprints/" class="md-nav__link">
         
   
@@ -1106,6 +1129,18 @@
   edit text files, create folders, rename and delete — also while the app is stopped and for images without a
   shell. A small helper pod mounts the volume while the dialog is open (an hour at most). Needs the
   <code>volume.manage</code> permission; every change is audited.</li>
+<li><strong>Upload .zip</strong> (in Files): the archive is uploaded in 8 MB pieces and unpacked into the open folder —
+  files with the same names are replaced, nothing else is deleted, new files get the folder's owner. Up to
+  10 GB by default (<code>NECTAR_MAX_ZIP_MB</code>); the zip waits on the panel's disk while it is unpacked, so the
+  panel checks its own free space and the volume's first. Paths that leave the folder refuse the archive;
+  symlinks are skipped, <code>__MACOSX</code> and <code>.DS_Store</code> left out.</li>
+<li><strong>Sharing a volume between apps</strong> (Settings → Volumes → <em>Use a volume of another app</em>): an app mounts a
+  volume of another app of the same project, optionally read-only, and both see the same files. The volume
+  stays with its app — size, storage class and backups are set there, and it can't be removed or deleted
+  there (nor that app deleted) while another app mounts it. A ReadWriteOnce volume lives on one node, so the
+  second app prefers that node; for apps on different nodes make it a <strong>shared</strong> (ReadWriteMany) volume.
+  PR previews get an empty volume of their own unless <em>preview databases</em> is on. Compose imports share named
+  volumes the same way; in <code>nectar.yaml</code> it is <code>from: app/volume</code> (+ <code>read_only: true</code>).</li>
 <li><strong>Usage:</strong> each volume shows how much it holds: the app's Settings → Volumes, the database page and
   Server → Volumes. The <strong>Volume almost full</strong> alert (90 % by default) warns early. On the default
   local-path storage a volume is a folder on the server's disk. Kubernetes cannot tell a folder's size, so the

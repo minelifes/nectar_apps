@@ -557,6 +557,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../helm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Helm charts
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../blueprints/" class="md-nav__link">
         
   
@@ -708,6 +731,15 @@
   <a href="#add-a-node" class="md-nav__link">
     <span class="md-ellipsis">
       Add a node
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#labels-and-app-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      Labels and app placement
     </span>
   </a>
   
@@ -1053,6 +1085,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#labels-and-app-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      Labels and app placement
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#several-edge-nodes" class="md-nav__link">
     <span class="md-ellipsis">
       Several edge nodes
@@ -1093,6 +1134,18 @@ the nodes.</p>
 </ul>
 <p>Draining the edge node, or the last node that could take the pods, asks again first: it would take the gateway
 or the panel offline.</p>
+<h2 id="labels-and-app-placement">Labels and app placement<a class="headerlink" href="#labels-and-app-placement" title="Permanent link">&para;</a></h2>
+<p>Give nodes labels (node card → <strong>Labels…</strong>, or <code>nectar node label NODE disk=ssd gpu-</code>), e.g. <code>disk=ssd</code>,
+<code>gpu=nvidia</code>, <code>zone=office</code>. Then in an app's <strong>Settings → Placement</strong> pick the labels it needs: its pods
+(and its release and task jobs) run only on nodes that have all of them. Nothing picked: any node.</p>
+<ul>
+<li>Labels of Kubernetes, k3s and Nectar (<code>kubernetes.io/…</code>, <code>k3s.io/…</code>, <code>nectar.dev/…</code>, …) are not shown or
+  changed.</li>
+<li>If no ready node has the labels, new pods wait (Pending) — the settings page warns, and removing a label an
+  app needs tells you which apps are affected. Running pods are not moved when labels change; redeploy or
+  restart the app.</li>
+<li>An app with a ReadWriteOnce volume stays on the node that holds the volume: pick labels that node has.</li>
+</ul>
 <h2 id="several-edge-nodes">Several edge nodes<a class="headerlink" href="#several-edge-nodes" title="Permanent link">&para;</a></h2>
 <p>By default nectar-gateway runs on one <strong>edge node</strong> (label <code>nectar.dev/edge=true</code>, set by <code>install.sh</code>) — the
 node your DNS points to. To serve traffic from more nodes:</p>
