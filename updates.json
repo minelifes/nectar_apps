@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.24",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:95123bad774d03c8e00318e06b0ccd59c33e30572f1db5e241cdf0fc3b2ebfcb",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- Helm charts. Proxy.",
+          "previous": "1.0.23",
+          "published_at": "2026-11-09T18:09:15+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.23",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:21fdf04d1a2594686fffab9f537a5f0a85e9730b2878b76d2ba15a415b0d4f39",
@@ -485,6 +505,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.24",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:95123bad774d03c8e00318e06b0ccd59c33e30572f1db5e241cdf0fc3b2ebfcb",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- Helm charts. Proxy.",
+          "previous": "1.0.23",
+          "published_at": "2026-11-09T18:09:15+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.23",
@@ -968,5 +1008,5 @@
       ]
     }
   },
-  "updated_at": "2026-11-08T01:53:40+00:00"
+  "updated_at": "2026-11-09T18:09:15+00:00"
 }
