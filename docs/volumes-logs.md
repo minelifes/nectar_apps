@@ -7,6 +7,18 @@
   edit text files, create folders, rename and delete — also while the app is stopped and for images without a
   shell. A small helper pod mounts the volume while the dialog is open (an hour at most). Needs the
   `volume.manage` permission; every change is audited.
+- **Upload .zip** (in Files): the archive is uploaded in 8 MB pieces and unpacked into the open folder —
+  files with the same names are replaced, nothing else is deleted, new files get the folder's owner. Up to
+  10 GB by default (`NECTAR_MAX_ZIP_MB`); the zip waits on the panel's disk while it is unpacked, so the
+  panel checks its own free space and the volume's first. Paths that leave the folder refuse the archive;
+  symlinks are skipped, `__MACOSX` and `.DS_Store` left out.
+- **Sharing a volume between apps** (Settings → Volumes → *Use a volume of another app*): an app mounts a
+  volume of another app of the same project, optionally read-only, and both see the same files. The volume
+  stays with its app — size, storage class and backups are set there, and it can't be removed or deleted
+  there (nor that app deleted) while another app mounts it. A ReadWriteOnce volume lives on one node, so the
+  second app prefers that node; for apps on different nodes make it a **shared** (ReadWriteMany) volume.
+  PR previews get an empty volume of their own unless *preview databases* is on. Compose imports share named
+  volumes the same way; in `nectar.yaml` it is `from: app/volume` (+ `read_only: true`).
 - **Usage:** each volume shows how much it holds: the app's Settings → Volumes, the database page and
   Server → Volumes. The **Volume almost full** alert (90 % by default) warns early. On the default
   local-path storage a volume is a folder on the server's disk. Kubernetes cannot tell a folder's size, so the

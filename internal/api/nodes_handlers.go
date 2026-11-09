@@ -210,3 +210,91 @@ func (s *Server) deleteNode(w http.ResponseWriter, r *http.Request, p *principal
 	s.audit(r, p, "node.delete", name, nil)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "note": "On the machine, run /usr/local/bin/k3s-agent-uninstall.sh to remove k3s."})
 }
+
+// setNodeLabels replaces the labels people set on a node (kube.EditableLabel); Kubernetes', k3s' and
+// Nectar's own labels are kept. Apps pick nodes by them (config.node_selector).
+func (s *Server) setNodeLabels(w http.ResponseWriter, r *http.Request, p *principal) {
+	if !s.needKube(w) {
+		return
+	}
+	var in struct {
+		Labels map[string]string `json:"labels"`
+	}
+	if !decode(w, r, &in) {
+		return
+	}
+	if len(in.Labels) > 30 {
+		writeError(w, http.StatusBadRequest, "at most 30 labels")
+		return
+	}
+	for k, v := range in.Labels {
+		if !kube.EditableLabel(k) {
+			writeError(w, http.StatusBadRequest, "label "+k+" belongs to Kubernetes, k3s or Nectar and can't be set here")
+			return
+		}
+		if msg := kube.LabelProblem(k, v); msg != "" {
+			writeError(w, http.StatusBadRequest, msg)
+			return
+		}
+	}
+	name := r.PathValue("name")
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	var node kube.Object
+	if err := s.kube.GetObject(ctx, "Node", "", name, &node); kube.IsNotFound(err) {
+		writeError(w, http.StatusNotFound, "node not found")
+		return
+	} else if err != nil {
+		writeError(w, http.StatusBadGateway, "kubernetes: "+err.Error())
+		return
+	}
+	patch := map[string]any{}
+	old, _ := kube.Field(node, "metadata", "labels").(map[string]any)
+	for k := range old {
+		if _, keep := in.Labels[k]; !keep && kube.EditableLabel(k) {
+			patch[k] = nil
+		}
+	}
+	for k, v := range in.Labels {
+		patch[k] = v
+	}
+	if _, err := s.kube.Patch(ctx, "Node", "", name, map[string]any{"metadata": map[string]any{"labels": patch}}); err != nil {
+		writeError(w, http.StatusBadGateway, "kubernetes: "+err.Error())
+		return
+	}
+	s.audit(r, p, "node.labels", name, in.Labels)
+	// apps that relied on a removed label can't get new pods there any more
+	var notes []string
+	if apps, err := s.store.ListApps(ctx, 0); err == nil {
+		nodes, _ := s.kube.ListNodes(ctx)
+		for _, a := range apps {
+			if len(a.Config.NodeSelector) > 0 && !anyNodeMatches(nodes, a.Config.NodeSelector) {
+				notes = append(notes, a.Slug)
+			}
+		}
+	}
+	if len(notes) > 0 {
+		w.Header().Set("X-Nectar-Notice", "no ready node has the labels these apps need: "+strings.Join(notes, ", "))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// anyNodeMatches: a ready, schedulable node has all the labels.
+func anyNodeMatches(nodes []kube.Node, sel map[string]string) bool {
+	for _, n := range nodes {
+		if !n.Ready || n.Unschedulable {
+			continue
+		}
+		ok := true
+		for k, v := range sel {
+			if got, has := n.Labels[k]; !has || got != v {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			return true
+		}
+	}
+	return false
+}

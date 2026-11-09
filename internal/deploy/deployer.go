@@ -30,7 +30,8 @@ const (
 	StatusFailed    = "failed"
 	StatusDegraded  = "degraded" // a deploy failed but the previous release is still serving
 	StatusScheduled = "scheduled"
-	StatusReady     = "ready" // task apps: deployed, run on demand
+	StatusReady     = "ready"    // task apps: deployed, run on demand
+	StatusSleeping  = "sleeping" // scaled to zero after a while without requests; the gateway wakes it
 )
 
 // Kube is the subset of the Kubernetes client the deployer uses (a fake implements it in tests).

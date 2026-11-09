@@ -46,6 +46,13 @@ Usage:
                                                                   open DB on 127.0.0.1 through the panel (any client: psql, mysql, TablePlus…)
   nectar db exec DB -f FILE [--project SLUG]                      execute a SQL file against a database
   nectar db exec DB -- "SQL"                                      execute a SQL statement against a database
+  nectar proxy list                                               domains without an app (proxies and redirects)
+  nectar proxy add HOST[/PATH] ADDRESS:PORT [--https-target] [--strip] [--no-tls]
+                                                                  a domain straight to an address (127.0.0.1 = the server)
+  nectar proxy add HOST --redirect URL [--code 301|302|307|308]   a domain that redirects
+  nectar proxy set HOST[/PATH] [ADDRESS:PORT] [flags]             change one;  nectar proxy rm HOST[/PATH]  removes it
+  nectar node list                                                nodes with their labels
+  nectar node label NODE KEY=VALUE… [KEY-]…                       set or remove node labels (apps pick nodes by them)
   nectar external                                                 namespaces running on the cluster that Nectar does not manage
   nectar adopt NAMESPACE… [--all] [--slug S] [--name N]           make existing namespaces projects (their workloads are not changed)
   nectar templates                                                one-click apps
@@ -432,6 +439,12 @@ func run(ctx context.Context, cmd string, args []string, env Env) error {
 
 	case "db":
 		return dbCommand(ctx, c, args, env)
+
+	case "proxy", "proxies":
+		return proxyCommand(ctx, c, args, env)
+
+	case "node", "nodes":
+		return nodeCommand(ctx, c, args, env)
 
 	case "external":
 		list, err := c.External(ctx)

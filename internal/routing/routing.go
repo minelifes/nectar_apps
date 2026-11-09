@@ -43,6 +43,22 @@ type Syncer struct {
 	log     *slog.Logger
 	mu      sync.Mutex // one sync at a time
 	trigger chan struct{}
+
+	// WakeURL gives the URL the gateway calls to wake a sleeping app (see store.AppConfig.SleepAfterMinutes).
+	// nil: apps don't sleep.
+	WakeURL func(appID int64) string
+}
+
+// WakeTimeout is how long the gateway holds a request while the app wakes up (seconds).
+const WakeTimeout = 90
+
+// CanWake reports whether the gateway can wake apps scaled to zero (a nectar-gateway new enough; not the
+// Ingress provider).
+func (s *Syncer) CanWake(ctx context.Context) bool {
+	if !s.Enabled() || s.WakeURL == nil {
+		return false
+	}
+	return s.hasFeature(ctx, gateway.FeatureWake)
 }
 
 // New creates a syncer. gw may be nil (domains are stored but marked "gateway not configured").
@@ -156,7 +172,18 @@ func (s *Syncer) desiredRoute(ctx context.Context, d store.Domain) (*gateway.Rou
 	if r.BackendProtocol == "" {
 		r.BackendProtocol = "http1"
 	}
-	if cfg.Health.Type == "http" && cfg.Replicas > 0 && r.BackendProtocol != "h2c" {
+	sleeps := app.Config.SleepAfterMinutes > 0 && s.WakeURL != nil // a setting: applies without a deploy
+	if sleeps {
+		// sleeps when idle: the gateway wakes it on the next request (and its health checks would only
+		// report the sleeping app as down)
+		w := gateway.Web{}
+		if r.Web != nil {
+			w = *r.Web
+		}
+		w.Wake = &gateway.Wake{URL: s.WakeURL(app.ID), Timeout: WakeTimeout}
+		r.Web = &w
+	}
+	if cfg.Health.Type == "http" && cfg.Replicas > 0 && !sleeps && r.BackendProtocol != "h2c" {
 		r.HCEnabled = true
 		r.HCPath = cfg.Health.Path
 		if r.HCPath == "" {
@@ -263,6 +290,7 @@ func (s *Syncer) Sync(ctx context.Context) error {
 
 	webOK := s.hasFeature(ctx, gateway.FeatureWebOptions)
 	stripOK := s.hasFeature(ctx, gateway.FeatureStripPrefix)
+	wakeOK := s.hasFeature(ctx, gateway.FeatureWake)
 	var errs []error
 	wanted := map[string]bool{}
 	for _, d := range domains {
@@ -280,6 +308,17 @@ func (s *Syncer) Sync(ctx context.Context) error {
 		wanted[owner] = true
 		have, exists := byOwner[owner]
 		webNote := ""
+		if want.Web != nil && want.Web.Wake != nil && !wakeOK {
+			// the app would never be woken: route without it (the sleeper only puts apps to sleep when
+			// the gateway can wake them)
+			w := *want.Web
+			w.Wake = nil
+			want.Web = &w
+			if w.IsZero() {
+				want.Web = nil
+			}
+			webNote = "waking a sleeping app needs the latest nectar-gateway (update it)"
+		}
 		if want.Web != nil && !webOK {
 			// an older gateway would silently ignore the options: serve the route without them and say so
 			want.Web = nil

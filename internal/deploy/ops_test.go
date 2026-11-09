@@ -186,3 +186,23 @@ func TestSharedVolumeManifests(t *testing.T) {
 		t.Fatalf("volumes: %+v", vols)
 	}
 }
+
+// node_selector reaches the app's pods.
+func TestNodeSelectorManifest(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	a := javaApp()
+	a.Config.NodeSelector = map[string]string{"disk": "ssd", "example.com/zone": "a"}
+	a, _ = e.app(t, a)
+	rel, err := e.d.Deploy(ctx, DeployRequest{App: a})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel = e.waitRelease(t, rel.ID); rel.Status != store.ReleaseLive {
+		t.Fatalf("release %s %s", rel.Status, rel.Message)
+	}
+	sel, _ := kube.Field(e.k.Get("Deployment", e.p.Namespace, a.Slug), "spec", "template", "spec", "nodeSelector").(map[string]any)
+	if sel["disk"] != "ssd" || sel["example.com/zone"] != "a" || len(sel) != 2 {
+		t.Fatalf("nodeSelector: %v", sel)
+	}
+}

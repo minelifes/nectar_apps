@@ -6,12 +6,14 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"nectar_apps/internal/adopt"
 	"nectar_apps/internal/deploy"
+	"nectar_apps/internal/helm"
 	"nectar_apps/internal/kube"
 	"nectar_apps/internal/store"
 )
@@ -110,6 +112,16 @@ func (s *Server) projectExternalWorkloads(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if len(out) == 1 {
+		// workloads of charts installed through the panel are shown with their chart, not as importable
+		if rels, _ := s.store.ListHelmReleases(r.Context(), proj.ID); len(rels) > 0 && s.kube != nil {
+			mine := map[string]bool{}
+			for _, h := range rels {
+				for _, wl := range helm.Workloads(r.Context(), s.kube, proj.Namespace, h.Name) {
+					mine[wl.Kind+"/"+wl.Name] = true
+				}
+			}
+			out[0].Workloads = slices.DeleteFunc(out[0].Workloads, func(wl externalWorkload) bool { return mine[wl.Kind+"/"+wl.Name] })
+		}
 		writeJSON(w, http.StatusOK, out[0])
 		return
 	}

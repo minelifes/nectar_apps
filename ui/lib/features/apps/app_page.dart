@@ -197,6 +197,34 @@ class _AppPageState extends ConsumerState<AppPage> {
         Row(
           children: [
             StatusPill(status: app.status),
+            if (app.sleeping) ...[
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  s.appSleepingNote,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: NectarColors.of(context).muted,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              if (can('app.restart')) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () => appOperation(
+                    context,
+                    ref,
+                    app,
+                    'wake',
+                    done: s.appWaking(app.name),
+                  ),
+                  icon: const Icon(Icons.wb_sunny_outlined, size: 18),
+                  label: Text(s.appWakeNow),
+                ),
+              ],
+            ],
             if (app.statusMessage.isNotEmpty) ...[
               const SizedBox(width: 10),
               Expanded(

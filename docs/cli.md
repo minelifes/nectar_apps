@@ -31,6 +31,14 @@ nectar rollback shop/api                                    # or --to 12
 | `nectar import-compose -f docker-compose.yml --project SLUG [--dry-run] [--no-deploy]` | convert a compose file |
 | `nectar db list [--project SLUG]` | the project's databases |
 | `nectar db connect DB [--project SLUG] [--port N] [--show-password]` | open a database on `127.0.0.1` through the panel |
+| `nectar db exec DB -f FILE` / `nectar db exec DB -- "SQL"` | run SQL against a database |
+| `nectar proxy list` | domains without an app (proxies and redirects) |
+| `nectar proxy add HOST[/PATH] ADDRESS:PORT [--https-target] [--strip] [--no-tls]` | a domain straight to an address the gateway reaches (`127.0.0.1` = the server) |
+| `nectar proxy add HOST --redirect URL [--code 301\|302\|307\|308]` | a domain that redirects |
+| `nectar proxy set HOST[/PATH] [ADDRESS:PORT] [--https-target=…] [--redirect URL] [--code N]` | change a proxy |
+| `nectar proxy rm HOST[/PATH]` | remove it |
+| `nectar node list` | nodes with status, roles, IP and their labels |
+| `nectar node label NODE KEY=VALUE… [KEY-]…` | set or remove node labels (apps pick nodes by them) |
 | `nectar external` | namespaces on the cluster that Nectar did not create, with their workloads and images |
 | `nectar adopt NAMESPACE… [--all] [--slug S] [--name N]` | make existing namespaces projects; their workloads are not changed |
 | `nectar templates` | one-click apps |

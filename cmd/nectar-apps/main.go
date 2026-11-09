@@ -396,6 +396,7 @@ func serve() error {
 	alertEngine.Sender.Push = srv.SendPush // alert channels of kind "push" (Firebase; Settings → Push notifications)
 	go srv.RunEdge(ctx)                    // gateway replicas on extra edge nodes follow the primary's image
 	go srv.RunPreviews(ctx)                // delete pull request previews without activity
+	go srv.RunSleeper(ctx)                 // scale idle apps with sleep_after_minutes to zero
 	go srv.RunAdoptRequests(ctx)           // namespaces install.sh --adopt asked to adopt as projects
 
 	httpSrv := &http.Server{

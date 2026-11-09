@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -38,6 +39,46 @@ type Node struct {
 	Edge          bool `json:"edge,omitempty"`
 	// EdgeReplica marks an extra edge node: it runs a nectar-gateway replica (label nectar.dev/edge-replica).
 	EdgeReplica bool `json:"edge_replica,omitempty"`
+	// Labels are all the node's labels; EditableLabel tells the ones people set (for app placement).
+	Labels map[string]string `json:"labels"`
+}
+
+// EditableLabel reports whether a node label is one people set: not Kubernetes', k3s' or Nectar's own.
+func EditableLabel(key string) bool {
+	prefix, _, ok := strings.Cut(key, "/")
+	if !ok {
+		return true
+	}
+	for _, sys := range []string{"kubernetes.io", "k8s.io", "k3s.io", "cattle.io", "nectar.dev", "longhorn.io"} {
+		if prefix == sys || strings.HasSuffix(prefix, "."+sys) {
+			return false
+		}
+	}
+	return true
+}
+
+var (
+	labelNameRe  = regexp.MustCompile(`^[A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?$`)
+	labelPrefRe  = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
+	labelValueRe = regexp.MustCompile(`^([A-Za-z0-9]([-A-Za-z0-9_.]{0,61}[A-Za-z0-9])?)?$`)
+)
+
+// LabelProblem checks a label key and value as Kubernetes does ("" = fine).
+func LabelProblem(key, value string) string {
+	name := key
+	if prefix, n, ok := strings.Cut(key, "/"); ok {
+		if len(prefix) > 253 || !labelPrefRe.MatchString(prefix) {
+			return "label " + key + ": the prefix must be a DNS name (e.g. example.com/)"
+		}
+		name = n
+	}
+	if !labelNameRe.MatchString(name) {
+		return "label " + key + ": up to 63 letters, digits, - _ . (starting and ending with a letter or digit)"
+	}
+	if !labelValueRe.MatchString(value) {
+		return "label " + key + ": the value must be up to 63 letters, digits, - _ . (or empty)"
+	}
+	return ""
 }
 
 // Edge labels.
@@ -124,6 +165,7 @@ func (c *Client) ListNodes(ctx context.Context) ([]Node, error) {
 			Unschedulable:  it.Spec.Unschedulable,
 			Edge:           it.Metadata.Labels[LabelEdge] == "true",
 			EdgeReplica:    it.Metadata.Labels[LabelEdgeReplica] == "true",
+			Labels:         it.Metadata.Labels,
 		}
 		for _, cond := range it.Status.Conditions {
 			if cond.Type == "Ready" {
@@ -144,6 +186,9 @@ func (c *Client) ListNodes(ctx context.Context) ([]Node, error) {
 			}
 		}
 		sort.Strings(n.Roles)
+		if n.Labels == nil {
+			n.Labels = map[string]string{}
+		}
 		if u, ok := usage[n.Name]; ok {
 			n.Usage = &u
 		}

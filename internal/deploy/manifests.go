@@ -614,6 +614,13 @@ func (s AppSpec) podSpec(command []string, role string) (map[string]any, error) 
 	if aff := sharedAffinity(cfg.Volumes); aff != nil {
 		spec["affinity"] = aff
 	}
+	if len(cfg.NodeSelector) > 0 {
+		sel := map[string]any{}
+		for k, v := range cfg.NodeSelector {
+			sel[k] = v
+		}
+		spec["nodeSelector"] = sel
+	}
 	return spec, nil
 }
 

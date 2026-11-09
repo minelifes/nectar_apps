@@ -93,6 +93,12 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
   );
   late final _mem = TextEditingController(text: '${_res['memory_mb'] ?? 256}');
   late bool _noLimit = _res['no_limit'] == true;
+  late bool _sleep = widget.app.sleepAfterMinutes > 0;
+  late final Map<String, String> _selector = Map.of(widget.app.nodeSelector);
+  late final _sleepMin = TextEditingController(
+    text:
+        '${widget.app.sleepAfterMinutes > 0 ? widget.app.sleepAfterMinutes : 30}',
+  );
   late final _command = TextEditingController(
     text: _commandText(_cfg['command']),
   );
@@ -152,6 +158,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
       _port,
       _healthPath,
       _healthDelay,
+      _sleepMin,
       _cpu,
       _mem,
       _command,
@@ -199,6 +206,11 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
               : _healthPath.text.trim(),
         if ((delay ?? 0) > 0) 'initial_delay_seconds': delay,
       };
+      final sleepMin = _int(_sleepMin);
+      if (_sleep && (sleepMin == null || sleepMin < 5 || sleepMin > 1440)) {
+        err ??= S.of(context).appSleepMinutesRange;
+      }
+      cfg['sleep_after_minutes'] = _sleep ? (sleepMin ?? 0) : 0;
     }
     final cpu = _int(_cpu), mem = _int(_mem);
     if (cpu == null || cpu < 10) err ??= 'CPU must be at least 10 millicores';
@@ -223,6 +235,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
           },
       ];
     }
+    cfg['node_selector'] = Map.of(_selector);
     cfg['volumes'] = [
       for (final v in _vols)
         {
@@ -412,9 +425,33 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                   number: true,
                   help: 'Wait before the first check',
                 ),
+              SizedBox(
+                width: 420,
+                child: SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _sleep,
+                  onChanged: canEdit
+                      ? (v) => setState(() {
+                          _sleep = v;
+                          _dirty = true;
+                        })
+                      : null,
+                  title: Text(l.appSleepWhenIdle),
+                  subtitle: Text(l.appSleepWhenIdleHelp),
+                ),
+              ),
+              if (_sleep)
+                field(
+                  _sleepMin,
+                  l.appSleepAfterMinutes,
+                  width: 200,
+                  number: true,
+                  help: '5–1440',
+                ),
             ],
           ),
         ),
+      _placementCard(context, canEdit),
       NCard(
         title: l.appResourcesPerReplica,
         child: Column(
@@ -577,6 +614,74 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             style: TextStyle(color: c.muted, fontSize: 12.5),
           ),
       ],
+    );
+  }
+
+  /// Placement: the node labels the app's pods require (labels are set on the Server page).
+  Widget _placementCard(BuildContext context, bool canEdit) {
+    final s = S.of(context);
+    final c = NectarColors.of(context);
+    final nodes = ref.watch(nodesProvider).value ?? const <NodeInfo>[];
+    final offered = <String, Set<String>>{};
+    for (final n in nodes) {
+      for (final e in n.userLabels.entries) {
+        offered.putIfAbsent(e.key, () => {}).add(e.value);
+      }
+    }
+    final chips = <(String, String)>{
+      for (final e in offered.entries)
+        for (final v in e.value) (e.key, v),
+      for (final e in _selector.entries) (e.key, e.value),
+    }.toList()..sort((a, b) => '${a.$1}=${a.$2}'.compareTo('${b.$1}=${b.$2}'));
+    final matches = nodes.any(
+      (n) =>
+          n.ready &&
+          !n.unschedulable &&
+          _selector.entries.every((e) => n.labels[e.key] == e.value),
+    );
+    return NCard(
+      title: s.appPlacement,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            chips.isEmpty ? s.appPlacementNoLabels : s.appPlacementHelp,
+            style: TextStyle(color: c.muted, fontSize: 13),
+          ),
+          if (chips.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (k, v) in chips)
+                  FilterChip(
+                    label: Text('$k=$v', style: monoStyle(context, size: 12.5)),
+                    selected: _selector[k] == v,
+                    onSelected: canEdit
+                        ? (on) => setState(() {
+                            if (on) {
+                              _selector[k] = v; // one value per key
+                            } else {
+                              _selector.remove(k);
+                            }
+                            _dirty = true;
+                          })
+                        : null,
+                  ),
+              ],
+            ),
+          ],
+          if (_selector.isNotEmpty && nodes.isNotEmpty && !matches)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                s.appPlacementNoNode,
+                style: TextStyle(color: c.warning, fontSize: 13),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

@@ -161,164 +161,178 @@ class MessageLookup extends MessageLookupByLibrary {
 
   static String m62(apps) => "Також змонтовано в ${apps}";
 
-  static String m63(appName) =>
+  static String m63(name) => "Будимо ${name}";
+
+  static String m64(appName) =>
       "«${appName}» створено, але ще не розгорнуто. Залиште його, щоб завершити пізніше, або відкиньте.";
 
-  static String m64(pName) => "Продовжити з ${pName}";
+  static String m65(pName) => "Продовжити з ${pName}";
 
-  static String m65(subject) => "Резервне копіювання ${subject} розпочато";
+  static String m66(subject) => "Резервне копіювання ${subject} розпочато";
 
-  static String m66(what) => "${what} Зміни після цього моменту буде втрачено.";
+  static String m67(what) => "${what} Зміни після цього моменту буде втрачено.";
 
-  static String m67(tName) => "Перевірка ${tName}…";
+  static String m68(tName) => "Перевірка ${tName}…";
 
-  static String m68(nextRun) => "Наступна: ${nextRun}";
+  static String m69(nextRun) => "Наступна: ${nextRun}";
 
-  static String m69(subject, targetName) =>
+  static String m70(subject, targetName) =>
       "Резервних копій ${subject} у ${targetName} більше не буде. Наявні знімки залишаються в репозиторії.";
 
-  static String m70(tName) => "Прибрати ${tName}?";
+  static String m71(tName) => "Прибрати ${tName}?";
 
-  static String m71(shortId) => "Відновити ${shortId}?";
+  static String m72(shortId) => "Відновити ${shortId}?";
 
-  static String m72(subject) => "Знімки · ${subject}";
+  static String m73(subject) => "Знімки · ${subject}";
 
-  static String m73(count) =>
+  static String m74(count) =>
       "${Intl.plural(count, zero: 'Немає застосунків', one: '${count} застосунок', few: '${count} застосунки', many: '${count} застосунків', other: '${count} застосунку')}";
 
-  static String m74(host, error) =>
+  static String m75(host, error) =>
       "Застосунок створено, але ${host} не додано: ${error}. Додайте його на сторінці застосунку.";
 
-  static String m75(path) =>
+  static String m76(path) =>
       "${path}/users доходить до застосунку як ${path}/users";
 
-  static String m76(path) => "${path}/users доходить до застосунку як /users";
+  static String m77(path) => "${path}/users доходить до застосунку як /users";
 
-  static String m77(baseDomain, baseHost) =>
+  static String m78(baseDomain, baseHost) =>
       "Запис *.${baseDomain} обслуговує типовий домен кожного застосунку. CNAME на ${baseHost} працює для піддоменів ваших власних доменів, щойно цей запис існує.";
 
-  static String m78(namespace) => "Прийняти ${namespace} як проєкт?";
+  static String m79(namespace) => "Прийняти ${namespace} як проєкт?";
 
-  static String m79(ready, total) => "${ready}/${total} готово";
+  static String m80(ready, total) => "${ready}/${total} готово";
 
-  static String m80(ip) => "Заблокувати ${ip}";
+  static String m81(ip) => "Заблокувати ${ip}";
 
-  static String m81(domain) => "Видалити ${domain}?";
+  static String m82(domain) => "Видалити ${domain}?";
 
-  static String m82(baseWildcard) => "Отримати ${baseWildcard}";
+  static String m83(baseWildcard) => "Отримати ${baseWildcard}";
 
-  static String m83(ms) => "${ms} мс";
+  static String m84(ms) => "${ms} мс";
 
-  static String m84(workload) => "${workload} тепер застосунок Nectar";
+  static String m85(n) => "ревізія ${n}";
 
-  static String m85(workload) => "Імпортувати ${workload} як застосунок Nectar";
+  static String m86(n) => "Відкотити до ревізії ${n}?";
 
-  static String m86(pod) => "Перед останнім перезапуском · ${pod}";
+  static String m87(name) => "Видалити ${name}?";
 
-  static String m87(linesLength) => "Скопійовано рядків: ${linesLength}";
+  static String m88(name) => "Оновити ${name}";
 
-  static String m88(visibleLength) => "Скопійовано рядків: ${visibleLength}";
+  static String m89(workload) => "${workload} тепер застосунок Nectar";
 
-  static String m89(replicas) =>
+  static String m90(workload) => "Імпортувати ${workload} як застосунок Nectar";
+
+  static String m91(key) => "${key} належить Kubernetes, k3s або Nectar";
+
+  static String m92(name) => "Мітки ${name}";
+
+  static String m93(pod) => "Перед останнім перезапуском · ${pod}";
+
+  static String m94(linesLength) => "Скопійовано рядків: ${linesLength}";
+
+  static String m95(visibleLength) => "Скопійовано рядків: ${visibleLength}";
+
+  static String m96(replicas) =>
       "Сума по ${replicas} репліках; пунктир — скільки вони запитали разом.";
 
-  static String m90(sampleImage) => "Образ: ${sampleImage} · 50m CPU · 64 МБ";
+  static String m97(sampleImage) => "Образ: ${sampleImage} · 50m CPU · 64 МБ";
 
-  static String m91(route, app) => "${route} тепер веде до ${app}";
+  static String m98(route, app) => "${route} тепер веде до ${app}";
 
-  static String m92(app) => "Запити за цим шляхом знову йтимуть до ${app}.";
+  static String m99(app) => "Запити за цим шляхом знову йтимуть до ${app}.";
 
-  static String m93(route) => "Видалити ${route}?";
+  static String m100(route) => "Видалити ${route}?";
 
-  static String m94(path) => "${path} прибирається перед пересиланням";
+  static String m101(path) => "${path} прибирається перед пересиланням";
 
-  static String m95(what) => "Вибрати ${what}";
+  static String m102(what) => "Вибрати ${what}";
 
-  static String m96(slug) =>
+  static String m103(slug) =>
       "Скопійовано — застосуйте командою: nectar apply -f nectar.yaml --project ${slug}";
 
-  static String m97(appName) => "Копіювати ${appName}";
+  static String m104(appName) => "Копіювати ${appName}";
 
-  static String m98(namespace) =>
+  static String m105(namespace) =>
       "Застосунки й бази даних, створені тут Nectar, буде видалено. Простір імен ${namespace} і навантаження, що працювали в ньому до Nectar, залишаться й працюватимуть далі; імпортовані навантаження знову масштабуються й отримують свої хости назад.";
 
-  static String m99(gName) => "Видалити групу ${gName}?";
+  static String m106(gName) => "Видалити групу ${gName}?";
 
-  static String m100(name) => "Видалити ${name}?";
+  static String m107(name) => "Видалити ${name}?";
 
-  static String m101(slug) =>
+  static String m108(slug) =>
       "Буде видалено простір імен з усіма застосунками, базами даних, томами й планами резервного копіювання. Введіть ${slug} для підтвердження";
 
-  static String m102(name) => "${name} видалено";
+  static String m109(name) => "${name} видалено";
 
-  static String m103(slug) => "Середовище ${slug}";
+  static String m110(slug) => "Середовище ${slug}";
 
-  static String m104(what) => "Імпортувати ${what}";
+  static String m111(what) => "Імпортувати ${what}";
 
-  static String m105(key) =>
+  static String m112(key) =>
       "Неприпустима назва змінної «${key}»: використовуйте літери, цифри та _";
 
-  static String m106(appName, target) => "Просунути ${appName} у ${target}?";
+  static String m113(appName, target) => "Просунути ${appName} у ${target}?";
 
-  static String m107(slug, slug2, slug3) =>
+  static String m114(slug, slug2, slug3) =>
       "Активна збірка ${slug} (її образ або завантажений файл) розгортається в ${slug2}/${slug3}. Налаштування й змінні там залишаються як є.";
 
-  static String m108(nodeName) => "Звільнити ${nodeName}?";
+  static String m115(nodeName) => "Звільнити ${nodeName}?";
 
-  static String m109(nodeName) => "Все одно звільнити ${nodeName}?";
+  static String m116(nodeName) => "Все одно звільнити ${nodeName}?";
 
-  static String m110(historyName, range) =>
+  static String m117(historyName, range) =>
       "Історія · ${historyName} · останні ${range}";
 
-  static String m111(keepArtifacts, auditDays, alertDays) =>
+  static String m118(keepArtifacts, auditDays, alertDays) =>
       "Зберігаються: останні ${keepArtifacts} завантажень на застосунок (і кожне, яке використовує активний реліз), ${auditDays} днів журналу аудиту, ${alertDays} днів вирішених сповіщень. Очищення щогодини.";
 
-  static String m112(nodeName) => "Зробити ${nodeName} вузлом входу?";
+  static String m119(nodeName) => "Зробити ${nodeName} вузлом входу?";
 
-  static String m113(nodeName) => "Видалити ${nodeName} з кластера?";
+  static String m120(nodeName) => "Видалити ${nodeName} з кластера?";
 
-  static String m114(nodeName) =>
+  static String m121(nodeName) =>
       "Припинити обслуговувати трафік на ${nodeName}?";
 
-  static String m115(requestedBytes) =>
+  static String m122(requestedBytes) =>
       "${requestedBytes} · використання видно, коли застосунок чи база даних працює";
 
-  static String m116(ip, lastSeenAt, createdAt) =>
+  static String m123(ip, lastSeenAt, createdAt) =>
       "${ip} · активність ${lastSeenAt} · з ${createdAt}";
 
-  static String m117(ip) =>
+  static String m124(ip) =>
       "Дозволити лише ці IP-адреси чи мережі (по одній у рядку, напр. 203.0.113.7 або 203.0.113.0/24). Порожньо = усі. Ваша адреса: ${ip}. SSH-тунель до сервера працює завжди, тож помилковий список можна виправити.";
 
-  static String m118(username, updatedAt) =>
+  static String m125(username, updatedAt) =>
       "${username} · змінено ${updatedAt}";
 
-  static String m119(left) =>
+  static String m126(left) =>
       "Залишилося кодів відновлення: ${left}. Створіть нові.";
 
-  static String m120(name) => "Видалити ключ доступу ${name}?";
+  static String m127(name) => "Видалити ключ доступу ${name}?";
 
-  static String m121(when) => "використано ${when}";
+  static String m128(when) => "використано ${when}";
 
-  static String m122(pName) => "Прибрати ${pName}?";
+  static String m129(pName) => "Прибрати ${pName}?";
 
-  static String m123(host) => "Прибрати вхід для ${host}?";
+  static String m130(host) => "Прибрати вхід для ${host}?";
 
-  static String m124(amount) =>
+  static String m131(amount) =>
       "Годинник сервера поспішає відносно цього пристрою на ${amount}: час у панелі показується неправильно, а коди двофакторної автентифікації й сертифікати можуть не працювати. На сервері виконайте: sudo timedatectl set-ntp true";
 
-  static String m125(amount) =>
+  static String m132(amount) =>
       "Годинник сервера відстає від цього пристрою на ${amount}: час у панелі показується неправильно, а коди двофакторної автентифікації й сертифікати можуть не працювати. На сервері виконайте: sudo timedatectl set-ntp true";
 
-  static String m126(v) =>
+  static String m133(v) =>
       "Оновлення k3s до ${v} розпочато: версії вузлів тут оновлюватимуться в міру просування";
 
-  static String m127(summary) => "Відкотити ${summary}?";
+  static String m134(summary) => "Відкотити ${summary}?";
 
-  static String m128(component) => "Оновити ${component}";
+  static String m135(component) => "Оновити ${component}";
 
-  static String m129(v) => "Оновити k3s до ${v}?";
+  static String m136(v) => "Оновити k3s до ${v}?";
 
-  static String m130(summary) => "Оновлення · ${summary}";
+  static String m137(summary) => "Оновлення · ${summary}";
 
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
@@ -962,6 +976,16 @@ class MessageLookup extends MessageLookupByLibrary {
     "appPersistentDisksFilesWrittenThere": MessageLookupByLibrary.simpleMessage(
       "Постійні диски: записані туди файли переживають перезапуски й розгортання. Усе інше в контейнері тимчасове.",
     ),
+    "appPlacement": MessageLookupByLibrary.simpleMessage("Розміщення"),
+    "appPlacementHelp": MessageLookupByLibrary.simpleMessage(
+      "Запускати застосунок лише на вузлах з вибраними мітками. Нічого не вибрано — будь-який вузол.",
+    ),
+    "appPlacementNoLabels": MessageLookupByLibrary.simpleMessage(
+      "Працює на будь-якому вузлі. Щоб закріпити за певними вузлами, додайте їм мітки на сторінці Сервер (вузол → Мітки).",
+    ),
+    "appPlacementNoNode": MessageLookupByLibrary.simpleMessage(
+      "Жоден готовий вузол не має всіх цих міток: нові поди чекатимуть, доки такий з\'явиться.",
+    ),
     "appPointItsDnsARecord": MessageLookupByLibrary.simpleMessage(
       "Спершу спрямуйте його DNS (запис A) на цей сервер.",
     ),
@@ -1082,6 +1106,21 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "appShopApi": MessageLookupByLibrary.simpleMessage("Shop API"),
     "appSizeMib": MessageLookupByLibrary.simpleMessage("Розмір (МіБ)"),
+    "appSleepAfterMinutes": MessageLookupByLibrary.simpleMessage(
+      "Засинати через (хвилин)",
+    ),
+    "appSleepMinutesRange": MessageLookupByLibrary.simpleMessage(
+      "Час до сну має бути 5–1440 хвилин",
+    ),
+    "appSleepWhenIdle": MessageLookupByLibrary.simpleMessage(
+      "Засинати без відвідувачів",
+    ),
+    "appSleepWhenIdleHelp": MessageLookupByLibrary.simpleMessage(
+      "Масштабується до нуля після певного часу без запитів через його домени; наступний відвідувач будить його (перший запит чекає на запуск). Прямі виклики від інших застосунків його не будять.",
+    ),
+    "appSleepingNote": MessageLookupByLibrary.simpleMessage(
+      "Спить після періоду без запитів — наступний відвідувач розбудить його.",
+    ),
     "appSource": MessageLookupByLibrary.simpleMessage("Джерело"),
     "appSpringProfilesActiveProd": MessageLookupByLibrary.simpleMessage(
       "--spring.profiles.active=prod",
@@ -1163,7 +1202,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "appVolumeDeleted": m61,
     "appVolumeLabel": MessageLookupByLibrary.simpleMessage("Том"),
     "appVolumeUsedBy": m62,
-    "appWasCreatedButNotDeployed": m63,
+    "appWakeNow": MessageLookupByLibrary.simpleMessage("Розбудити"),
+    "appWaking": m63,
+    "appWasCreatedButNotDeployed": m64,
     "appXEnvStaging": MessageLookupByLibrary.simpleMessage("X-Env: staging"),
     "appXFrameOptionsDeny": MessageLookupByLibrary.simpleMessage(
       "X-Frame-Options: DENY",
@@ -1191,7 +1232,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "authConnectToYourServer": MessageLookupByLibrary.simpleMessage(
       "Під\'єднайтеся до свого сервера",
     ),
-    "authContinueWith": m64,
+    "authContinueWith": m65,
     "authCreateOwnerAccount": MessageLookupByLibrary.simpleMessage(
       "Створити обліковий запис власника",
     ),
@@ -1262,7 +1303,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "backupAddTarget": MessageLookupByLibrary.simpleMessage("Додати сховище"),
     "backupBackUpNow": MessageLookupByLibrary.simpleMessage("Скопіювати зараз"),
     "backupBackblazeB2": MessageLookupByLibrary.simpleMessage("Backblaze B2"),
-    "backupBackupOfStarted": m65,
+    "backupBackupOfStarted": m66,
     "backupBackupsAreEncryptedWithThe": MessageLookupByLibrary.simpleMessage(
       "Резервні копії шифруються паролем репозиторію ще до того, як залишають сервер.",
     ),
@@ -1272,9 +1313,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "backupBeginOpensshPrivateKey": MessageLookupByLibrary.simpleMessage(
       "-----BEGIN OPENSSH PRIVATE KEY-----",
     ),
-    "backupChangesSinceThenAreLost": m66,
+    "backupChangesSinceThenAreLost": m67,
     "backupCheck": MessageLookupByLibrary.simpleMessage("Перевірити"),
-    "backupChecking": m67,
+    "backupChecking": m68,
     "backupCopied": MessageLookupByLibrary.simpleMessage("Скопійовано"),
     "backupCopy": MessageLookupByLibrary.simpleMessage("Копіювати"),
     "backupCronExpressionUtc": MessageLookupByLibrary.simpleMessage(
@@ -1297,11 +1338,11 @@ class MessageLookup extends MessageLookupByLibrary {
       "хвилина година день місяць день_тижня",
     ),
     "backupName": MessageLookupByLibrary.simpleMessage("Назва"),
-    "backupNext": m68,
+    "backupNext": m69,
     "backupNoBackupHasRunYet": MessageLookupByLibrary.simpleMessage(
       "Резервне копіювання ще не запускалося.",
     ),
-    "backupNoMoreBackupsOfTo": m69,
+    "backupNoMoreBackupsOfTo": m70,
     "backupNoSnapshotsYet": MessageLookupByLibrary.simpleMessage(
       "Знімків ще немає.",
     ),
@@ -1323,9 +1364,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "backupRecoveryKit": MessageLookupByLibrary.simpleMessage(
       "Набір для відновлення",
     ),
-    "backupRemove": m70,
+    "backupRemove": m71,
     "backupRemove2": MessageLookupByLibrary.simpleMessage("Прибрати"),
-    "backupRestore": m71,
+    "backupRestore": m72,
     "backupRestore2": MessageLookupByLibrary.simpleMessage("Відновити"),
     "backupRestoreStartedFollowItUnder": MessageLookupByLibrary.simpleMessage(
       "Відновлення розпочато: стежте за ним в Історії",
@@ -1337,7 +1378,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Копіювання за розкладом увімкнено",
     ),
     "backupSftp": MessageLookupByLibrary.simpleMessage("SFTP"),
-    "backupSnapshots": m72,
+    "backupSnapshots": m73,
     "backupThePanelForgetsTheTarget": MessageLookupByLibrary.simpleMessage(
       "Панель забуде це сховище. Резервні копії залишаться там, де є.",
     ),
@@ -1362,7 +1403,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "copyPressToCopy": MessageLookupByLibrary.simpleMessage(
       "Натисніть Ctrl+C (⌘C), щоб скопіювати",
     ),
-    "countApps": m73,
+    "countApps": m74,
     "dashboardAProjectIsASpace": MessageLookupByLibrary.simpleMessage(
       "Проєкт — це простір для пов\'язаних застосунків із власною квотою. Створіть проєкт, а потім додайте перший застосунок.",
     ),
@@ -1394,7 +1435,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "domainCustomAdded": MessageLookupByLibrary.simpleMessage(
       "Додано. Змінити можна на сторінці застосунку в розділі Домени.",
     ),
-    "domainCustomFailed": m74,
+    "domainCustomFailed": m75,
     "domainCustomHelp": MessageLookupByLibrary.simpleMessage(
       "Додається поруч зі згенерованим доменом за замовчуванням, з HTTPS від Let\'s Encrypt. Спрямуйте його DNS-запис A на цей сервер.",
     ),
@@ -1433,9 +1474,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "domainStripPrefix": MessageLookupByLibrary.simpleMessage(
       "Прибирати шлях перед пересиланням",
     ),
-    "domainStripPrefixOff": m75,
-    "domainStripPrefixOn": m76,
-    "domainTheRecordServesEveryApp": m77,
+    "domainStripPrefixOff": m76,
+    "domainStripPrefixOn": m77,
+    "domainTheRecordServesEveryApp": m78,
     "domainTheServerSPublicIp": MessageLookupByLibrary.simpleMessage(
       "Публічна IP-адреса сервера невідома. Вкажіть її в майстрі налаштування (Налаштування → Домен, email для HTTPS і приклад застосунку), щоб записи можна було показати й перевірити.",
     ),
@@ -1449,7 +1490,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "externalAdoptBody": MessageLookupByLibrary.simpleMessage(
       "Простір імен стане проєктом Nectar. Наявні навантаження не змінюються й працюють далі; Nectar керує лише застосунками, які ви в ньому створите. Якщо згодом видалити проєкт, простір імен і його навантаження залишаться.",
     ),
-    "externalAdoptTitle": m78,
+    "externalAdoptTitle": m79,
     "externalNoWorkloads": MessageLookupByLibrary.simpleMessage(
       "Немає навантажень.",
     ),
@@ -1465,7 +1506,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "externalOnThisClusterHelp": MessageLookupByLibrary.simpleMessage(
       "Навантаження, які працювали тут до Nectar (або створені через kubectl чи Helm). Вони працюють далі без змін. Прийміть простір імен, щоб бачити його як проєкт і розгортати поруч застосунки Nectar.",
     ),
-    "externalReady": m79,
+    "externalReady": m80,
     "gateway1Day": MessageLookupByLibrary.simpleMessage("1 день"),
     "gateway1Hour": MessageLookupByLibrary.simpleMessage("1 година"),
     "gateway1Week": MessageLookupByLibrary.simpleMessage("1 тиждень"),
@@ -1482,19 +1523,19 @@ class MessageLookup extends MessageLookupByLibrary {
     "gatewayAny": MessageLookupByLibrary.simpleMessage("Будь-який"),
     "gatewayApiToken": MessageLookupByLibrary.simpleMessage("API-токен"),
     "gatewayBlock": MessageLookupByLibrary.simpleMessage("Заблокувати"),
-    "gatewayBlock2": m80,
+    "gatewayBlock2": m81,
     "gatewayBlockAnIp": MessageLookupByLibrary.simpleMessage("Заблокувати IP"),
     "gatewayBlockIp": MessageLookupByLibrary.simpleMessage("Заблокувати IP"),
     "gatewayBlockedIps": MessageLookupByLibrary.simpleMessage("Заблоковані IP"),
     "gatewayClientIp": MessageLookupByLibrary.simpleMessage("IP клієнта"),
-    "gatewayDelete": m81,
+    "gatewayDelete": m82,
     "gatewayDomain": MessageLookupByLibrary.simpleMessage("Домен"),
     "gatewayDomainsOfYourAppsAppear": MessageLookupByLibrary.simpleMessage(
       "Тут з\'являться домени ваших застосунків.",
     ),
     "gatewayExampleCom": MessageLookupByLibrary.simpleMessage("*.example.com"),
     "gatewayFor": MessageLookupByLibrary.simpleMessage("На"),
-    "gatewayGet": m82,
+    "gatewayGet": m83,
     "gatewayHostsItServesFallBack": MessageLookupByLibrary.simpleMessage(
       "Хости, які він обслуговує, повернуться до власних сертифікатів Let\'s Encrypt (окремо для кожного хоста).",
     ),
@@ -1508,7 +1549,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "gatewayLetSEncryptCertificatesRenew": MessageLookupByLibrary.simpleMessage(
       "Сертифікати Let\'s Encrypt оновлюються автоматично приблизно за 30 днів до завершення; сповіщення «Сертифікат спливає» попередить, якщо оновлення не вдалося.",
     ),
-    "gatewayMs": m83,
+    "gatewayMs": m84,
     "gatewayNectarGatewayServesEveryDomain": MessageLookupByLibrary.simpleMessage(
       "nectar-gateway обслуговує всі домени на портах 80/443: маршрути, сертифікати, обмеження запитів і заблоковані IP.",
     ),
@@ -1562,6 +1603,69 @@ class MessageLookup extends MessageLookupByLibrary {
       "Ваша роль не має дозволу server.view.",
     ),
     "goToDashboard": MessageLookupByLibrary.simpleMessage("Перейти на огляд"),
+    "helmChart": MessageLookupByLibrary.simpleMessage("Чарт"),
+    "helmCopied": MessageLookupByLibrary.simpleMessage("Скопійовано"),
+    "helmCopy": MessageLookupByLibrary.simpleMessage("Копіювати"),
+    "helmDeployed": MessageLookupByLibrary.simpleMessage("Розгорнуто"),
+    "helmFailed": MessageLookupByLibrary.simpleMessage("Помилка"),
+    "helmHistory": MessageLookupByLibrary.simpleMessage("Історія"),
+    "helmInstall": MessageLookupByLibrary.simpleMessage("Встановити чарт"),
+    "helmInstallHelp": MessageLookupByLibrary.simpleMessage(
+      "Чарт встановлюється Helm у простір імен проєкту. Він може створювати що завгодно всередині простору імен і нічого поза ним: чарти, яким потрібні CRD або ролі на весь кластер, не встановляться. Його поди враховуються в квоті проєкту; домен на його Service додається через проксі (Домени → Проксі).",
+    ),
+    "helmInstallStarted": MessageLookupByLibrary.simpleMessage(
+      "Встановлюється: це може тривати кілька хвилин.",
+    ),
+    "helmInstalling": MessageLookupByLibrary.simpleMessage("Встановлюється"),
+    "helmName": MessageLookupByLibrary.simpleMessage("Ім\'я релізу"),
+    "helmNone": MessageLookupByLibrary.simpleMessage(
+      "Встановіть будь-який Helm-чарт у цей проєкт: він працює в просторі імен проєкту й не може зачепити інші проєкти чи кластер.",
+    ),
+    "helmNotes": MessageLookupByLibrary.simpleMessage("Нотатки"),
+    "helmOutput": MessageLookupByLibrary.simpleMessage("Вивід Helm"),
+    "helmPasswordKept": MessageLookupByLibrary.simpleMessage(
+      "Збережено, залиште порожнім, щоб не змінювати",
+    ),
+    "helmRepo": MessageLookupByLibrary.simpleMessage("Репозиторій"),
+    "helmRepoHelp": MessageLookupByLibrary.simpleMessage(
+      "Репозиторій чартів (https://…) або шлях OCI-реєстру (oci://registry/path)",
+    ),
+    "helmRepoLogin": MessageLookupByLibrary.simpleMessage(
+      "Репозиторій потребує входу",
+    ),
+    "helmRepoPassword": MessageLookupByLibrary.simpleMessage(
+      "Пароль або токен",
+    ),
+    "helmRepoUser": MessageLookupByLibrary.simpleMessage("Користувач"),
+    "helmRevision": m85,
+    "helmRollback": MessageLookupByLibrary.simpleMessage("Відкотити"),
+    "helmRollbackBody": MessageLookupByLibrary.simpleMessage(
+      "Helm знову розгорне цю ревізію (як нову).",
+    ),
+    "helmRollbackTitle": m86,
+    "helmRollingBack": MessageLookupByLibrary.simpleMessage("Відкочується"),
+    "helmServices": MessageLookupByLibrary.simpleMessage("Сервіси"),
+    "helmServicesHelp": MessageLookupByLibrary.simpleMessage(
+      "Доступні застосункам проєкту; вкажіть один як адресу проксі, щоб дати йому домен.",
+    ),
+    "helmTitle": MessageLookupByLibrary.simpleMessage("Helm-чарти"),
+    "helmUninstall": MessageLookupByLibrary.simpleMessage("Видалити"),
+    "helmUninstallBody": MessageLookupByLibrary.simpleMessage(
+      "Helm видалить усе, що створив чарт. Томи (PVC) чарта теж можуть бути видалені — залежно від чарта.",
+    ),
+    "helmUninstallTitle": m87,
+    "helmUninstalling": MessageLookupByLibrary.simpleMessage("Видаляється"),
+    "helmUpgrade": MessageLookupByLibrary.simpleMessage("Оновити"),
+    "helmUpgradeStarted": MessageLookupByLibrary.simpleMessage("Оновлюється…"),
+    "helmUpgradeTitle": m88,
+    "helmUpgrading": MessageLookupByLibrary.simpleMessage("Оновлюється"),
+    "helmValues": MessageLookupByLibrary.simpleMessage("Значення (YAML)"),
+    "helmValuesHelp": MessageLookupByLibrary.simpleMessage(
+      "Перевизначення values.yaml чарта. Зберігаються зашифрованими; бачать їх лише ті, хто може керувати чартами.",
+    ),
+    "helmVersion": MessageLookupByLibrary.simpleMessage("Версія"),
+    "helmVersionLatest": MessageLookupByLibrary.simpleMessage("остання"),
+    "helmWorkloads": MessageLookupByLibrary.simpleMessage("Навантаження"),
     "importAction": MessageLookupByLibrary.simpleMessage(
       "Імпортувати як застосунок",
     ),
@@ -1569,7 +1673,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "importDomains": MessageLookupByLibrary.simpleMessage(
       "Домени (переходять до застосунку)",
     ),
-    "importDone": m84,
+    "importDone": m89,
     "importEnv": MessageLookupByLibrary.simpleMessage("Змінні"),
     "importFiles": MessageLookupByLibrary.simpleMessage("Конфігураційні файли"),
     "importHelp": MessageLookupByLibrary.simpleMessage(
@@ -1588,7 +1692,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "importReplicas": MessageLookupByLibrary.simpleMessage("Репліки"),
     "importResources": MessageLookupByLibrary.simpleMessage("Ресурси"),
     "importServices": MessageLookupByLibrary.simpleMessage("Service"),
-    "importTitle": m85,
+    "importTitle": m90,
     "importVolumes": MessageLookupByLibrary.simpleMessage(
       "Томи (зберігаються)",
     ),
@@ -1609,11 +1713,24 @@ class MessageLookup extends MessageLookupByLibrary {
     "navSettings": MessageLookupByLibrary.simpleMessage("Налаштування"),
     "newApp": MessageLookupByLibrary.simpleMessage("Новий застосунок"),
     "noAccess": MessageLookupByLibrary.simpleMessage("Немає доступу"),
+    "nodeLabelAdd": MessageLookupByLibrary.simpleMessage("Додати мітку"),
+    "nodeLabelCancel": MessageLookupByLibrary.simpleMessage("Скасувати"),
+    "nodeLabelKey": MessageLookupByLibrary.simpleMessage("Ключ"),
+    "nodeLabelRemove": MessageLookupByLibrary.simpleMessage("Видалити"),
+    "nodeLabelSave": MessageLookupByLibrary.simpleMessage("Зберегти"),
+    "nodeLabelValue": MessageLookupByLibrary.simpleMessage("Значення"),
+    "nodeLabels": MessageLookupByLibrary.simpleMessage("Мітки"),
+    "nodeLabelsEdit": MessageLookupByLibrary.simpleMessage("Мітки…"),
+    "nodeLabelsHelp": MessageLookupByLibrary.simpleMessage(
+      "За цими мітками застосунки можна розміщувати на вузлах (Налаштування застосунку → Розміщення), напр. disk=ssd або gpu=nvidia. Мітки Kubernetes, k3s і Nectar зберігаються й не показуються.",
+    ),
+    "nodeLabelsSystemKey": m91,
+    "nodeLabelsTitle": m92,
     "observeAllPods": MessageLookupByLibrary.simpleMessage("Усі поди"),
-    "observeBeforeTheLastRestart": m86,
+    "observeBeforeTheLastRestart": m93,
     "observeClear": MessageLookupByLibrary.simpleMessage("Очистити"),
-    "observeCopiedLines": m87,
-    "observeCopiedLines2": m88,
+    "observeCopiedLines": m94,
+    "observeCopiedLines2": m95,
     "observeCopyShownLines": MessageLookupByLibrary.simpleMessage(
       "Копіювати показані рядки",
     ),
@@ -1653,7 +1770,7 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Попередній контейнер нічого не вивів.",
         ),
-    "observeTotalsAcrossReplicasTheDashed": m89,
+    "observeTotalsAcrossReplicasTheDashed": m96,
     "observeTrafficLastHour": MessageLookupByLibrary.simpleMessage(
       "Трафік · остання година",
     ),
@@ -1670,7 +1787,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "onboardingEmailForLetSEncrypt": MessageLookupByLibrary.simpleMessage(
       "Email для Let\'s Encrypt",
     ),
-    "onboardingImage50mCpu64Mb": m90,
+    "onboardingImage50mCpu64Mb": m97,
     "onboardingLeaveItEmptyToRegister": MessageLookupByLibrary.simpleMessage(
       "Залиште порожнім, щоб зареєструватися без email.",
     ),
@@ -1699,7 +1816,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "pathRoutesAdd": MessageLookupByLibrary.simpleMessage(
       "Спрямувати шлях до іншого застосунку",
     ),
-    "pathRoutesAdded": m91,
+    "pathRoutesAdded": m98,
     "pathRoutesCreate": MessageLookupByLibrary.simpleMessage("Спрямувати"),
     "pathRoutesHelp": MessageLookupByLibrary.simpleMessage(
       "Запити за цим шляхом домену йдуть до іншого застосунку проєкту — вебзастосунку або воркера з портом. Перемагає найдовший відповідний шлях.",
@@ -1715,9 +1832,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "pathRoutesRemove": MessageLookupByLibrary.simpleMessage(
       "Видалити маршрут",
     ),
-    "pathRoutesRemoveBody": m92,
-    "pathRoutesRemoveTitle": m93,
-    "pathRoutesStripped": m94,
+    "pathRoutesRemoveBody": m99,
+    "pathRoutesRemoveTitle": m100,
+    "pathRoutesStripped": m101,
     "pathRoutesTarget": MessageLookupByLibrary.simpleMessage("До застосунку"),
     "pathRoutesTitle": MessageLookupByLibrary.simpleMessage(
       "Шляхи, які обслуговують інші застосунки",
@@ -1734,8 +1851,8 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "projectApps": MessageLookupByLibrary.simpleMessage("Застосунки"),
     "projectBack": MessageLookupByLibrary.simpleMessage("Назад"),
-    "projectChoose": m95,
-    "projectCopiedApplyItWithNectar": m96,
+    "projectChoose": m102,
+    "projectCopiedApplyItWithNectar": m103,
     "projectCopiesTheEnvGroupsThe": MessageLookupByLibrary.simpleMessage(
       "Копіюються групи змінних, бази даних (нові й порожні, з новими паролями) та застосунки з налаштуваннями, змінними й конфігураційними файлами. Нічого не розгортається. Згодом «Просунути» розгортає активну збірку застосунку в такий самий застосунок іншого середовища.",
     ),
@@ -1743,22 +1860,22 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Копіюються налаштування, змінні (і секрети), конфігураційні файли та групи змінних. Томи починаються порожніми; нічого не розгортається.",
         ),
-    "projectCopy": m97,
+    "projectCopy": m104,
     "projectCpuRequested": MessageLookupByLibrary.simpleMessage(
       "Запитаний CPU",
     ),
     "projectCreate": MessageLookupByLibrary.simpleMessage("Створити"),
-    "projectDeleteAdoptedBody": m98,
+    "projectDeleteAdoptedBody": m105,
     "projectDeleteProject": MessageLookupByLibrary.simpleMessage(
       "Видалити проєкт",
     ),
     "projectDeleteSlugMismatch": MessageLookupByLibrary.simpleMessage(
       "Slug не збігається: нічого не видалено.",
     ),
-    "projectDeleteTheGroup": m99,
-    "projectDeleteTitle": m100,
-    "projectDeleteTypeSlug": m101,
-    "projectDeleted": m102,
+    "projectDeleteTheGroup": m106,
+    "projectDeleteTitle": m107,
+    "projectDeleteTypeSlug": m108,
+    "projectDeleted": m109,
     "projectDeployAJarABinary": MessageLookupByLibrary.simpleMessage(
       "Розгорніть JAR, бінарний файл, статичний сайт, Node, Python, PHP або будь-який Docker-образ.",
     ),
@@ -1769,14 +1886,14 @@ class MessageLookup extends MessageLookupByLibrary {
       "Кожен проєкт має власний простір імен Kubernetes і необов\'язкову квоту.",
     ),
     "projectEnvGroups": MessageLookupByLibrary.simpleMessage("Групи змінних"),
-    "projectEnvironmentOf": m103,
+    "projectEnvironmentOf": m110,
     "projectEnvironmentOfTheCopy": MessageLookupByLibrary.simpleMessage(
       "Середовище копії",
     ),
     "projectExportNectarYaml": MessageLookupByLibrary.simpleMessage(
       "Експортувати nectar.yaml",
     ),
-    "projectImport": m104,
+    "projectImport": m111,
     "projectImportDockerComposeYml": MessageLookupByLibrary.simpleMessage(
       "Імпортувати docker-compose.yml",
     ),
@@ -1784,7 +1901,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Імпорт / експорт",
     ),
     "projectIntoProject": MessageLookupByLibrary.simpleMessage("У проєкт"),
-    "projectInvalidVariableNameUseLetters": m105,
+    "projectInvalidVariableNameUseLetters": m112,
     "projectItsVariablesAreDeleted": MessageLookupByLibrary.simpleMessage(
       "Її змінні буде видалено.",
     ),
@@ -1823,7 +1940,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Ідентифікатор проєкту-копії",
     ),
     "projectPromote": MessageLookupByLibrary.simpleMessage("Просунути"),
-    "projectPromoteTo": m106,
+    "projectPromoteTo": m113,
     "projectRequestsOfAllReplicasLive": MessageLookupByLibrary.simpleMessage(
       "Запити всіх реплік. Поточне використання — у перегляді метрик.",
     ),
@@ -1848,7 +1965,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "projectTheAppSlugItsDefault": MessageLookupByLibrary.simpleMessage(
       "Ідентифікатор застосунку; його типовий домен — <name>-<project>.<base domain>",
     ),
-    "projectTheLiveBuildOfIts": m107,
+    "projectTheLiveBuildOfIts": m114,
     "projectThisProjectHasNoEnv": MessageLookupByLibrary.simpleMessage(
       "У цьому проєкті ще немає груп змінних (сторінка проєкту → Групи змінних).",
     ),
@@ -1863,6 +1980,27 @@ class MessageLookup extends MessageLookupByLibrary {
     "proxiesTitle": MessageLookupByLibrary.simpleMessage("Проксі"),
     "proxyIssueCertificate": MessageLookupByLibrary.simpleMessage(
       "Отримати сертифікат зараз",
+    ),
+    "proxyKindProxy": MessageLookupByLibrary.simpleMessage("Проксі на адресу"),
+    "proxyKindRedirect": MessageLookupByLibrary.simpleMessage(
+      "Перенаправлення",
+    ),
+    "proxyRedirect301": MessageLookupByLibrary.simpleMessage(
+      "301 · переміщено назавжди",
+    ),
+    "proxyRedirect302": MessageLookupByLibrary.simpleMessage("302 · тимчасово"),
+    "proxyRedirect307": MessageLookupByLibrary.simpleMessage(
+      "307 · тимчасово, зберігає метод",
+    ),
+    "proxyRedirect308": MessageLookupByLibrary.simpleMessage(
+      "308 · назавжди, зберігає метод",
+    ),
+    "proxyRedirectCode": MessageLookupByLibrary.simpleMessage("Тип"),
+    "proxyRedirectTo": MessageLookupByLibrary.simpleMessage(
+      "Перенаправляти на",
+    ),
+    "proxyRedirectToHelp": MessageLookupByLibrary.simpleMessage(
+      "Домен (https:// додається) або URL. Без власного шляху шлях і параметри запиту зберігаються; зі шляхом усе веде на ту сторінку.",
     ),
     "proxyTargetHost": MessageLookupByLibrary.simpleMessage("Адреса"),
     "proxyTargetHostHelp": MessageLookupByLibrary.simpleMessage(
@@ -1897,9 +2035,9 @@ class MessageLookup extends MessageLookupByLibrary {
       "Видаляє образи контейнерів, які зараз не використовує жоден контейнер на сервері: старі релізи, зупинені застосунки та заздалегідь завантажені образи. За потреби їх буде завантажено знову, тож наступне розгортання або запуск цих застосунків триватиме довше.",
     ),
     "serverDisk": MessageLookupByLibrary.simpleMessage("Диск"),
-    "serverDrain": m108,
+    "serverDrain": m115,
     "serverDrain2": MessageLookupByLibrary.simpleMessage("Звільнити"),
-    "serverDrainAnyway": m109,
+    "serverDrainAnyway": m116,
     "serverDrainAnyway2": MessageLookupByLibrary.simpleMessage(
       "Все одно звільнити",
     ),
@@ -1910,7 +2048,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Додаткові образи",
     ),
     "serverGateway": MessageLookupByLibrary.simpleMessage("Шлюз"),
-    "serverHistoryLast": m110,
+    "serverHistoryLast": m117,
     "serverImageCleanupStarted": MessageLookupByLibrary.simpleMessage(
       "Очищення образів розпочато",
     ),
@@ -1930,11 +2068,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "serverKeepImagesOnEveryNode": MessageLookupByLibrary.simpleMessage(
       "Тримати образи на кожному вузлі",
     ),
-    "serverKeptTheLastUploadsPer": m111,
+    "serverKeptTheLastUploadsPer": m118,
     "serverLiveUsageNeedsMetricsServer": MessageLookupByLibrary.simpleMessage(
       "Для поточного використання потрібен metrics-server (k3s його містить).",
     ),
-    "serverMakeAnEdgeNode": m112,
+    "serverMakeAnEdgeNode": m119,
     "serverMakeEdgeNode": MessageLookupByLibrary.simpleMessage(
       "Зробити вузлом входу",
     ),
@@ -1962,7 +2100,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "serverPrePullsBusyboxAndThe": MessageLookupByLibrary.simpleMessage(
       "Заздалегідь завантажує busybox і образи середовищ ваших застосунків, щоб нові вузли та переміщені поди запускалися без завантаження. Очищення образів їх не чіпає.",
     ),
-    "serverRemoveFromTheCluster": m113,
+    "serverRemoveFromTheCluster": m120,
     "serverRemoveFromTheCluster2": MessageLookupByLibrary.simpleMessage(
       "Видалити з кластера",
     ),
@@ -1984,7 +2122,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "serverStopServingTrafficEdge": MessageLookupByLibrary.simpleMessage(
       "Припинити обслуговувати трафік (вхід)",
     ),
-    "serverStopServingTrafficOn": m114,
+    "serverStopServingTrafficOn": m121,
     "serverStoresEveryAppSOutput": MessageLookupByLibrary.simpleMessage(
       "Зберігає вивід кожного застосунку на диску панелі; на вкладці «Журнали» його можна шукати й після перезапусків і розгортань.",
     ),
@@ -1994,7 +2132,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "serverTheNodeObjectIsDeleted": MessageLookupByLibrary.simpleMessage(
       "Об\'єкт вузла буде видалено. На самій машині виконайте /usr/local/bin/k3s-agent-uninstall.sh, щоб прибрати k3s.",
     ),
-    "serverUsageShowsWhileTheApp": m115,
+    "serverUsageShowsWhileTheApp": m122,
     "serverUsedToFindCrictlFor": MessageLookupByLibrary.simpleMessage(
       "Потрібна, щоб знайти crictl для очищення образів",
     ),
@@ -2020,7 +2158,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "settingAbout": MessageLookupByLibrary.simpleMessage("Про програму"),
     "settingAccount": MessageLookupByLibrary.simpleMessage("Обліковий запис"),
-    "settingActiveSince": m116,
+    "settingActiveSince": m123,
     "settingAddLogin": MessageLookupByLibrary.simpleMessage("Додати вхід"),
     "settingAddPasskey": MessageLookupByLibrary.simpleMessage(
       "Додати ключ доступу",
@@ -2029,7 +2167,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Додати провайдера",
     ),
     "settingAiza": MessageLookupByLibrary.simpleMessage("AIza…"),
-    "settingAllowOnlyTheseIpAddresses": m117,
+    "settingAllowOnlyTheseIpAddresses": m124,
     "settingAllowedEmailDomains": MessageLookupByLibrary.simpleMessage(
       "Дозволені домени email",
     ),
@@ -2052,7 +2190,7 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Callback (redirect) URL, який треба зареєструвати в провайдера:",
         ),
-    "settingChanged": m118,
+    "settingChanged": m125,
     "settingClientId": MessageLookupByLibrary.simpleMessage("Client ID"),
     "settingClientSecret": MessageLookupByLibrary.simpleMessage(
       "Client secret",
@@ -2131,7 +2269,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "settingNoneAnAdminAssignsRoles": MessageLookupByLibrary.simpleMessage(
       "Жодної (ролі призначає адміністратор)",
     ),
-    "settingOnlyRecoveryCodesLeftCreate": m119,
+    "settingOnlyRecoveryCodesLeftCreate": m126,
     "settingOnlyTheListedAddressesMay": MessageLookupByLibrary.simpleMessage(
       "Користуватися панеллю можуть лише вказані адреси",
     ),
@@ -2151,7 +2289,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "settingPasskeyAdded": MessageLookupByLibrary.simpleMessage(
       "Ключ доступу додано: увійдіть із ним на сторінці входу",
     ),
-    "settingPasskeyDelete": m120,
+    "settingPasskeyDelete": m127,
     "settingPasskeyDeleteHelp": MessageLookupByLibrary.simpleMessage(
       "Ним більше не можна буде увійти сюди. Видаліть його також зі свого пристрою чи менеджера паролів.",
     ),
@@ -2167,7 +2305,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "settingPasskeySynced": MessageLookupByLibrary.simpleMessage(
       "синхронізований",
     ),
-    "settingPasskeyUsed": m121,
+    "settingPasskeyUsed": m128,
     "settingPasskeys": MessageLookupByLibrary.simpleMessage("Ключі доступу"),
     "settingPasskeysHelp": MessageLookupByLibrary.simpleMessage(
       "Входьте за допомогою Touch ID, Face ID, Windows Hello, телефона або ключа безпеки — без пароля й коду. Ключ доступу працює лише за цією адресою панелі.",
@@ -2203,8 +2341,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "settingRegistryLogin": MessageLookupByLibrary.simpleMessage(
       "Вхід до реєстру",
     ),
-    "settingRemove": m122,
-    "settingRemoveTheLoginFor": m123,
+    "settingRemove": m129,
+    "settingRemoveTheLoginFor": m130,
     "settingRoleOfNewUsersEverywhere": MessageLookupByLibrary.simpleMessage(
       "Роль нових користувачів (усюди)",
     ),
@@ -2260,8 +2398,8 @@ class MessageLookup extends MessageLookupByLibrary {
     "settingsLanguageHint": MessageLookupByLibrary.simpleMessage(
       "Мова інтерфейсу на цьому пристрої. Повідомлення сервера та логи залишаються англійською.",
     ),
-    "shellClockAhead": m124,
-    "shellClockBehind": m125,
+    "shellClockAhead": m131,
+    "shellClockBehind": m132,
     "shellLater": MessageLookupByLibrary.simpleMessage("Пізніше"),
     "shellReload": MessageLookupByLibrary.simpleMessage("Перезавантажити"),
     "statusDeploying": MessageLookupByLibrary.simpleMessage("Розгортається"),
@@ -2294,7 +2432,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "updateGatewayFeedUrl": MessageLookupByLibrary.simpleMessage(
       "URL стрічки шлюзу",
     ),
-    "updateK3sUpgradeToStartedNode": m126,
+    "updateK3sUpgradeToStartedNode": m133,
     "updateMajorAndBreakingReleasesAre": MessageLookupByLibrary.simpleMessage(
       "Мажорні та несумісні релізи ніколи не встановлюються автоматично. Реліз, що не пройшов перевірки, не повторюється.",
     ),
@@ -2308,7 +2446,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "URL стрічки панелі",
     ),
     "updatePolicy": MessageLookupByLibrary.simpleMessage("Політика"),
-    "updateRollBack": m127,
+    "updateRollBack": m134,
     "updateRollBack2": MessageLookupByLibrary.simpleMessage("Відкотити"),
     "updateStable": MessageLookupByLibrary.simpleMessage("Стабільний"),
     "updateStableLatestV131": MessageLookupByLibrary.simpleMessage(
@@ -2325,9 +2463,9 @@ class MessageLookup extends MessageLookupByLibrary {
           "system-upgrade-controller оновлює вузли по одному: вузол отримує cordon, k3s перезапускається з новою версією, потім uncordon. Поди на вузлі перезапускаються під час його оновлення; на сервері з одним вузлом застосунки на короткий час недоступні.",
         ),
     "updateTimeZone": MessageLookupByLibrary.simpleMessage("Часовий пояс"),
-    "updateUpdate": m128,
+    "updateUpdate": m135,
     "updateUpdate2": MessageLookupByLibrary.simpleMessage("Оновити…"),
-    "updateUpdateK3sTo": m129,
+    "updateUpdateK3sTo": m136,
     "updateUpdateSettingsSaved": MessageLookupByLibrary.simpleMessage(
       "Налаштування оновлень збережено",
     ),
@@ -2338,7 +2476,7 @@ class MessageLookup extends MessageLookupByLibrary {
       "Оновлення розпочато",
     ),
     "updateUpdates": MessageLookupByLibrary.simpleMessage("Оновлення"),
-    "updateUpdating": m130,
+    "updateUpdating": m137,
     "updateUpdatingK3sFromHereNeeds": MessageLookupByLibrary.simpleMessage(
       "Щоб оновлювати k3s звідси, потрібен system-upgrade-controller: повторно запустіть install.sh з --k3s-upgrades.",
     ),

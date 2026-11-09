@@ -13,6 +13,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gauge.dart';
 import '../../widgets/status.dart';
+import 'node_labels_dialog.dart';
 
 /// GET /server/edge: the primary edge node and the gateway replicas with their sync state.
 final edgeStatusProvider = FutureProvider.autoDispose<Map<String, dynamic>>((
@@ -108,6 +109,9 @@ class NodeCard extends ConsumerWidget {
             return;
           }
           await api.delete('/server/nodes/${node.name}');
+        case 'labels':
+          await showNodeLabelsDialog(context, node);
+          return;
         default:
           await api.post('/server/nodes/${node.name}/$action');
       }
@@ -167,6 +171,14 @@ class NodeCard extends ConsumerWidget {
         if (node.edgeReplica)
           _Fact('Gateway', _replicaState(ref.watch(edgeStatusProvider).value)),
         if (node.unschedulable) _Fact('Scheduling', 'cordoned: no new pods'),
+        if (node.userLabels.isNotEmpty)
+          _Fact(
+            l.nodeLabels,
+            (node.userLabels.entries.map((e) => '${e.key}=${e.value}').toList()
+                  ..sort())
+                .join('  '),
+            mono: true,
+          ),
         if (node.internalIp.isNotEmpty)
           _Fact(
             'IP',
@@ -207,6 +219,12 @@ class NodeCard extends ConsumerWidget {
                 ? (node.unschedulable ? 'Cordoned' : 'Ready')
                 : 'Not ready',
           ),
+          if (canManage && !multiNode)
+            IconButton(
+              tooltip: l.nodeLabelsEdit,
+              icon: const Icon(Icons.label_outline_rounded, size: 20),
+              onPressed: () => _action(context, ref, 'labels'),
+            ),
           if (canManage && multiNode)
             PopupMenuButton<String>(
               tooltip: l.serverNodeActions,
@@ -226,6 +244,7 @@ class NodeCard extends ConsumerWidget {
                   value: 'drain',
                   child: Text(l.serverDrainMovePodsAway),
                 ),
+                PopupMenuItem(value: 'labels', child: Text(l.nodeLabelsEdit)),
                 if (!node.edge)
                   node.edgeReplica
                       ? PopupMenuItem(

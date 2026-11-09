@@ -44,6 +44,11 @@ type AppConfig struct {
 	ContainerArgs []string `json:"container_args,omitempty"`
 	// ResumeReplicas remembers the replicas before a stop, for start.
 	ResumeReplicas int `json:"resume_replicas,omitempty"`
+	// SleepAfterMinutes scales a web app to zero after that many minutes without requests through its
+	// domains; the gateway wakes it on the next request (0 = always on).
+	SleepAfterMinutes int `json:"sleep_after_minutes,omitempty"`
+	// NodeSelector: the app's pods run only on nodes with all these labels (Server → node → Labels).
+	NodeSelector map[string]string `json:"node_selector,omitempty"`
 	// SecurityContext overrides the runtime's security settings.
 	SecurityContext SecurityContext `json:"security_context,omitempty"`
 }

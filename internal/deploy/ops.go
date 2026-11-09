@@ -58,6 +58,38 @@ func (d *Deployer) Scale(ctx context.Context, a store.App, p store.Project, repl
 	return d.store.SetAppStatus(ctx, a.ID, status, "")
 }
 
+// Sleep scales an idle web app to zero without changing its settings (status sleeping). The gateway wakes
+// it on the next request (Wake). A deploy or a start wakes it too.
+func (d *Deployer) Sleep(ctx context.Context, a store.App, p store.Project) error {
+	if a.Kind != runtimes.KindWeb || a.Config.Replicas == 0 {
+		return errors.New("only running web apps can sleep")
+	}
+	if d.Busy(a.ID) {
+		return ErrBusy
+	}
+	_, err := d.kube.Patch(ctx, "Deployment", p.Namespace, a.Slug, map[string]any{"spec": map[string]any{"replicas": 0}})
+	if kube.IsNotFound(err) {
+		return ErrNotDeployed
+	}
+	if err != nil {
+		return err
+	}
+	return d.store.SetAppStatus(ctx, a.ID, StatusSleeping, "")
+}
+
+// Wake brings a sleeping app back to its replicas. A no-op unless it sleeps.
+func (d *Deployer) Wake(ctx context.Context, a store.App, p store.Project) error {
+	if a.Status != StatusSleeping {
+		return nil
+	}
+	n := max(a.Config.Replicas, 1)
+	_, err := d.kube.Patch(ctx, "Deployment", p.Namespace, a.Slug, map[string]any{"spec": map[string]any{"replicas": n}})
+	if err != nil && !kube.IsNotFound(err) {
+		return err
+	}
+	return d.store.SetAppStatus(ctx, a.ID, StatusRunning, "")
+}
+
 // Restart replaces the pods of a web app or worker one by one (a rolling restart, no new release).
 func (d *Deployer) Restart(ctx context.Context, a store.App, p store.Project) error {
 	if a.Kind != runtimes.KindWeb && a.Kind != runtimes.KindWorker {

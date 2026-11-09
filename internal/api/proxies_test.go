@@ -1,8 +1,12 @@
 package api
 
 import (
+	"bytes"
+	"context"
 	"strings"
 	"testing"
+
+	"nectar_apps/internal/cli"
 )
 
 // A domain without an app: host → address:port, editing it, a redirect proxy, conflicts with app
@@ -112,5 +116,44 @@ func TestProxyDomains(t *testing.T) {
 	}
 	if _, _, list := e.do(o, "GET", "/api/audit?limit=50", nil); !strings.Contains(stringsOf(list), "proxy.create") {
 		t.Fatalf("no audit entry")
+	}
+}
+
+// nectar proxy list / add / set / rm against the API.
+func TestCLIProxy(t *testing.T) {
+	e := newEnv(t)
+	o := e.owner()
+	_, tok, _ := e.do(o, "POST", "/api/me/tokens", map[string]any{"name": "admin"})
+	run := func(args ...string) (int, string, string) {
+		var out, errb bytes.Buffer
+		code := cli.Run(context.Background(), args, cli.Env{Stdout: &out, Stderr: &errb, Version: "test",
+			Client: &cli.Client{URL: e.srv.URL, Token: tok["token"].(string)}})
+		return code, out.String(), errb.String()
+	}
+	if code, out, errs := run("proxy", "add", "nas.example.com", "127.0.0.1:5000", "--https-target"); code != 0 || !strings.Contains(out, "https://127.0.0.1:5000") {
+		t.Fatalf("add: %d %s %s", code, out, errs)
+	}
+	if code, out, errs := run("proxy", "add", "nas.example.com/grafana", "grafana.monitoring.svc.cluster.local:3000", "--strip"); code != 0 {
+		t.Fatalf("add path: %d %s %s", code, out, errs)
+	}
+	if code, out, errs := run("proxy", "add", "www.nas.example.com", "--redirect", "nas.example.com", "--code", "308"); code != 0 ||
+		!strings.Contains(out, "redirect 308 → https://nas.example.com") {
+		t.Fatalf("add redirect: %d %s %s", code, out, errs)
+	}
+	if code, _, errs := run("proxy", "add", "x.example.com", "10.0.0.5"); code != 1 || !strings.Contains(errs, "ADDRESS:PORT") {
+		t.Fatalf("no port: %d %s", code, errs)
+	}
+	if code, out, errs := run("proxy", "set", "nas.example.com", "10.25.0.12:8080", "--https-target=false"); code != 0 || !strings.Contains(out, "http://10.25.0.12:8080") {
+		t.Fatalf("set: %d %s %s", code, out, errs)
+	}
+	code, out, _ := run("proxy", "list")
+	if code != 0 || !strings.Contains(out, "nas.example.com/grafana") || !strings.Contains(out, "http://10.25.0.12:8080") || !strings.Contains(out, "www.nas.example.com") {
+		t.Fatalf("list: %s", out)
+	}
+	if code, _, errs := run("proxy", "rm", "nas.example.com/grafana"); code != 0 {
+		t.Fatalf("rm: %s", errs)
+	}
+	if code, _, errs := run("proxy", "rm", "nas.example.com/grafana"); code != 1 || !strings.Contains(errs, "no proxy") {
+		t.Fatalf("rm again: %d %s", code, errs)
 	}
 }

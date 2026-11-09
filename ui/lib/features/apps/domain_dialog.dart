@@ -60,6 +60,13 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
         : '',
   );
   late bool _targetHttps = widget.domain?.targetHttps ?? false;
+
+  /// Proxies only: proxy | redirect (chosen when adding, fixed afterwards).
+  late String _kind = widget.domain?.kind == 'redirect' ? 'redirect' : 'proxy';
+  late final _redirectTo = TextEditingController(
+    text: widget.domain?.redirectTo ?? '',
+  );
+  late int _redirectCode = widget.domain?.redirectCode ?? 301;
   bool _www = false;
   bool _busy = false;
 
@@ -73,6 +80,7 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
       _timeout,
       _target,
       _targetPort,
+      _redirectTo,
     ]) {
       c.dispose();
     }
@@ -110,12 +118,19 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
       if (d == null && _www && !_proxy) 'with_www': true,
       'tls': _tls,
       'force_https': _tls && _force,
-      if (_proxy && (d == null || d.kind == 'proxy')) ...{
+      if (_proxy && d == null) 'kind': _kind,
+      if (_proxy && _kind == 'proxy') ...{
         'target_host': _target.text.trim().toLowerCase(),
         'target_port': _num(_targetPort),
         'target_https': _targetHttps,
       },
-      if (d == null || d.kind == 'app' || d.kind == 'proxy') ...{
+      if (_proxy && _kind == 'redirect') ...{
+        'redirect_to': _redirectTo.text.trim(),
+        'redirect_code': _redirectCode,
+      },
+      if ((d == null && !(_proxy && _kind == 'redirect')) ||
+          d?.kind == 'app' ||
+          d?.kind == 'proxy') ...{
         'rate_limit': _num(_rate),
         'max_body_mb': _num(_body),
         'timeout_seconds': _num(_timeout),
@@ -165,8 +180,10 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
     final s = S.of(context);
     final c = NectarColors.of(context);
     final d = widget.domain;
-    final appDomain = d == null || d.kind == 'app' || d.kind == 'proxy';
-    final proxyTarget = _proxy && (d == null || d.kind == 'proxy');
+    final redirect = _proxy && _kind == 'redirect';
+    final appDomain =
+        (d == null && !redirect) || d?.kind == 'app' || d?.kind == 'proxy';
+    final proxyTarget = _proxy && _kind == 'proxy';
     return AlertDialog(
       title: Text(d == null ? (_proxy ? s.proxiesAdd : 'Add domain') : d.host),
       content: SizedBox(
@@ -187,6 +204,60 @@ class _DomainDialogState extends ConsumerState<_DomainDialog> {
                       : null,
                 ),
               ),
+              if (_proxy && d == null) ...[
+                const SizedBox(height: 12),
+                SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                      value: 'proxy',
+                      icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                      label: Text(s.proxyKindProxy),
+                    ),
+                    ButtonSegment(
+                      value: 'redirect',
+                      icon: const Icon(Icons.turn_right_rounded, size: 18),
+                      label: Text(s.proxyKindRedirect),
+                    ),
+                  ],
+                  selected: {_kind},
+                  onSelectionChanged: (v) => setState(() => _kind = v.first),
+                ),
+              ],
+              if (redirect) ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _redirectTo,
+                  decoration: InputDecoration(
+                    labelText: s.proxyRedirectTo,
+                    hintText: 'https://example.com',
+                    helperText: s.proxyRedirectToHelp,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<int>(
+                  initialValue: _redirectCode,
+                  decoration: InputDecoration(labelText: s.proxyRedirectCode),
+                  items: [
+                    DropdownMenuItem(
+                      value: 301,
+                      child: Text(s.proxyRedirect301),
+                    ),
+                    DropdownMenuItem(
+                      value: 302,
+                      child: Text(s.proxyRedirect302),
+                    ),
+                    DropdownMenuItem(
+                      value: 307,
+                      child: Text(s.proxyRedirect307),
+                    ),
+                    DropdownMenuItem(
+                      value: 308,
+                      child: Text(s.proxyRedirect308),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => _redirectCode = v ?? 301),
+                ),
+              ],
               if (proxyTarget) ...[
                 const SizedBox(height: 10),
                 Row(
