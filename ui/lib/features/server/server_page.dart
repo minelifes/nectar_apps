@@ -183,6 +183,7 @@ class _NodeHistoryCard extends StatelessWidget {
         TimeSeriesChart(
           series: [rx, tx],
           formatY: (v) => '${formatBytes(v.round())}/s',
+          yMax: 1024, // an idle line reads 0–1 KB/s, not "0 B/s, 1 B/s, 1 B/s"
         ),
       ),
     ];

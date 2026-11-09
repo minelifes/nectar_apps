@@ -26,6 +26,8 @@ type MetricSample struct {
 	DiskTotal int64
 	RxBps     int64
 	TxBps     int64
+	Conns     int64 // databases: open client connections
+	ConnsMax  int64 // databases: the server's connection limit (0 = not measured)
 }
 
 // MetricPoint is an averaged point of a series.
@@ -37,6 +39,8 @@ type MetricPoint struct {
 	DiskTotal int64     `json:"disk_total,omitempty"`
 	RxBps     int64     `json:"rx_bps,omitempty"`
 	TxBps     int64     `json:"tx_bps,omitempty"`
+	Conns     int64     `json:"conns,omitempty"`
+	ConnsMax  int64     `json:"conns_max,omitempty"`
 }
 
 // AddMetricSamples stores samples taken at t as raw points and adds them to the 15-minute rollups.
@@ -48,19 +52,21 @@ func (s *Store) AddMetricSamples(ctx context.Context, t time.Time, samples []Met
 	roll := t.Unix() / MetricRollup * MetricRollup
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		for _, m := range samples {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO metric_points (series, res, ts, n, cpu_m, mem_b, disk_used, disk_total, rx_bps, tx_bps)
-				VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+			if _, err := tx.ExecContext(ctx, `INSERT INTO metric_points (series, res, ts, n, cpu_m, mem_b, disk_used, disk_total, rx_bps, tx_bps, conns, conns_max)
+				VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(series, res, ts) DO UPDATE SET n = 1, cpu_m = excluded.cpu_m, mem_b = excluded.mem_b,
-					disk_used = excluded.disk_used, disk_total = excluded.disk_total, rx_bps = excluded.rx_bps, tx_bps = excluded.tx_bps`,
-				m.Series, MetricRaw, raw, m.CPUm, m.MemB, m.DiskUsed, m.DiskTotal, m.RxBps, m.TxBps); err != nil {
+					disk_used = excluded.disk_used, disk_total = excluded.disk_total, rx_bps = excluded.rx_bps, tx_bps = excluded.tx_bps,
+					conns = excluded.conns, conns_max = excluded.conns_max`,
+				m.Series, MetricRaw, raw, m.CPUm, m.MemB, m.DiskUsed, m.DiskTotal, m.RxBps, m.TxBps, m.Conns, m.ConnsMax); err != nil {
 				return err
 			}
-			if _, err := tx.ExecContext(ctx, `INSERT INTO metric_points (series, res, ts, n, cpu_m, mem_b, disk_used, disk_total, rx_bps, tx_bps)
-				VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)
+			if _, err := tx.ExecContext(ctx, `INSERT INTO metric_points (series, res, ts, n, cpu_m, mem_b, disk_used, disk_total, rx_bps, tx_bps, conns, conns_max)
+				VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(series, res, ts) DO UPDATE SET n = n + 1, cpu_m = cpu_m + excluded.cpu_m, mem_b = mem_b + excluded.mem_b,
 					disk_used = disk_used + excluded.disk_used, disk_total = disk_total + excluded.disk_total,
-					rx_bps = rx_bps + excluded.rx_bps, tx_bps = tx_bps + excluded.tx_bps`,
-				m.Series, MetricRollup, roll, m.CPUm, m.MemB, m.DiskUsed, m.DiskTotal, m.RxBps, m.TxBps); err != nil {
+					rx_bps = rx_bps + excluded.rx_bps, tx_bps = tx_bps + excluded.tx_bps,
+					conns = conns + excluded.conns, conns_max = conns_max + excluded.conns_max`,
+				m.Series, MetricRollup, roll, m.CPUm, m.MemB, m.DiskUsed, m.DiskTotal, m.RxBps, m.TxBps, m.Conns, m.ConnsMax); err != nil {
 				return err
 			}
 		}
@@ -83,7 +89,7 @@ func (s *Store) MetricHistory(ctx context.Context, series string, from, to time.
 		step = res
 	}
 	step = (step + res - 1) / res * res
-	rows, err := s.db.QueryContext(ctx, `SELECT (ts / ?) * ? AS b, SUM(n), SUM(cpu_m), SUM(mem_b), SUM(disk_used), SUM(disk_total), SUM(rx_bps), SUM(tx_bps)
+	rows, err := s.db.QueryContext(ctx, `SELECT (ts / ?) * ? AS b, SUM(n), SUM(cpu_m), SUM(mem_b), SUM(disk_used), SUM(disk_total), SUM(rx_bps), SUM(tx_bps), SUM(conns), SUM(conns_max)
 		FROM metric_points WHERE series = ? AND res = ? AND ts >= ? AND ts <= ?
 		GROUP BY b ORDER BY b`, step, step, series, res, from.Unix(), to.Unix())
 	if err != nil {
@@ -92,14 +98,15 @@ func (s *Store) MetricHistory(ctx context.Context, series string, from, to time.
 	defer rows.Close()
 	out := []MetricPoint{}
 	for rows.Next() {
-		var b, n, cpu, mem, du, dt, rx, txb int64
-		if err := rows.Scan(&b, &n, &cpu, &mem, &du, &dt, &rx, &txb); err != nil {
+		var b, n, cpu, mem, du, dt, rx, txb, cn, cm int64
+		if err := rows.Scan(&b, &n, &cpu, &mem, &du, &dt, &rx, &txb, &cn, &cm); err != nil {
 			return nil, err
 		}
 		if n == 0 {
 			continue
 		}
-		out = append(out, MetricPoint{T: time.Unix(b, 0).UTC(), CPUm: cpu / n, MemB: mem / n, DiskUsed: du / n, DiskTotal: dt / n, RxBps: rx / n, TxBps: txb / n})
+		out = append(out, MetricPoint{T: time.Unix(b, 0).UTC(), CPUm: cpu / n, MemB: mem / n, DiskUsed: du / n, DiskTotal: dt / n, RxBps: rx / n, TxBps: txb / n,
+			Conns: (cn + n/2) / n, ConnsMax: cm / n})
 	}
 	return out, rows.Err()
 }

@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,9 +29,11 @@ type Collector struct {
 	Store    *store.Store
 	Log      *slog.Logger
 	Interval time.Duration // default 15 s
+	Exec     Execer        // nil: no database connection counts
 
 	mu      sync.Mutex
 	prevNet map[string]netCounter // node → last network counters
+	conns   map[int64]connsSample // add-on → last connection count
 }
 
 type netCounter struct {
@@ -99,6 +102,7 @@ func (c *Collector) Collect(ctx context.Context, now time.Time) error {
 	if err != nil {
 		c.Log.Debug("metrics: add-on pods", "err", err)
 	}
+	c.dbConns(ctx, now, addons)
 	samples = append(samples, addons...)
 	return c.Store.AddMetricSamples(ctx, now, samples)
 }
@@ -111,10 +115,7 @@ func (c *Collector) nodeStats(ctx context.Context, node string, now time.Time, m
 				CapacityBytes *uint64 `json:"capacityBytes"`
 				UsedBytes     *uint64 `json:"usedBytes"`
 			} `json:"fs"`
-			Network struct {
-				RxBytes *uint64 `json:"rxBytes"`
-				TxBytes *uint64 `json:"txBytes"`
-			} `json:"network"`
+			Network nodeNetwork `json:"network"`
 		} `json:"node"`
 	}
 	if err := c.Kube.Get(ctx, "/api/v1/nodes/"+url.PathEscape(node)+"/proxy/stats/summary", &sum); err != nil {
@@ -123,11 +124,11 @@ func (c *Collector) nodeStats(ctx context.Context, node string, now time.Time, m
 	if fs := sum.Node.Fs; fs.CapacityBytes != nil && fs.UsedBytes != nil {
 		m.DiskTotal, m.DiskUsed = clampInt(*fs.CapacityBytes), clampInt(*fs.UsedBytes)
 	}
-	nw := sum.Node.Network
-	if nw.RxBytes == nil || nw.TxBytes == nil {
+	rx, tx, ok := sum.Node.Network.totals()
+	if !ok {
 		return
 	}
-	cur := netCounter{at: now, rx: *nw.RxBytes, tx: *nw.TxBytes}
+	cur := netCounter{at: now, rx: rx, tx: tx}
 	c.mu.Lock()
 	if c.prevNet == nil {
 		c.prevNet = map[string]netCounter{}
@@ -273,4 +274,47 @@ func clampInt(v uint64) int64 {
 		return math.MaxInt64
 	}
 	return int64(v)
+}
+
+// nodeNetwork is the node's network in the kubelet summary: the top-level counters are only the interface
+// the kubelet calls default ("eth0"), absent on servers whose NIC is named ens3, enp1s0, … — the
+// per-interface list has them all.
+type nodeNetwork struct {
+	RxBytes    *uint64 `json:"rxBytes"`
+	TxBytes    *uint64 `json:"txBytes"`
+	Interfaces []struct {
+		Name    string  `json:"name"`
+		RxBytes *uint64 `json:"rxBytes"`
+		TxBytes *uint64 `json:"txBytes"`
+	} `json:"interfaces"`
+}
+
+// virtualIface: loopback, container and overlay interfaces (pod traffic would be counted twice).
+func virtualIface(name string) bool {
+	for _, p := range []string{"lo", "cni", "flannel", "veth", "cali", "docker", "br-", "kube-", "tunl", "vxlan",
+		"cilium", "lxc", "virbr", "dummy", "nodelocaldns", "genev", "wg-", "tap", "tun"} {
+		if strings.HasPrefix(name, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// totals sums the node's physical interfaces (falls back to the default interface's counters).
+func (n nodeNetwork) totals() (rx, tx uint64, ok bool) {
+	for _, i := range n.Interfaces {
+		if i.RxBytes == nil || i.TxBytes == nil || virtualIface(i.Name) {
+			continue
+		}
+		rx += *i.RxBytes
+		tx += *i.TxBytes
+		ok = true
+	}
+	if ok {
+		return rx, tx, true
+	}
+	if n.RxBytes != nil && n.TxBytes != nil {
+		return *n.RxBytes, *n.TxBytes, true
+	}
+	return 0, 0, false
 }

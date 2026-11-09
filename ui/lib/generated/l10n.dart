@@ -9380,6 +9380,26 @@ class S {
       args: [],
     );
   }
+
+  /// `Connections`
+  String get observeConnections {
+    return Intl.message(
+      'Connections',
+      name: 'observeConnections',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connections (limit {limit})`
+  String observeConnectionsOfLimit(String limit) {
+    return Intl.message(
+      'Connections (limit $limit)',
+      name: 'observeConnectionsOfLimit',
+      desc: '',
+      args: [limit],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

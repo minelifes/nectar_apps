@@ -1835,5 +1835,8 @@
   "appPlacement": "Placement",
   "appPlacementHelp": "Run the app only on nodes with the selected labels. Nothing selected: any node.",
   "appPlacementNoLabels": "Runs on any node. To pin it to some nodes, give them labels on the Server page (node → Labels).",
-  "appPlacementNoNode": "No ready node has all these labels: new pods will wait until one does."
+  "appPlacementNoNode": "No ready node has all these labels: new pods will wait until one does.",
+  "observeConnections": "Connections",
+  "observeConnectionsOfLimit": "Connections (limit {limit})",
+  "@observeConnectionsOfLimit": {"placeholders": {"limit": {"type": "String"}}}
 }

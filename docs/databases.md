@@ -16,7 +16,10 @@ database, the link's prefix wins. Like a link, sharing takes effect when each ap
 
 The database page has the same tabs as an app:
 
-- **Metrics**: CPU and memory over time, with the requested amount as a dashed line.
+- **Metrics**: CPU and memory over time, with the requested amount as a dashed line, and **Connections**:
+  open client connections (PostgreSQL `pg_stat_activity`, MySQL/MariaDB `Threads_connected`, Redis
+  `connected_clients`) with the server's limit (`max_connections` / `maxclients`) in the title. The panel
+  asks once a minute from inside the database container; the history starts when the panel is updated.
 - **Logs**: the live log of the database pod, with download.
 - **Terminal**: a shell in the database container, where `psql`, `mysql` or `redis-cli` are already installed.
 - **Events**: Kubernetes events, such as a failed volume mount or an out-of-memory kill.
