@@ -1116,7 +1116,10 @@ database, the link's prefix wins. Like a link, sharing takes effect when each ap
 <h2 id="managing-a-database-like-an-app">Managing a database like an app<a class="headerlink" href="#managing-a-database-like-an-app" title="Permanent link">&para;</a></h2>
 <p>The database page has the same tabs as an app:</p>
 <ul>
-<li><strong>Metrics</strong>: CPU and memory over time, with the requested amount as a dashed line.</li>
+<li><strong>Metrics</strong>: CPU and memory over time, with the requested amount as a dashed line, and <strong>Connections</strong>:
+  open client connections (PostgreSQL <code>pg_stat_activity</code>, MySQL/MariaDB <code>Threads_connected</code>, Redis
+  <code>connected_clients</code>) with the server's limit (<code>max_connections</code> / <code>maxclients</code>) in the title. The panel
+  asks once a minute from inside the database container; the history starts when the panel is updated.</li>
 <li><strong>Logs</strong>: the live log of the database pod, with download.</li>
 <li><strong>Terminal</strong>: a shell in the database container, where <code>psql</code>, <code>mysql</code> or <code>redis-cli</code> are already installed.</li>
 <li><strong>Events</strong>: Kubernetes events, such as a failed volume mount or an out-of-memory kill.</li>
