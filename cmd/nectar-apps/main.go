@@ -220,7 +220,7 @@ func serve() error {
 
 	// resource usage history (server and app charts)
 	if kc != nil {
-		go (&observe.Collector{Kube: kc, Store: st, Log: log}).Run(ctx)
+		go (&observe.Collector{Kube: kc, Exec: kc, Store: st, Log: log}).Run(ctx)
 	}
 
 	// private registry logins for app pods (set once the store and its box exist, see below)

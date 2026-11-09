@@ -3302,6 +3302,8 @@ components:
         disk_total: { type: integer }
         rx_bps: { type: integer, description: bytes per second, nodes only }
         tx_bps: { type: integer }
+        conns: { type: integer, description: "database add-ons: open client connections (asked once a minute)" }
+        conns_max: { type: integer, description: "database add-ons: the server's connection limit (absent = not measured)" }
     KubeEvent:
       type: object
       properties:

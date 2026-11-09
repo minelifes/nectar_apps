@@ -2,6 +2,7 @@ package observe
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -204,5 +205,93 @@ func TestLogsAndEvents(t *testing.T) {
 	}
 	if p := LogPath("ns", "p", true, false, 50, time.Time{}); !strings.Contains(p, "follow=true") || !strings.Contains(p, "tailLines=50") || !strings.Contains(p, "timestamps=true") {
 		t.Fatalf("log path: %s", p)
+	}
+}
+
+// A server whose NIC isn't eth0: the kubelet reports no top-level counters, only interfaces.
+func TestNodeNetworkTotals(t *testing.T) {
+	var n nodeNetwork
+	if err := json.Unmarshal([]byte(`{"name":"eth0","interfaces":[
+		{"name":"enp1s0","rxBytes":1000,"txBytes":500},
+		{"name":"ens4","rxBytes":10,"txBytes":5},
+		{"name":"cni0","rxBytes":99999,"txBytes":99999},
+		{"name":"flannel.1","rxBytes":99999,"txBytes":99999},
+		{"name":"veth1234","rxBytes":99999,"txBytes":99999},
+		{"name":"lo","rxBytes":99999,"txBytes":99999}]}`), &n); err != nil {
+		t.Fatal(err)
+	}
+	if rx, tx, ok := n.totals(); !ok || rx != 1010 || tx != 505 {
+		t.Fatalf("interfaces: %d %d %v", rx, tx, ok)
+	}
+	json.Unmarshal([]byte(`{"rxBytes":7,"txBytes":3}`), &n)
+	n.Interfaces = nil
+	if rx, tx, ok := n.totals(); !ok || rx != 7 || tx != 3 {
+		t.Fatalf("top level: %d %d", rx, tx)
+	}
+	if _, _, ok := (nodeNetwork{}).totals(); ok {
+		t.Fatal("nothing reported")
+	}
+}
+
+type fakeExec struct {
+	calls []string
+	out   string
+	code  int
+}
+
+func (f *fakeExec) ExecRun(_ context.Context, ns, pod, container string, cmd []string, _ []byte, _ int) (kube.ExecResult, error) {
+	f.calls = append(f.calls, ns+"/"+pod+"/"+container)
+	return kube.ExecResult{Stdout: []byte(f.out), ExitCode: f.code}, nil
+}
+
+// Database add-ons: connections and the limit, asked once a minute, repeated in between.
+func TestCollectorDBConnections(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(ctx, "sqlite", store.DSN(filepath.Join(t.TempDir(), "m.db")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	p, _ := st.CreateProject(ctx, "shop", "Shop", nil)
+	db, err := st.CreateAddon(ctx, store.Addon{ProjectID: p.ID, Slug: "db", Name: "DB", Kind: "postgres", Version: "17", SizeMB: 1024})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rx := uint64(1000)
+	ex := &fakeExec{out: "7 100\n"}
+	c := &Collector{Kube: fakeCluster(t, &rx), Exec: ex, Store: st, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	t0 := time.Date(2026, 10, 28, 10, 0, 0, 0, time.UTC)
+	for i := range 4 { // 0, 15, 30, 45 s: one exec
+		if err := c.Collect(ctx, t0.Add(time.Duration(i)*15*time.Second)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(ex.calls) != 1 || ex.calls[0] != p.Namespace+"/db-0/postgres" {
+		t.Fatalf("execs: %v", ex.calls)
+	}
+	ex.out = "3 100"
+	c.Collect(ctx, t0.Add(time.Minute))
+	series := fmt.Sprintf("addon:%d", db.ID)
+	pts, _ := st.MetricHistory(ctx, series, t0.Add(-time.Minute), t0.Add(2*time.Minute), 100)
+	if len(pts) != 5 || pts[0].Conns != 7 || pts[3].Conns != 7 || pts[4].Conns != 3 || pts[4].ConnsMax != 100 {
+		t.Fatalf("points: %+v", pts)
+	}
+	// a failed query: no numbers, not zeros pretending to be measured
+	ex.code = 1
+	c.Collect(ctx, t0.Add(2*time.Minute))
+	pts, _ = st.MetricHistory(ctx, series, t0.Add(2*time.Minute), t0.Add(2*time.Minute), 100)
+	if len(pts) != 1 || pts[0].ConnsMax != 0 {
+		t.Fatalf("failed: %+v", pts)
+	}
+	for _, k := range []string{"postgres", "mysql", "mariadb", "redis"} {
+		if connsScript(k) == "" {
+			t.Errorf("no script for %s", k)
+		}
+	}
+	for in, want := range map[string][3]int64{"5 151\n": {5, 151, 1}, "-1\t10000": {0, 10000, 1}, "x 1": {}, "1": {}, "2 0": {}} {
+		c, m, ok := parseConns(in)
+		if c != want[0] || m != want[1] || ok != (want[2] == 1) {
+			t.Errorf("%q: %d %d %v", in, c, m, ok)
+		}
 	}
 }

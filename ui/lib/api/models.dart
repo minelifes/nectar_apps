@@ -1125,7 +1125,13 @@ class MetricPoint {
     this.diskTotal = 0,
     this.rxBps = 0,
     this.txBps = 0,
+    this.conns = 0,
+    this.connsMax = 0,
   });
+
+  /// Databases: open client connections and the server's limit (connsMax 0 = not measured).
+  final int conns;
+  final int connsMax;
 
   final DateTime t;
   final int cpuM;
@@ -1145,6 +1151,8 @@ class MetricPoint {
       diskTotal: _int(m['disk_total']),
       rxBps: _int(m['rx_bps']),
       txBps: _int(m['tx_bps']),
+      conns: _int(m['conns']),
+      connsMax: _int(m['conns_max']),
     );
   }
 }

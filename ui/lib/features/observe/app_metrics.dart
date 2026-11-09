@@ -397,10 +397,39 @@ class _UsageCardState extends ConsumerState<UsageCard> {
                 ),
             ],
           );
+          // databases: client connections (measured once a minute)
+          final measured = [
+            for (final p in pts)
+              if (p.connsMax > 0) p,
+          ];
+          final limit = measured.isEmpty ? 0 : measured.last.connsMax;
+          final peak = measured.fold<int>(
+            0,
+            (m, p) => p.conns > m ? p.conns : m,
+          );
+          final conns = TimeSeriesChart(
+            formatY: (v) => '${v.round()}',
+            yMax: peak < 4 ? 4 : null, // whole numbers on an idle chart
+            series: [
+              ChartSeries(
+                label: s.observeConnections,
+                color: c.running,
+                fill: true,
+                points: [for (final p in measured) (p.t, p.conns.toDouble())],
+              ),
+            ],
+          );
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Grid(children: [('CPU', cpu), ('Memory', mem)]),
+              _Grid(
+                children: [
+                  ('CPU', cpu),
+                  ('Memory', mem),
+                  if (measured.isNotEmpty)
+                    (s.observeConnectionsOfLimit('$limit'), conns),
+                ],
+              ),
               if (u.replicas > 1)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),

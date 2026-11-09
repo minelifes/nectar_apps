@@ -270,6 +270,7 @@ func (s *Server) serverVolumes(w http.ResponseWriter, r *http.Request, _ *princi
 	if vols == nil {
 		vols = []deploy.VolumeUse{}
 	}
+	s.settingSizes(r.Context(), vols)
 	writeJSON(w, http.StatusOK, vols)
 }
 
@@ -326,4 +327,60 @@ func mapOf(o map[string]any, keys ...string) map[string]any {
 	}
 	m, _ := v.(map[string]any)
 	return m
+}
+
+// settingSizes shows the size from the app's settings: a storage class that can't grow volumes (k3s
+// local-path) keeps the claim at the size it was created with, but the new size is what counts (local-path
+// doesn't enforce either).
+func (s *Server) settingSizes(ctx context.Context, vols []deploy.VolumeUse) {
+	apps := map[int64]store.App{}
+	var addonMB map[string]int64 // "project/addon" → size
+	for i := range vols {
+		v := &vols[i]
+		if v.Addon != "" {
+			if addonMB == nil {
+				addonMB = s.addonSizes(ctx)
+			}
+			if mb := addonMB[v.Project+"/"+v.Addon]; mb > 0 {
+				v.RequestedB = mb << 20
+			}
+			continue
+		}
+		if v.AppID == 0 || v.Volume == "" {
+			continue
+		}
+		a, ok := apps[v.AppID]
+		if !ok {
+			var err error
+			if a, err = s.store.GetApp(ctx, v.AppID); err != nil {
+				continue
+			}
+			apps[v.AppID] = a
+		}
+		for _, cv := range a.Config.Volumes {
+			if cv.Name == v.Volume && cv.From == "" && cv.SizeMB > 0 {
+				v.RequestedB = cv.SizeMB << 20
+			}
+		}
+	}
+}
+
+func (s *Server) addonSizes(ctx context.Context) map[string]int64 {
+	out := map[string]int64{}
+	projects, err := s.store.ListProjects(ctx)
+	if err != nil {
+		return out
+	}
+	slug := map[int64]string{}
+	for _, p := range projects {
+		slug[p.ID] = p.Slug
+	}
+	addons, err := s.store.ListAddons(ctx, 0)
+	if err != nil {
+		return out
+	}
+	for _, a := range addons {
+		out[slug[a.ProjectID]+"/"+a.Slug] = a.SizeMB
+	}
+	return out
 }
