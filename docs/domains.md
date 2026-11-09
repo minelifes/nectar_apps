@@ -56,3 +56,33 @@ all domains (filter by domain, status class or client IP; block an IP from its r
   domain of app2 (host app1.com, path /myCustomRoute) and is listed on both apps.
 - Removing the path needs nectar-gateway with the `strip-prefix` feature; an older gateway leaves such a
   route inactive with a message instead of sending app2 paths it does not expect.
+
+## Proxies (a domain without an app)
+
+Domains page → **Proxies** → *Add proxy*: a domain (and optional path) that the gateway forwards straight to
+an address and port — no app needed:
+
+- `127.0.0.1:9000` — a service running directly on the server (the gateway uses the host network; with
+  several gateway nodes each forwards to its own `127.0.0.1`),
+- `10.0.0.5:8080` — another machine the server reaches,
+- `grafana.monitoring.svc.cluster.local:3000` — a Kubernetes Service Nectar does not manage.
+
+Tick *The target uses HTTPS* when the target only speaks HTTPS (its certificate is not checked). Everything
+else works as for app domains: HTTPS certificates, DNS records, rate limits, body size, web options, password,
+removing the path. Choose **Redirect** instead to send a domain elsewhere (301/302/307/308; without a path of
+its own the request's path and query are kept). Changing proxies needs `settings.manage`; the CLI has
+`nectar proxy list|add|set|rm`.
+
+## Sleeping when idle (scale to zero)
+
+App → Settings → *Network and health check* → **Sleep when idle**: a web app that gets no requests through
+its domains for the chosen time (5–1440 minutes) scales to zero and shows *Sleeping*. It frees its CPU and
+memory; its volumes stay. The next visitor wakes it: nectar-gateway holds the request (up to 90 s) while the
+app starts and then passes it on; a browser that gives up first sees a short "This app is starting" page that
+retries. **Wake now** on the app page, a deploy, a start, or turning the setting off wake it too.
+
+- Needs nectar-gateway with the `wake` feature (update the gateway); not with the Ingress provider.
+- Only requests through the gateway count and wake the app. Other apps calling it inside the cluster
+  (`http://<app>.<namespace>.svc`) neither keep it awake nor wake it — don't use it for internal APIs.
+- While it sleeps the gateway's health checks for its domains are off, so it doesn't raise "down" alerts.
+- The setting takes effect without a deploy.

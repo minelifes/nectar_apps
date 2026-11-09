@@ -8810,6 +8810,576 @@ class S {
       args: [apps],
     );
   }
+
+  /// `Proxy to an address`
+  String get proxyKindProxy {
+    return Intl.message(
+      'Proxy to an address',
+      name: 'proxyKindProxy',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Redirect`
+  String get proxyKindRedirect {
+    return Intl.message(
+      'Redirect',
+      name: 'proxyKindRedirect',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Redirect to`
+  String get proxyRedirectTo {
+    return Intl.message(
+      'Redirect to',
+      name: 'proxyRedirectTo',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `A domain (https:// is added) or a URL. Without a path of its own, the request's path and query are kept; with one, everything goes to that page.`
+  String get proxyRedirectToHelp {
+    return Intl.message(
+      'A domain (https:// is added) or a URL. Without a path of its own, the request\'s path and query are kept; with one, everything goes to that page.',
+      name: 'proxyRedirectToHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Type`
+  String get proxyRedirectCode {
+    return Intl.message('Type', name: 'proxyRedirectCode', desc: '', args: []);
+  }
+
+  /// `301 · moved permanently`
+  String get proxyRedirect301 {
+    return Intl.message(
+      '301 · moved permanently',
+      name: 'proxyRedirect301',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `302 · temporary`
+  String get proxyRedirect302 {
+    return Intl.message(
+      '302 · temporary',
+      name: 'proxyRedirect302',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `307 · temporary, keeps the method`
+  String get proxyRedirect307 {
+    return Intl.message(
+      '307 · temporary, keeps the method',
+      name: 'proxyRedirect307',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `308 · permanent, keeps the method`
+  String get proxyRedirect308 {
+    return Intl.message(
+      '308 · permanent, keeps the method',
+      name: 'proxyRedirect308',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Helm charts`
+  String get helmTitle {
+    return Intl.message('Helm charts', name: 'helmTitle', desc: '', args: []);
+  }
+
+  /// `Install chart`
+  String get helmInstall {
+    return Intl.message(
+      'Install chart',
+      name: 'helmInstall',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Install any Helm chart into this project: it runs in the project's namespace and can't touch other projects or the cluster.`
+  String get helmNone {
+    return Intl.message(
+      'Install any Helm chart into this project: it runs in the project\'s namespace and can\'t touch other projects or the cluster.',
+      name: 'helmNone',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Installing`
+  String get helmInstalling {
+    return Intl.message(
+      'Installing',
+      name: 'helmInstalling',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Upgrading`
+  String get helmUpgrading {
+    return Intl.message('Upgrading', name: 'helmUpgrading', desc: '', args: []);
+  }
+
+  /// `Rolling back`
+  String get helmRollingBack {
+    return Intl.message(
+      'Rolling back',
+      name: 'helmRollingBack',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Removing`
+  String get helmUninstalling {
+    return Intl.message(
+      'Removing',
+      name: 'helmUninstalling',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Deployed`
+  String get helmDeployed {
+    return Intl.message('Deployed', name: 'helmDeployed', desc: '', args: []);
+  }
+
+  /// `Failed`
+  String get helmFailed {
+    return Intl.message('Failed', name: 'helmFailed', desc: '', args: []);
+  }
+
+  /// `The chart is installed with Helm in this project's namespace. It may create anything inside the namespace, nothing outside it: charts that need CRDs or cluster-wide roles fail. Its pods count against the project's quota; put a domain on one of its Services with a proxy (Domains → Proxies).`
+  String get helmInstallHelp {
+    return Intl.message(
+      'The chart is installed with Helm in this project\'s namespace. It may create anything inside the namespace, nothing outside it: charts that need CRDs or cluster-wide roles fail. Its pods count against the project\'s quota; put a domain on one of its Services with a proxy (Domains → Proxies).',
+      name: 'helmInstallHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Release name`
+  String get helmName {
+    return Intl.message('Release name', name: 'helmName', desc: '', args: []);
+  }
+
+  /// `Repository`
+  String get helmRepo {
+    return Intl.message('Repository', name: 'helmRepo', desc: '', args: []);
+  }
+
+  /// `A chart repository (https://…) or an OCI registry path (oci://registry/path)`
+  String get helmRepoHelp {
+    return Intl.message(
+      'A chart repository (https://…) or an OCI registry path (oci://registry/path)',
+      name: 'helmRepoHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Chart`
+  String get helmChart {
+    return Intl.message('Chart', name: 'helmChart', desc: '', args: []);
+  }
+
+  /// `Version`
+  String get helmVersion {
+    return Intl.message('Version', name: 'helmVersion', desc: '', args: []);
+  }
+
+  /// `latest`
+  String get helmVersionLatest {
+    return Intl.message(
+      'latest',
+      name: 'helmVersionLatest',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The repository needs a login`
+  String get helmRepoLogin {
+    return Intl.message(
+      'The repository needs a login',
+      name: 'helmRepoLogin',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `User`
+  String get helmRepoUser {
+    return Intl.message('User', name: 'helmRepoUser', desc: '', args: []);
+  }
+
+  /// `Password or token`
+  String get helmRepoPassword {
+    return Intl.message(
+      'Password or token',
+      name: 'helmRepoPassword',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Saved, leave empty to keep`
+  String get helmPasswordKept {
+    return Intl.message(
+      'Saved, leave empty to keep',
+      name: 'helmPasswordKept',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Values (YAML)`
+  String get helmValues {
+    return Intl.message(
+      'Values (YAML)',
+      name: 'helmValues',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Overrides of the chart's values.yaml. Stored encrypted; only people who can manage charts see them.`
+  String get helmValuesHelp {
+    return Intl.message(
+      'Overrides of the chart\'s values.yaml. Stored encrypted; only people who can manage charts see them.',
+      name: 'helmValuesHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Installing: this can take a few minutes.`
+  String get helmInstallStarted {
+    return Intl.message(
+      'Installing: this can take a few minutes.',
+      name: 'helmInstallStarted',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Upgrading…`
+  String get helmUpgradeStarted {
+    return Intl.message(
+      'Upgrading…',
+      name: 'helmUpgradeStarted',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Upgrade`
+  String get helmUpgrade {
+    return Intl.message('Upgrade', name: 'helmUpgrade', desc: '', args: []);
+  }
+
+  /// `Roll back`
+  String get helmRollback {
+    return Intl.message('Roll back', name: 'helmRollback', desc: '', args: []);
+  }
+
+  /// `Helm deploys that revision again (as a new revision).`
+  String get helmRollbackBody {
+    return Intl.message(
+      'Helm deploys that revision again (as a new revision).',
+      name: 'helmRollbackBody',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Uninstall`
+  String get helmUninstall {
+    return Intl.message('Uninstall', name: 'helmUninstall', desc: '', args: []);
+  }
+
+  /// `Helm removes everything the chart created. Volumes (PVCs) the chart made may be removed too, depending on the chart.`
+  String get helmUninstallBody {
+    return Intl.message(
+      'Helm removes everything the chart created. Volumes (PVCs) the chart made may be removed too, depending on the chart.',
+      name: 'helmUninstallBody',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Workloads`
+  String get helmWorkloads {
+    return Intl.message('Workloads', name: 'helmWorkloads', desc: '', args: []);
+  }
+
+  /// `Services`
+  String get helmServices {
+    return Intl.message('Services', name: 'helmServices', desc: '', args: []);
+  }
+
+  /// `Reachable from the project's apps; use one as the address of a proxy to give it a domain.`
+  String get helmServicesHelp {
+    return Intl.message(
+      'Reachable from the project\'s apps; use one as the address of a proxy to give it a domain.',
+      name: 'helmServicesHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Copy`
+  String get helmCopy {
+    return Intl.message('Copy', name: 'helmCopy', desc: '', args: []);
+  }
+
+  /// `Copied`
+  String get helmCopied {
+    return Intl.message('Copied', name: 'helmCopied', desc: '', args: []);
+  }
+
+  /// `Notes`
+  String get helmNotes {
+    return Intl.message('Notes', name: 'helmNotes', desc: '', args: []);
+  }
+
+  /// `History`
+  String get helmHistory {
+    return Intl.message('History', name: 'helmHistory', desc: '', args: []);
+  }
+
+  /// `Helm output`
+  String get helmOutput {
+    return Intl.message('Helm output', name: 'helmOutput', desc: '', args: []);
+  }
+
+  /// `revision {n}`
+  String helmRevision(int n) {
+    return Intl.message(
+      'revision $n',
+      name: 'helmRevision',
+      desc: '',
+      args: [n],
+    );
+  }
+
+  /// `Upgrade {name}`
+  String helmUpgradeTitle(String name) {
+    return Intl.message(
+      'Upgrade $name',
+      name: 'helmUpgradeTitle',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `Roll back to revision {n}?`
+  String helmRollbackTitle(int n) {
+    return Intl.message(
+      'Roll back to revision $n?',
+      name: 'helmRollbackTitle',
+      desc: '',
+      args: [n],
+    );
+  }
+
+  /// `Uninstall {name}?`
+  String helmUninstallTitle(String name) {
+    return Intl.message(
+      'Uninstall $name?',
+      name: 'helmUninstallTitle',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `Sleep when idle`
+  String get appSleepWhenIdle {
+    return Intl.message(
+      'Sleep when idle',
+      name: 'appSleepWhenIdle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Scales to zero after a while without requests through its domains; the next visitor wakes it (the first request waits while it starts). Calls from other apps straight to it don't wake it.`
+  String get appSleepWhenIdleHelp {
+    return Intl.message(
+      'Scales to zero after a while without requests through its domains; the next visitor wakes it (the first request waits while it starts). Calls from other apps straight to it don\'t wake it.',
+      name: 'appSleepWhenIdleHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Sleep after (minutes)`
+  String get appSleepAfterMinutes {
+    return Intl.message(
+      'Sleep after (minutes)',
+      name: 'appSleepAfterMinutes',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Sleep after must be 5–1440 minutes`
+  String get appSleepMinutesRange {
+    return Intl.message(
+      'Sleep after must be 5–1440 minutes',
+      name: 'appSleepMinutesRange',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Asleep after a while without requests — the next visitor wakes it.`
+  String get appSleepingNote {
+    return Intl.message(
+      'Asleep after a while without requests — the next visitor wakes it.',
+      name: 'appSleepingNote',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Wake now`
+  String get appWakeNow {
+    return Intl.message('Wake now', name: 'appWakeNow', desc: '', args: []);
+  }
+
+  /// `Waking {name}`
+  String appWaking(String name) {
+    return Intl.message(
+      'Waking $name',
+      name: 'appWaking',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `Labels`
+  String get nodeLabels {
+    return Intl.message('Labels', name: 'nodeLabels', desc: '', args: []);
+  }
+
+  /// `Labels…`
+  String get nodeLabelsEdit {
+    return Intl.message('Labels…', name: 'nodeLabelsEdit', desc: '', args: []);
+  }
+
+  /// `Labels of {name}`
+  String nodeLabelsTitle(String name) {
+    return Intl.message(
+      'Labels of $name',
+      name: 'nodeLabelsTitle',
+      desc: '',
+      args: [name],
+    );
+  }
+
+  /// `Apps can be placed on nodes by these labels (app Settings → Placement), e.g. disk=ssd or gpu=nvidia. Labels of Kubernetes, k3s and Nectar are kept and not shown.`
+  String get nodeLabelsHelp {
+    return Intl.message(
+      'Apps can be placed on nodes by these labels (app Settings → Placement), e.g. disk=ssd or gpu=nvidia. Labels of Kubernetes, k3s and Nectar are kept and not shown.',
+      name: 'nodeLabelsHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Key`
+  String get nodeLabelKey {
+    return Intl.message('Key', name: 'nodeLabelKey', desc: '', args: []);
+  }
+
+  /// `Value`
+  String get nodeLabelValue {
+    return Intl.message('Value', name: 'nodeLabelValue', desc: '', args: []);
+  }
+
+  /// `Add label`
+  String get nodeLabelAdd {
+    return Intl.message('Add label', name: 'nodeLabelAdd', desc: '', args: []);
+  }
+
+  /// `Remove`
+  String get nodeLabelRemove {
+    return Intl.message('Remove', name: 'nodeLabelRemove', desc: '', args: []);
+  }
+
+  /// `Cancel`
+  String get nodeLabelCancel {
+    return Intl.message('Cancel', name: 'nodeLabelCancel', desc: '', args: []);
+  }
+
+  /// `Save`
+  String get nodeLabelSave {
+    return Intl.message('Save', name: 'nodeLabelSave', desc: '', args: []);
+  }
+
+  /// `{key} belongs to Kubernetes, k3s or Nectar`
+  String nodeLabelsSystemKey(String key) {
+    return Intl.message(
+      '$key belongs to Kubernetes, k3s or Nectar',
+      name: 'nodeLabelsSystemKey',
+      desc: '',
+      args: [key],
+    );
+  }
+
+  /// `Placement`
+  String get appPlacement {
+    return Intl.message('Placement', name: 'appPlacement', desc: '', args: []);
+  }
+
+  /// `Run the app only on nodes with the selected labels. Nothing selected: any node.`
+  String get appPlacementHelp {
+    return Intl.message(
+      'Run the app only on nodes with the selected labels. Nothing selected: any node.',
+      name: 'appPlacementHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Runs on any node. To pin it to some nodes, give them labels on the Server page (node → Labels).`
+  String get appPlacementNoLabels {
+    return Intl.message(
+      'Runs on any node. To pin it to some nodes, give them labels on the Server page (node → Labels).',
+      name: 'appPlacementNoLabels',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No ready node has all these labels: new pods will wait until one does.`
+  String get appPlacementNoNode {
+    return Intl.message(
+      'No ready node has all these labels: new pods will wait until one does.',
+      name: 'appPlacementNoNode',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

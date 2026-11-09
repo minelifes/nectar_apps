@@ -16,6 +16,7 @@ import '../../widgets/gauge.dart';
 import '../access/members_card.dart';
 import '../addons/addons_section.dart';
 import 'external_workloads.dart';
+import 'helm_section.dart';
 import 'blueprint_dialogs.dart';
 import 'env_groups_card.dart';
 import 'environments.dart';
@@ -165,6 +166,7 @@ class ProjectPage extends ConsumerWidget {
                         if (a.database != null) a,
                     ],
                   ),
+                  HelmSection(projectId: id),
                   if (p.adopted) ProjectExternalWorkloads(projectId: id),
                 ],
               );

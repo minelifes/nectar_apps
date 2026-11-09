@@ -82,6 +82,8 @@ var columns = []column{
 	{"registries", "registry_credentials", "password", ""},
 	{"builds", "app_sources", "token", "token != ''"},
 	{"builds", "app_sources", "webhook_secret", "webhook_secret != ''"},
+	{"env", "helm_releases", "values_enc", "values_enc != ''"},
+	{"env", "helm_releases", "repo_password", "repo_password != ''"},
 }
 
 // sealedSettings are settings rows whose JSON has sealed fields: key → purpose, field ("" = the whole

@@ -155,7 +155,15 @@ class NodeInfo {
     this.unschedulable = false,
     this.edge = false,
     this.edgeReplica = false,
+    this.labels = const {},
   });
+
+  /// All the node's labels; [userLabels] are the ones people set (apps pick nodes by them).
+  final Map<String, String> labels;
+  Map<String, String> get userLabels => {
+    for (final e in labels.entries)
+      if (isEditableNodeLabel(e.key)) e.key: e.value,
+  };
 
   /// Cordoned (no new pods); edge = runs nectar-gateway (DNS points here); edgeReplica = runs a gateway replica.
   final bool unschedulable;
@@ -200,8 +208,27 @@ class NodeInfo {
       unschedulable: _bool(m['unschedulable']),
       edge: _bool(m['edge']),
       edgeReplica: _bool(m['edge_replica']),
+      labels: {for (final e in _map(m['labels']).entries) e.key: _str(e.value)},
     );
   }
+}
+
+/// Labels of Kubernetes, k3s and Nectar are not editable (mirrors kube.EditableLabel).
+bool isEditableNodeLabel(String key) {
+  final i = key.indexOf('/');
+  if (i < 0) return true;
+  final prefix = key.substring(0, i);
+  for (final sys in const [
+    'kubernetes.io',
+    'k8s.io',
+    'k3s.io',
+    'cattle.io',
+    'nectar.dev',
+    'longhorn.io',
+  ]) {
+    if (prefix == sys || prefix.endsWith('.$sys')) return false;
+  }
+  return true;
 }
 
 class Quota {
@@ -351,6 +378,15 @@ class App {
   final DateTime? updatedAt;
 
   int get resumeReplicas => _int(config['resume_replicas']);
+
+  /// Minutes without requests before the app scales to zero (0 = never).
+  int get sleepAfterMinutes => _int(config['sleep_after_minutes']);
+  bool get sleeping => status == 'sleeping';
+
+  /// Node labels the app's pods require (Settings → Placement).
+  Map<String, String> get nodeSelector => {
+    for (final e in _map(config['node_selector']).entries) e.key: _str(e.value),
+  };
   List<AppVolume> get volumes =>
       _list(config['volumes']).map(AppVolume.fromJson).toList();
 
@@ -695,6 +731,7 @@ class Domain {
     required this.kind,
     required this.redirectTo,
     this.certNotAfter,
+    this.redirectCode = 301,
     this.forceHttps = false,
     this.rateLimit = 0,
     this.maxBodyMb = 0,
@@ -747,6 +784,9 @@ class Domain {
   /// app | redirect | proxy
   final String kind;
   final String redirectTo;
+
+  /// 301 | 302 | 307 | 308 (kind redirect).
+  final int redirectCode;
   final DateTime? certNotAfter;
 
   String get url =>
@@ -764,6 +804,7 @@ class Domain {
       statusMessage: _str(m['status_message']),
       kind: m['kind'] == null ? 'app' : _str(m['kind']),
       redirectTo: _str(m['redirect_to']),
+      redirectCode: m['redirect_code'] == null ? 301 : _int(m['redirect_code']),
       certNotAfter: _time(m['cert_not_after']),
       forceHttps: _bool(m['force_https']),
       rateLimit: _int(m['rate_limit']),

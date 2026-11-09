@@ -37,6 +37,7 @@ nav:
       - Domains and HTTPS: domains.md
       - Databases: databases.md
       - Volumes and logs: volumes-logs.md
+      - Helm charts: helm.md
       - nectar.yaml, one-click apps, compose: blueprints.md
       - Environments and env groups: environments.md
   - Operations:

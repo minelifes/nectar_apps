@@ -270,6 +270,7 @@ func applyOptions(in domainInput, o *store.DomainOptions, minRate int) string {
 	}
 	strip := o.Web != nil && o.Web.StripPrefix // web options from the UI do not carry it: keep it
 	if in.Web != nil {
+		in.Web.Wake = nil // set by the panel only (an app that sleeps when idle)
 		if err := in.Web.Normalize(); err != nil {
 			return err.Error()
 		}

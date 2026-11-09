@@ -34,6 +34,15 @@ type Web struct {
 	// StripPrefix removes the route's path prefix before proxying (/api/users → /users); nectar-gateway
 	// feature "strip-prefix".
 	StripPrefix bool `json:"strip_prefix,omitempty"`
+	// Wake (set by the panel for apps that sleep when idle, never from user input): the gateway calls
+	// URL and holds requests while the app starts. nectar-gateway feature "wake".
+	Wake *Wake `json:"wake,omitempty"`
+}
+
+// Wake is the gateway's wake call for an app scaled to zero.
+type Wake struct {
+	URL     string `json:"url"`
+	Timeout int    `json:"timeout,omitempty"` // seconds to hold requests (gateway default 60)
 }
 
 // RedirectRule redirects one path (Prefix=false) or every path under it (Prefix=true).
@@ -57,7 +66,7 @@ type CORS struct {
 // IsZero reports whether no option is set.
 func (w *Web) IsZero() bool {
 	return w == nil || (len(w.Redirects) == 0 && len(w.AllowIPs) == 0 && len(w.ResponseHeaders) == 0 &&
-		len(w.RequestHeaders) == 0 && w.CORS == nil && !w.Compress && w.HSTS == 0 && !w.StripPrefix)
+		len(w.RequestHeaders) == 0 && w.CORS == nil && !w.Compress && w.HSTS == 0 && !w.StripPrefix && w.Wake == nil)
 }
 
 var headerNameRe = regexp.MustCompile("^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,100}$")
@@ -208,6 +217,9 @@ const FeatureWebOptions = "web-options"
 
 // FeatureStripPrefix is the nectar-gateway feature for the web option strip_prefix.
 const FeatureStripPrefix = "strip-prefix"
+
+// FeatureWake: the gateway wakes backends scaled to zero (web.wake).
+const FeatureWake = "wake"
 
 // FeatureDNSRecords: the gateway manages A/AAAA records with its DNS provider (PUT /api/dns/records).
 const FeatureDNSRecords = "dns-records"

@@ -788,6 +788,15 @@ paths:
         "204": { description: Restarting }
         "400": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /apps/{id}/wake:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [apps]
+      summary: Wake a sleeping app now (see sleep_after_minutes)
+      x-permission: app.restart
+      responses:
+        "200": { description: Waking, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+        "409": { $ref: "#/components/responses/Error" }
   /apps/{id}/volumes:
     parameters: [{ $ref: "#/components/parameters/Id" }]
     get:
@@ -1231,6 +1240,66 @@ paths:
       x-permission: settings.manage
       responses:
         "200": { description: Result }
+
+  /projects/{pid}/helm:
+    parameters: [{ name: pid, in: path, required: true, schema: { type: integer, format: int64 } }]
+    get:
+      tags: [projects]
+      summary: Helm charts of the project with Helm's current revision and status
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/HelmRelease" } } } } }
+    post:
+      tags: [projects]
+      summary: Install a chart (background; poll the release)
+      description: |
+        Runs `helm upgrade --install --atomic` in a Job in the project namespace whose ServiceAccount may act only in
+        that namespace (charts needing CRDs or cluster roles fail). Values and repo_password are stored sealed.
+      x-permission: helm.manage
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/HelmInput" } } }
+      responses:
+        "202": { description: Installing, content: { application/json: { schema: { $ref: "#/components/schemas/HelmRelease" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { description: The name is taken (here or by a release Helm already has) }
+  /projects/{pid}/helm/{name}:
+    parameters:
+      - { name: pid, in: path, required: true, schema: { type: integer, format: int64 } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [projects]
+      summary: "Release detail: history (from Helm's release Secrets), workloads, services, last helm output; values with helm.manage"
+      x-permission: app.view
+      responses:
+        "200": { description: OK }
+    put:
+      tags: [projects]
+      summary: Upgrade (new version, values or chart reference; an empty repo_password keeps the saved one)
+      x-permission: helm.manage
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/HelmInput" } } } }
+      responses:
+        "202": { description: Upgrading }
+        "409": { description: Another operation is running }
+    delete:
+      tags: [projects]
+      summary: Uninstall (204 at once when Helm never had the release)
+      x-permission: helm.manage
+      responses:
+        "202": { description: Uninstalling }
+        "204": { description: Removed }
+  /projects/{pid}/helm/{name}/rollback:
+    parameters:
+      - { name: pid, in: path, required: true, schema: { type: integer, format: int64 } }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [projects]
+      summary: Roll back to a revision of the history
+      x-permission: helm.manage
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [revision], properties: { revision: { type: integer } } } } } }
+      responses:
+        "202": { description: Rolling back }
+        "400": { description: No such revision }
 
   /apps/{id}/usage:
     parameters: [{ $ref: "#/components/parameters/Id" }]
@@ -2541,6 +2610,24 @@ paths:
         "200": { description: OK }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /server/nodes/{name}/labels:
+    parameters:
+      - { name: name, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [server]
+      summary: Replace the labels people set on a node (apps pick nodes by them, config.node_selector)
+      description: >-
+        Labels of Kubernetes, k3s, Nectar (prefixes kubernetes.io, k8s.io, k3s.io, cattle.io, nectar.dev, longhorn.io)
+        are kept and can't be set (400). Header X-Nectar-Notice lists apps whose labels no ready node has any more.
+      x-permission: server.manage
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { labels: { type: object, additionalProperties: { type: string } } } }
+      responses:
+        "200": { description: OK }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /server/edge:
     get:
       tags: [server]
@@ -3462,6 +3549,15 @@ components:
               read_only: { type: boolean, description: "mount read-only (only with from)" }
         internal_ports: { type: array, maxItems: 10, items: { type: integer }, description: "more TCP ports the project's apps reach at <app>:<port> (never from outside); workers with a port get an internal Service too" }
         resume_replicas: { type: integer, readOnly: true, description: replicas before the last stop }
+        node_selector:
+          type: object
+          additionalProperties: { type: string }
+          description: The app's pods run only on nodes with all these labels (at most 10). A PATCH with node_selector replaces the whole set.
+        sleep_after_minutes:
+          type: integer
+          description: >-
+            Web apps: scale to zero after this many minutes (5–1440) without requests through the gateway; the
+            gateway wakes the app on the next request. 0 = never. Needs nectar-gateway with the "wake" feature.
     App:
       type: object
       required: [id, project_id, slug, name, kind, runtime, config, status]
@@ -3474,7 +3570,7 @@ components:
         runtime: { type: string }
         runtime_version: { type: string }
         config: { $ref: "#/components/schemas/AppConfig" }
-        status: { type: string, enum: [new, deploying, running, stopped, failed, degraded, scheduled, ready] }
+        status: { type: string, enum: [new, deploying, running, stopped, failed, degraded, scheduled, ready, sleeping] }
         status_message: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -3660,6 +3756,33 @@ components:
         dns_message: { type: string }
         target_host: { type: string, description: "kind=proxy: IP or host name the gateway forwards to" }
         target_https: { type: boolean, description: "kind=proxy: connect to the target over HTTPS (certificate not verified)" }
+    HelmInput:
+      type: object
+      properties:
+        name: { type: string, description: "release name (install only): lowercase, digits, -, ≤ 53" }
+        repo: { type: string, example: https://grafana.github.io/helm-charts }
+        chart: { type: string, example: grafana }
+        version: { type: string, description: "\"\" = latest; ranges allowed" }
+        values: { type: string, description: values.yaml }
+        repo_username: { type: string }
+        repo_password: { type: string, writeOnly: true }
+    HelmRelease:
+      type: object
+      properties:
+        id: { type: integer }
+        project_id: { type: integer }
+        name: { type: string }
+        repo: { type: string }
+        chart: { type: string }
+        version: { type: string, description: requested version }
+        repo_username: { type: string }
+        has_password: { type: boolean }
+        status: { type: string, enum: [installing, upgrading, rolling_back, uninstalling, deployed, failed] }
+        message: { type: string, description: why the last operation failed }
+        revision: { type: integer, description: Helm's current revision (0 = none) }
+        helm_status: { type: string }
+        chart_version: { type: string }
+        app_version: { type: string }
     ZipUpload:
       type: object
       properties:

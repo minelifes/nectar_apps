@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -99,5 +100,24 @@ func TestStatusError(t *testing.T) {
 	}
 	if IsNotFound(err) {
 		t.Fatal("403 reported as not found")
+	}
+}
+
+func TestNodeLabelRules(t *testing.T) {
+	for k, want := range map[string]bool{"disk": true, "example.com/zone": true, "kubernetes.io/hostname": false,
+		"node-role.kubernetes.io/gpu": false, "topology.kubernetes.io/zone": false, "nectar.dev/edge": false, "k3s.io/x": false} {
+		if EditableLabel(k) != want {
+			t.Errorf("EditableLabel(%s) != %v", k, want)
+		}
+	}
+	for _, ok := range [][2]string{{"disk", "ssd"}, {"example.com/zone", ""}, {"a.b-c/x_y.z", "A-1_2.3"}} {
+		if msg := LabelProblem(ok[0], ok[1]); msg != "" {
+			t.Errorf("%v: %s", ok, msg)
+		}
+	}
+	for _, bad := range [][2]string{{"bad key", "x"}, {"-x", "y"}, {"Example.com/x", "y"}, {"x", "a b"}, {"x", strings.Repeat("a", 64)}, {"/x", "y"}} {
+		if LabelProblem(bad[0], bad[1]) == "" {
+			t.Errorf("%v accepted", bad)
+		}
 	}
 }

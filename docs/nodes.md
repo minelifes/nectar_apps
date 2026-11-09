@@ -15,6 +15,19 @@ Each node card can:
 Draining the edge node, or the last node that could take the pods, asks again first: it would take the gateway
 or the panel offline.
 
+## Labels and app placement
+
+Give nodes labels (node card → **Labels…**, or `nectar node label NODE disk=ssd gpu-`), e.g. `disk=ssd`,
+`gpu=nvidia`, `zone=office`. Then in an app's **Settings → Placement** pick the labels it needs: its pods
+(and its release and task jobs) run only on nodes that have all of them. Nothing picked: any node.
+
+- Labels of Kubernetes, k3s and Nectar (`kubernetes.io/…`, `k3s.io/…`, `nectar.dev/…`, …) are not shown or
+  changed.
+- If no ready node has the labels, new pods wait (Pending) — the settings page warns, and removing a label an
+  app needs tells you which apps are affected. Running pods are not moved when labels change; redeploy or
+  restart the app.
+- An app with a ReadWriteOnce volume stays on the node that holds the volume: pick labels that node has.
+
 ## Several edge nodes
 
 By default nectar-gateway runs on one **edge node** (label `nectar.dev/edge=true`, set by `install.sh`) — the

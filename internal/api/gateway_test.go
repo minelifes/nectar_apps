@@ -38,10 +38,11 @@ type fakeGateway struct {
 	block    []map[string]any
 	features []string
 	certs    map[int64]map[string]any
-	covered  map[string]string   // host → certificate domain (covered_by on routes)
-	dns      map[string][]string // name → IPs (records the gateway created)
-	foreign  map[string]bool     // names with records someone else created
-	replicas []map[string]any    // GET /api/replicas
+	covered  map[string]string    // host → certificate domain (covered_by on routes)
+	dns      map[string][]string  // name → IPs (records the gateway created)
+	foreign  map[string]bool      // names with records someone else created
+	replicas []map[string]any     // GET /api/replicas
+	lastSeen map[string]time.Time // host → newest request (metrics last_seen)
 }
 
 func (f *fakeGateway) handler(t *testing.T) http.Handler {
@@ -120,7 +121,11 @@ func (f *fakeGateway) handler(t *testing.T) http.Handler {
 	}))
 	mux.HandleFunc("GET /api/metrics", auth(func(w http.ResponseWriter, r *http.Request) {
 		d := r.URL.Query().Get("domain")
-		js(w, map[string]any{"enabled": true, "domains": []map[string]any{{"domain": d, "requests": 42, "p95_ms": 25}}})
+		sum := map[string]any{"domain": d, "requests": 42, "p95_ms": 25}
+		if t, ok := f.lastSeen[d]; ok {
+			sum["last_seen"] = t.UTC().Format(time.RFC3339)
+		}
+		js(w, map[string]any{"enabled": true, "domains": []map[string]any{sum}})
 	}))
 	mux.HandleFunc("GET /api/access-log", auth(func(w http.ResponseWriter, r *http.Request) {
 		d := r.URL.Query().Get("domain")

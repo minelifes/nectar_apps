@@ -56,6 +56,7 @@ var Catalog = []Group{
 		{"app.rollback", "Roll back to a previous release", ScopeProject},
 		{"app.restart", "Restart, stop, start and scale apps", ScopeProject},
 		{"app.delete", "Delete apps", ScopeProject},
+		{"helm.manage", "Install, upgrade, roll back and remove Helm charts", ScopeProject},
 	}},
 	{"Runtime access", []Def{
 		{"app.logs", "Read app logs", ScopeProject},
@@ -129,7 +130,7 @@ func BuiltinRoles() []BuiltinRole {
 		{"admin", "Admin", "Everything except editing roles", admin},
 		{"developer", "Developer", "Build, deploy and operate apps", []string{
 			"project.view", "app.view", "app.create", "app.edit", "app.deploy", "app.rollback", "app.restart",
-			"app.logs", "app.exec", "app.metrics", "env.view", "env.edit", "volume.manage",
+			"app.logs", "app.exec", "app.metrics", "env.view", "env.edit", "volume.manage", "helm.manage",
 			"domain.view", "domain.manage", "domain.tls", "server.view",
 		}},
 		{"deployer", "Deployer", "Deploy and roll back only — for CI tokens", []string{

@@ -86,6 +86,8 @@ func TestRotation(t *testing.T) {
 	exec(`INSERT INTO registry_credentials (host, username, password, created_at, updated_at) VALUES ('ghcr.io', 'me', ?, 0, 0)`, seal(t, oldKey, "registries", "ghp"))
 	exec(`INSERT INTO app_sources (app_id, repo_url, token, webhook_secret, updated_at) VALUES (?, 'https://g/x.git', ?, ?, 0)`, a.ID,
 		seal(t, oldKey, "builds", "tok"), seal(t, oldKey, "builds", "hook"))
+	exec(`INSERT INTO helm_releases (project_id, name, repo, chart, values_enc, repo_password, created_at, updated_at)
+		VALUES (?, 'web', 'https://charts.example.com', 'nginx', ?, ?, 0, 0)`, p.ID, seal(t, oldKey, "env", "replicaCount: 2"), seal(t, oldKey, "env", "repo-pw"))
 	if err := st.SetSetting(ctx, "smtp", map[string]any{"host": "mail", "password": seal(t, oldKey, "smtp", "smtp-pw")}); err != nil {
 		t.Fatal(err)
 	}
@@ -136,6 +138,8 @@ func TestRotation(t *testing.T) {
 		{"registries", `SELECT password FROM registry_credentials`, "ghp"},
 		{"builds", `SELECT token FROM app_sources`, "tok"},
 		{"builds", `SELECT webhook_secret FROM app_sources`, "hook"},
+		{"env", `SELECT values_enc FROM helm_releases`, "replicaCount: 2"},
+		{"env", `SELECT repo_password FROM helm_releases`, "repo-pw"},
 	} {
 		if v := open(t, newKey, c.purpose, str(c.q)); v != c.want {
 			t.Errorf("%s: %q", c.q, v)

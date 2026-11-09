@@ -15,6 +15,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"nectar_apps/internal/adopt"
@@ -26,6 +27,7 @@ import (
 	"nectar_apps/internal/config"
 	"nectar_apps/internal/deploy"
 	"nectar_apps/internal/gateway"
+	"nectar_apps/internal/helm"
 	"nectar_apps/internal/housekeep"
 	"nectar_apps/internal/kube"
 	"nectar_apps/internal/logstore"
@@ -129,7 +131,9 @@ type Server struct {
 	ssoClient   *sso.Client
 	sso         ssoFlows
 	passkeys    passkeyFlows
-	zips        zipUploads // .zip files being uploaded into volumes and unpacked
+	zips        zipUploads     // .zip files being uploaded into volumes and unpacked
+	helmRunner  *helm.Runner   // nil: one on s.kube (tests set their own)
+	helmWG      sync.WaitGroup // running helm operations (tests wait for them)
 }
 
 // New creates the API server.
@@ -175,6 +179,12 @@ func New(d Deps) *Server {
 		builder: d.Builder, registry: d.Registry, registryBox: d.RegistryBox, logs: d.LogStore}
 	if d.Builder != nil {
 		d.Builder.OnFinish = srv.previewBuildFinished // commit status + the newest commit of a preview
+	}
+	if srv.syncer != nil && srv.syncer.WakeURL == nil && d.Config.InternalURL != "" {
+		srv.syncer.WakeURL = srv.wakeURL
+	}
+	if err := d.Store.FailInterruptedHelmOps(context.Background()); err != nil {
+		d.Log.Warn("helm: can't mark interrupted operations", "err", err)
 	}
 	return srv
 }
@@ -261,6 +271,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/server/metrics", s.can("server.view", s.serverMetrics))
 	mux.Handle("GET /api/server/join", s.can("server.manage", s.joinInfo))
 	mux.Handle("POST /api/server/nodes/{name}/{action}", s.can("server.manage", s.nodeAction))
+	mux.Handle("PUT /api/server/nodes/{name}/labels", s.can("server.manage", s.setNodeLabels))
 	mux.Handle("GET /api/server/edge", s.can("server.view", s.edgeStatus))
 	mux.Handle("DELETE /api/server/nodes/{name}", s.can("server.manage", s.deleteNode))
 	mux.Handle("GET /api/server/events", s.can("server.view", s.serverEvents))
@@ -329,6 +340,12 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("PATCH /api/projects/{pid}", s.inProject("project.edit", s.updateProject))
 	mux.Handle("DELETE /api/projects/{pid}", s.inProject("project.delete", s.deleteProject))
 	mux.Handle("GET /api/projects/{pid}/apps", s.inProject("app.view", s.listApps))
+	mux.Handle("GET /api/projects/{pid}/helm", s.inProject("app.view", s.listHelm))
+	mux.Handle("POST /api/projects/{pid}/helm", s.inProject("helm.manage", s.createHelm))
+	mux.Handle("GET /api/projects/{pid}/helm/{name}", s.inProject("app.view", s.getHelm))
+	mux.Handle("PUT /api/projects/{pid}/helm/{name}", s.inProject("helm.manage", s.upgradeHelm))
+	mux.Handle("POST /api/projects/{pid}/helm/{name}/rollback", s.inProject("helm.manage", s.rollbackHelm))
+	mux.Handle("DELETE /api/projects/{pid}/helm/{name}", s.inProject("helm.manage", s.deleteHelm))
 	mux.Handle("POST /api/projects/{pid}/apps", s.inProject("app.create", s.createApp))
 	mux.Handle("POST /api/projects/{pid}/apply", s.inProject("app.create", s.applyProject))
 	mux.Handle("GET /api/projects/{pid}/export", s.inProject("project.view", s.exportProject))
@@ -391,6 +408,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/apps/{id}/start", s.onApp("app.restart", s.startApp))
 	mux.Handle("POST /api/apps/{id}/stop", s.onApp("app.restart", s.stopApp))
 	mux.Handle("POST /api/apps/{id}/restart", s.onApp("app.restart", s.restartApp))
+	mux.Handle("POST /api/apps/{id}/wake", s.onApp("app.restart", s.wakeApp))
 	mux.Handle("GET /api/apps/{id}/volumes", s.onApp("app.view", s.listVolumes))
 	mux.Handle("DELETE /api/apps/{id}/volumes/{name}", s.onApp("volume.manage", s.deleteVolume))
 	mux.Handle("GET /api/apps/{id}/volumes/{name}/files", s.onApp("volume.manage", s.listFiles))
@@ -487,6 +505,8 @@ func (s *Server) Handler() http.Handler {
 
 	// artifact downloads by app pods (signed URLs, no session)
 	mux.HandleFunc("GET /internal/artifacts/{sha}", s.internalArtifact)
+	// the gateway wakes sleeping apps (signed URLs, no session)
+	mux.HandleFunc("POST /internal/wake/{id}", s.internalWake)
 
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "no such endpoint")

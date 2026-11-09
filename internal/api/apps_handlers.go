@@ -20,6 +20,7 @@ import (
 	"nectar_apps/internal/build"
 	"nectar_apps/internal/deploy"
 	"nectar_apps/internal/detect"
+	"nectar_apps/internal/kube"
 	"nectar_apps/internal/runtimes"
 	"nectar_apps/internal/store"
 )
@@ -327,6 +328,22 @@ func validateConfig(rt runtimes.Runtime, kind string, c store.AppConfig) string 
 	if c.Replicas < 0 || c.Replicas > 20 {
 		return "replicas must be 0–20"
 	}
+	if len(c.NodeSelector) > 10 {
+		return "at most 10 node labels"
+	}
+	for k, v := range c.NodeSelector {
+		if msg := kube.LabelProblem(k, v); msg != "" {
+			return msg
+		}
+	}
+	if c.SleepAfterMinutes != 0 {
+		if kind != runtimes.KindWeb {
+			return "only web apps can sleep when idle"
+		}
+		if c.SleepAfterMinutes < 5 || c.SleepAfterMinutes > 1440 {
+			return "sleep_after_minutes must be 0 (never) or 5–1440"
+		}
+	}
 	if len(c.InternalPorts) > 10 {
 		return "at most 10 internal ports"
 	}
@@ -539,6 +556,7 @@ func (s *Server) updateApp(w http.ResponseWriter, r *http.Request, p *principal,
 	}
 	rt, _ := s.catalog.Get(app.RuntimeID)
 	oldVolumes := slices.Clone(app.Config.Volumes)
+	oldSleep := app.Config.SleepAfterMinutes
 	if in.Name != nil {
 		if n := len(strings.TrimSpace(*in.Name)); n == 0 || n > 100 {
 			writeError(w, http.StatusBadRequest, "name must be 1–100 characters")
@@ -555,6 +573,12 @@ func (s *Server) updateApp(w http.ResponseWriter, r *http.Request, p *principal,
 		app.RuntimeVersion = v.ID
 	}
 	if len(in.Config) > 0 && string(in.Config) != "null" {
+		var keys map[string]json.RawMessage
+		if json.Unmarshal(in.Config, &keys) == nil {
+			if _, ok := keys["node_selector"]; ok {
+				app.Config.NodeSelector = nil // a map would merge: the given labels replace the old ones
+			}
+		}
 		if err := json.Unmarshal(in.Config, &app.Config); err != nil { // merges onto the current config
 			writeError(w, http.StatusBadRequest, "invalid config: "+err.Error())
 			return
@@ -566,6 +590,10 @@ func (s *Server) updateApp(w http.ResponseWriter, r *http.Request, p *principal,
 	}
 	if msg := validateConfig(rt, app.Kind, app.Config); msg != "" {
 		writeError(w, http.StatusBadRequest, msg)
+		return
+	}
+	if app.Config.SleepAfterMinutes > 0 && oldSleep == 0 && !s.syncer.CanWake(r.Context()) {
+		writeError(w, http.StatusConflict, "sleeping when idle needs nectar-gateway with wake support (update it) and domains served by it")
 		return
 	}
 	volumesChanged := !slices.Equal(oldVolumes, app.Config.Volumes)
@@ -592,6 +620,20 @@ func (s *Server) updateApp(w http.ResponseWriter, r *http.Request, p *principal,
 	if volumesChanged {
 		notes = s.resizeVolumes(r, app, proj, oldVolumes)
 		s.syncSharedSizes(r.Context(), app)
+	}
+	if len(app.Config.NodeSelector) > 0 && s.kube != nil {
+		if nodes, err := s.kube.ListNodes(r.Context()); err == nil && !anyNodeMatches(nodes, app.Config.NodeSelector) {
+			notes = append(notes, "no ready node has all these labels yet: new pods will wait until one does (Server → node → Labels)")
+		}
+	}
+	if app.Config.SleepAfterMinutes != oldSleep {
+		if app.Config.SleepAfterMinutes == 0 && app.Status == deploy.StatusSleeping && s.deployer != nil {
+			if err := s.deployer.Wake(r.Context(), app, proj); err != nil {
+				notes = append(notes, "could not wake the app: "+err.Error())
+			}
+			app, _ = s.store.GetApp(r.Context(), app.ID)
+		}
+		s.syncer.Trigger() // the route gains or loses the wake call
 	}
 	s.audit(r, p, "app.update", proj.Slug+"/"+app.Slug, nil)
 	if len(notes) > 0 {
