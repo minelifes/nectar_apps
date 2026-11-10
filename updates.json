@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.26",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:7d9c60be67609ce1fc9196f642d1a58c0341852957b43f9f68e6c5977e67fe5e",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- generate translates\n- An issue in the proxy module that occurred when proxying a request to a target domain has been fixed.",
+          "previous": "1.0.25",
+          "published_at": "2026-11-10T19:37:26+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.25",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:e3169ddc3663377aca5c265e99a3572c0443de2def4a95414b7e6e33c4e821c1",
@@ -525,6 +545,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.26",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:7d9c60be67609ce1fc9196f642d1a58c0341852957b43f9f68e6c5977e67fe5e",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- generate translates\n- An issue in the proxy module that occurred when proxying a request to a target domain has been fixed.",
+          "previous": "1.0.25",
+          "published_at": "2026-11-10T19:37:26+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.25",
@@ -1048,5 +1088,5 @@
       ]
     }
   },
-  "updated_at": "2026-11-09T18:44:48+00:00"
+  "updated_at": "2026-11-10T19:37:26+00:00"
 }
