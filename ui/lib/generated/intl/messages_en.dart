@@ -2379,5 +2379,11 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "widgetNothingYet": MessageLookupByLibrary.simpleMessage("Nothing yet."),
     "widgetRetry": MessageLookupByLibrary.simpleMessage("Retry"),
+    "webBackendHost": MessageLookupByLibrary.simpleMessage(
+      "Site name for the backend (optional)",
+    ),
+    "webBackendHostHelp": MessageLookupByLibrary.simpleMessage(
+      "Sent as the Host header and, to an HTTPS backend, as the TLS server name. Empty: the visitor's host. Set it when the other server (e.g. its nginx) knows the site under another name.",
+    ),
   };
 }

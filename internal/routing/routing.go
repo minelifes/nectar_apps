@@ -291,6 +291,7 @@ func (s *Syncer) Sync(ctx context.Context) error {
 	webOK := s.hasFeature(ctx, gateway.FeatureWebOptions)
 	stripOK := s.hasFeature(ctx, gateway.FeatureStripPrefix)
 	wakeOK := s.hasFeature(ctx, gateway.FeatureWake)
+	hostOK := s.hasFeature(ctx, gateway.FeatureBackendHost)
 	var errs []error
 	wanted := map[string]bool{}
 	for _, d := range domains {
@@ -318,6 +319,15 @@ func (s *Syncer) Sync(ctx context.Context) error {
 				want.Web = nil
 			}
 			webNote = "waking a sleeping app needs the latest nectar-gateway (update it)"
+		}
+		if want.Web != nil && want.Web.BackendHost != "" && !hostOK {
+			w := *want.Web
+			w.BackendHost = ""
+			want.Web = &w
+			if w.IsZero() {
+				want.Web = nil
+			}
+			webNote = "the backend host option needs the latest nectar-gateway (update it)"
 		}
 		if want.Web != nil && !webOK {
 			// an older gateway would silently ignore the options: serve the route without them and say so

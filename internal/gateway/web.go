@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -23,7 +25,10 @@ type Web struct {
 	ResponseHeaders map[string]string `json:"response_headers,omitempty"`
 	// RequestHeaders are set on the request to the backend ("" value removes the header).
 	RequestHeaders map[string]string `json:"request_headers,omitempty"`
-	CORS           *CORS             `json:"cors,omitempty"`
+	// BackendHost replaces the site name the backend sees (Host header, and the TLS server name of an
+	// HTTPS backend); empty: the visitor's host. Needs FeatureBackendHost.
+	BackendHost string `json:"backend_host,omitempty"`
+	CORS        *CORS  `json:"cors,omitempty"`
 	// Compress gzip-compresses text responses (HTML, CSS, JS, JSON, SVG, XML, plain text) when the client
 	// accepts it and the backend did not compress them already.
 	Compress bool `json:"compress,omitempty"`
@@ -66,7 +71,7 @@ type CORS struct {
 // IsZero reports whether no option is set.
 func (w *Web) IsZero() bool {
 	return w == nil || (len(w.Redirects) == 0 && len(w.AllowIPs) == 0 && len(w.ResponseHeaders) == 0 &&
-		len(w.RequestHeaders) == 0 && w.CORS == nil && !w.Compress && w.HSTS == 0 && !w.StripPrefix && w.Wake == nil)
+		len(w.RequestHeaders) == 0 && w.BackendHost == "" && w.CORS == nil && !w.Compress && w.HSTS == 0 && !w.StripPrefix && w.Wake == nil)
 }
 
 var headerNameRe = regexp.MustCompile("^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,100}$")
@@ -116,6 +121,19 @@ func (w *Web) Normalize() error {
 		w.AllowIPs[i] = s
 		if _, err := parsePrefix(s); err != nil {
 			return fmt.Errorf("web.allow_ips: %q is not an IP address or CIDR", s)
+		}
+	}
+	if w.BackendHost != "" {
+		w.BackendHost = strings.ToLower(strings.TrimSpace(w.BackendHost))
+		h := w.BackendHost
+		if hh, port, err := net.SplitHostPort(h); err == nil {
+			if n, err := strconv.Atoi(port); err != nil || n < 1 || n > 65535 {
+				return fmt.Errorf("web.backend_host %q has a bad port", w.BackendHost)
+			}
+			h = hh
+		}
+		if len(w.BackendHost) > 253 || !backendHostRe.MatchString(h) {
+			return fmt.Errorf("web.backend_host %q is not a host name", w.BackendHost)
 		}
 	}
 	for _, hm := range []map[string]string{w.ResponseHeaders, w.RequestHeaders} {
@@ -217,6 +235,12 @@ const FeatureWebOptions = "web-options"
 
 // FeatureStripPrefix is the nectar-gateway feature for the web option strip_prefix.
 const FeatureStripPrefix = "strip-prefix"
+
+// FeatureBackendHost: the gateway supports web.backend_host and sends HTTPS backends the site's name (SNI).
+const FeatureBackendHost = "backend-host"
+
+// backendHostRe: a DNS name or an IPv4 address (the port is checked separately).
+var backendHostRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$`)
 
 // FeatureWake: the gateway wakes backends scaled to zero (web.wake).
 const FeatureWake = "wake"

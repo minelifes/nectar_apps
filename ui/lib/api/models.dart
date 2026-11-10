@@ -867,7 +867,11 @@ class WebOptions {
     this.compress = false,
     this.hsts = 0,
     this.hstsSubdomains = false,
+    this.backendHost = '',
   });
+
+  /// The site name the backend sees (Host header and TLS server name); empty = the visitor's host.
+  final String backendHost;
 
   final List<RedirectRule> redirects;
   final List<String> allowIps;
@@ -888,6 +892,7 @@ class WebOptions {
       allowIps.isEmpty &&
       responseHeaders.isEmpty &&
       requestHeaders.isEmpty &&
+      backendHost.isEmpty &&
       corsOrigins.isEmpty &&
       !compress &&
       hsts == 0;
@@ -898,6 +903,7 @@ class WebOptions {
       '${redirects.length} redirect${redirects.length == 1 ? '' : 's'}',
     if (allowIps.isNotEmpty) 'IP allowlist',
     if (responseHeaders.isNotEmpty || requestHeaders.isNotEmpty) 'headers',
+    if (backendHost.isNotEmpty) 'host → $backendHost',
     if (corsOrigins.isNotEmpty) 'CORS',
     if (compress) 'gzip',
     if (hsts > 0) 'HSTS',
@@ -919,6 +925,7 @@ class WebOptions {
       compress: _bool(m['compress']),
       hsts: _int(m['hsts']),
       hstsSubdomains: _bool(m['hsts_subdomains']),
+      backendHost: _str(m['backend_host']),
     );
   }
 
@@ -929,6 +936,7 @@ class WebOptions {
     if (allowIps.isNotEmpty) 'allow_ips': allowIps,
     if (responseHeaders.isNotEmpty) 'response_headers': responseHeaders,
     if (requestHeaders.isNotEmpty) 'request_headers': requestHeaders,
+    if (backendHost.isNotEmpty) 'backend_host': backendHost,
     if (corsOrigins.isNotEmpty)
       'cors': {
         'origins': corsOrigins,

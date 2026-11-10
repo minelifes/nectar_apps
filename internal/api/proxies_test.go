@@ -85,6 +85,23 @@ func TestProxyDomains(t *testing.T) {
 		t.Fatalf("move: %d %v", code, md)
 	}
 
+	// another server's nginx with several sites: the gateway sends it the site's name
+	if code, v, _ := e.do(o, "PATCH", "/api/proxies/"+id, map[string]any{"target_https": true,
+		"web": map[string]any{"backend_host": "Shop.Example.org"}}); code != 200 {
+		t.Fatalf("backend host: %d %v", code, v)
+	}
+	if rt := route("nas.example.com", "/"); rt["web"] != nil {
+		t.Fatalf("backend_host sent to a gateway without the feature: %v", rt)
+	}
+	fg.setFeatures("web-options", "strip-prefix", "backend-host")
+	e.api.syncer.Sync(context.Background())
+	if rt := route("nas.example.com", "/"); rt["web"] == nil || rt["web"].(map[string]any)["backend_host"] != "shop.example.org" {
+		t.Fatalf("backend host route: %v", rt)
+	}
+	if code, _, _ := e.do(o, "PATCH", "/api/proxies/"+id, map[string]any{"web": map[string]any{"backend_host": "http://x/"}}); code != 400 {
+		t.Fatalf("bad backend host: %d", code)
+	}
+
 	// a redirect without an app
 	if code, rd, _ := e.do(o, "POST", "/api/proxies", map[string]any{"host": "www.nas.example.com", "kind": "redirect",
 		"redirect_to": "nas.example.com"}); code != 201 || rd["kind"] != "redirect" {

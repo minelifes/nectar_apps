@@ -2496,5 +2496,11 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "widgetNothingYet": MessageLookupByLibrary.simpleMessage("Поки нічого."),
     "widgetRetry": MessageLookupByLibrary.simpleMessage("Повторити"),
+    "webBackendHost": MessageLookupByLibrary.simpleMessage(
+      "Ім'я сайту для бекенду (необов'язково)",
+    ),
+    "webBackendHostHelp": MessageLookupByLibrary.simpleMessage(
+      "Надсилається як заголовок Host і, для HTTPS-бекенду, як ім'я сервера TLS. Порожньо — хост відвідувача. Вкажіть, якщо інший сервер (напр. його nginx) знає сайт під іншим ім'ям.",
+    ),
   };
 }

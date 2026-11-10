@@ -15,6 +15,7 @@ class WebOptionsForm {
     allowIps.text = o.allowIps.join('\n');
     responseHeaders.text = _headersText(o.responseHeaders);
     requestHeaders.text = _headersText(o.requestHeaders);
+    backendHost.text = o.backendHost;
     cors = o.corsOrigins.isNotEmpty;
     corsOrigins.text = o.corsOrigins.join('\n');
     corsCredentials = o.corsCredentials;
@@ -28,6 +29,7 @@ class WebOptionsForm {
   final allowIps = TextEditingController();
   final responseHeaders = TextEditingController();
   final requestHeaders = TextEditingController();
+  final backendHost = TextEditingController();
   final corsOrigins = TextEditingController();
   bool cors = false;
   bool corsCredentials = false;
@@ -55,6 +57,7 @@ class WebOptionsForm {
     allowIps: _lines(allowIps.text),
     responseHeaders: _parseHeaders(responseHeaders.text),
     requestHeaders: _parseHeaders(requestHeaders.text),
+    backendHost: backendHost.text.trim().toLowerCase(),
     corsOrigins: cors ? _lines(corsOrigins.text) : const [],
     corsCredentials: cors && corsCredentials,
     compress: compress,
@@ -63,7 +66,13 @@ class WebOptionsForm {
   );
 
   void dispose() {
-    for (final c in [allowIps, responseHeaders, requestHeaders, corsOrigins]) {
+    for (final c in [
+      allowIps,
+      responseHeaders,
+      requestHeaders,
+      backendHost,
+      corsOrigins,
+    ]) {
       c.dispose();
     }
     for (final r in rules) {
@@ -254,6 +263,18 @@ class WebOptionsFields extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(s.appNameValuePerLineAn, style: hint),
+        const SizedBox(height: 8),
+        TextField(
+          controller: form.backendHost,
+          onChanged: (_) => onChanged(),
+          decoration: InputDecoration(
+            labelText: s.webBackendHost,
+            hintText: 'site.example.com',
+            helperText: s.webBackendHostHelp,
+            helperMaxLines: 3,
+            isDense: true,
+          ),
+        ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           value: form.cors,

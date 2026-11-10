@@ -67,7 +67,11 @@ an address and port — no app needed:
 - `10.0.0.5:8080` — another machine the server reaches,
 - `grafana.monitoring.svc.cluster.local:3000` — a Kubernetes Service Nectar does not manage.
 
-Tick *The target uses HTTPS* when the target only speaks HTTPS (its certificate is not checked). Everything
+Tick *The target uses HTTPS* when the target only speaks HTTPS (its certificate is not checked). The target
+gets the visitor's site name — as the `Host` header and, over HTTPS, as the TLS server name (SNI) — so a
+server with several sites (nginx, Apache) answers with the right one rather than its default page. If that
+server knows the site under another name, set **Site name for the backend** in the web options (e.g.
+`shop.example.org`). Everything
 else works as for app domains: HTTPS certificates, DNS records, rate limits, body size, web options, password,
 removing the path. Choose **Redirect** instead to send a domain elsewhere (301/302/307/308; without a path of
 its own the request's path and query are kept). Changing proxies needs `settings.manage`; the CLI has
