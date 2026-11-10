@@ -2373,6 +2373,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "updateVersion": MessageLookupByLibrary.simpleMessage("Version"),
     "updateVersions": MessageLookupByLibrary.simpleMessage("Versions"),
+    "webBackendHost": MessageLookupByLibrary.simpleMessage(
+      "Site name for the backend (optional)",
+    ),
+    "webBackendHostHelp": MessageLookupByLibrary.simpleMessage(
+      "Sent as the Host header and, to an HTTPS backend, as the TLS server name. Empty: the visitor\'s host. Set it when the other server (e.g. its nginx) knows the site under another name.",
+    ),
     "widgetLoading": MessageLookupByLibrary.simpleMessage("Loading"),
     "widgetNoDataYetHistoryFills": MessageLookupByLibrary.simpleMessage(
       "No data yet: history fills in every 15 seconds.",

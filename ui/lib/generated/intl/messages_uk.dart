@@ -2490,6 +2490,12 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "updateVersion": MessageLookupByLibrary.simpleMessage("Версія"),
     "updateVersions": MessageLookupByLibrary.simpleMessage("Версії"),
+    "webBackendHost": MessageLookupByLibrary.simpleMessage(
+      "Ім\'я сайту для бекенду (необов\'язково)",
+    ),
+    "webBackendHostHelp": MessageLookupByLibrary.simpleMessage(
+      "Надсилається як заголовок Host і, для HTTPS-бекенду, як ім\'я сервера TLS. Порожньо — хост відвідувача. Вкажіть, якщо інший сервер (напр. його nginx) знає сайт під іншим ім\'ям.",
+    ),
     "widgetLoading": MessageLookupByLibrary.simpleMessage("Завантаження"),
     "widgetNoDataYetHistoryFills": MessageLookupByLibrary.simpleMessage(
       "Даних ще немає: історія оновлюється кожні 15 секунд.",
