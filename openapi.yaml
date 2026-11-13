@@ -788,6 +788,43 @@ paths:
         "204": { description: Restarting }
         "400": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /projects/{pid}/scans:
+    parameters: [{ name: pid, in: path, required: true, schema: { type: integer } }]
+    get:
+      tags: [apps]
+      summary: The last image scan of each app of the project, without the findings (badges)
+      x-permission: app.view
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    app_id: { type: integer }
+                    status: { type: string, enum: [running, done, failed] }
+                    total: { type: integer }
+                    critical: { type: integer }
+                    high: { type: integer }
+                    fixable: { type: integer }
+  /apps/{id}/scan:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [apps]
+      summary: The last vulnerability scan of the app's image (status none when never scanned)
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ImageScan" } } } }
+    post:
+      tags: [apps]
+      summary: Scan the image of the running release with Trivy (in the background; poll GET)
+      x-permission: app.deploy
+      responses:
+        "202": { description: Started, content: { application/json: { schema: { $ref: "#/components/schemas/ImageScan" } } } }
+        "409": { $ref: "#/components/responses/Error" }
   /apps/{id}/wake:
     parameters: [{ $ref: "#/components/parameters/Id" }]
     post:
@@ -2727,6 +2764,13 @@ paths:
       parameters: [{ name: ip, in: path, required: true, schema: { type: string } }]
       responses:
         "204": { description: Unblocked }
+  /gateway/client-ip:
+    get:
+      tags: [gateway]
+      summary: The address the caller is seen under (for adding yourself to the allowlist)
+      x-permission: settings.manage
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { ip: { type: string } } } } } }
   /gateway/settings:
     get:
       tags: [gateway]
@@ -3036,6 +3080,7 @@ components:
       properties:
         checked_at: { type: string, format: date-time }
         components: { type: object, additionalProperties: { $ref: "#/components/schemas/UpdateComponentState" } }
+        signatures: { type: boolean, description: "update images are verified (cosign) against the trusted keys before they are applied" }
     UpdateRequest:
       type: object
       properties:
@@ -3707,6 +3752,8 @@ components:
         compress: { type: boolean, description: gzip text responses }
         hsts: { type: integer, description: Strict-Transport-Security max-age in seconds, 0 = off }
         hsts_subdomains: { type: boolean }
+        backend_host: { type: string, description: "site name the backend sees (Host header, TLS server name); empty = the visitor's host. Gateways with backend-host" }
+        allow_scanner_paths: { type: boolean, description: "the app really serves /wp-admin, /wp-login.php, /phpmyadmin …: visitors asking for them on this domain are not blocked. Gateways with scanner-switch" }
         hsts_preload: { type: boolean }
     DomainInput:
       type: object
@@ -3768,6 +3815,37 @@ components:
         values: { type: string, description: values.yaml }
         repo_username: { type: string }
         repo_password: { type: string, writeOnly: true }
+    ImageScan:
+      type: object
+      properties:
+        app_id: { type: integer }
+        image: { type: string, description: the scanned image }
+        current_image: { type: string, description: 'the image of the running release ("" = not deployed)' }
+        stale: { type: boolean, description: the app now runs another image than the scanned one }
+        status: { type: string, enum: [none, running, done, failed] }
+        message: { type: string, description: why the scan failed }
+        total: { type: integer }
+        critical: { type: integer }
+        high: { type: integer }
+        medium: { type: integer }
+        low: { type: integer }
+        unknown: { type: integer }
+        fixable: { type: integer, description: vulnerabilities fixed in a newer version of the package }
+        findings:
+          type: array
+          description: the worst findings (at most 300), critical first
+          items:
+            type: object
+            properties:
+              id: { type: string, example: CVE-2026-1234 }
+              severity: { type: string, enum: [CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN] }
+              package: { type: string }
+              installed: { type: string }
+              fixed: { type: string, description: 'version with the fix ("" = none yet)' }
+              target: { type: string, description: where it was found (OS layer or a lock file) }
+              title: { type: string }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
     HelmRelease:
       type: object
       properties:
@@ -3867,4 +3945,5 @@ components:
         dns_provider: { type: string, enum: ["", cloudflare], description: "DNS-01 provider for wildcard certificates ('' = none)" }
         dns_api_token: { type: string, writeOnly: true, description: "the provider's API token (Cloudflare: Zone:Read + DNS:Edit); never returned, dns_token_set shows it is there" }
         dns_token_set: { type: boolean, readOnly: true }
-        rate_limit_block_minutes: { type: integer, minimum: 0, maximum: 10080, description: "a client that keeps exceeding a rate limit (more than 10 × the limit refused within a minute) is blocked this long; 0 = never (only 429). Gateways with the rate-limit-429 feature; default 10" }
+        rate_limit_block_minutes: { type: integer, minimum: 0, maximum: 10080, description: "a client that keeps exceeding a rate limit (more than 60 × the limit refused within a minute) is blocked this long; 0 = never (only 429). Gateways with the rate-limit-429 feature; default 10" }
+        allow_ips: { type: array, items: { type: string }, description: "addresses and networks (CIDR) the gateway never blocks or rate limits; at most 200. Gateways with the allow-ips feature (409 otherwise)" }

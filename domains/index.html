@@ -1245,6 +1245,18 @@ domain. Records someone else created are never changed (the domain shows "existi
   h2c for gRPC).</li>
 </ul>
 <h2 id="gateway-page">Gateway page<a class="headerlink" href="#gateway-page" title="Permanent link">&para;</a></h2>
+<p><strong>WordPress, phpMyAdmin and similar.</strong> The gateway blocks a visitor for a day when it asks for a path only
+vulnerability scanners request on other sites — <code>/wp-admin</code>, <code>/wp-login.php</code>, <code>/xmlrpc.php</code>, <code>/phpmyadmin</code>,
+<code>/.env</code>, <code>/.git</code> … If your app really serves such paths, turn on <strong>This app serves /wp-admin, /phpmyadmin …</strong>
+in the domain's web options: on that domain they are passed to the app and nobody is blocked for them (all
+other domains keep the protection).</p>
+<p><strong>Who is never blocked.</strong> Server → Gateway → <em>Never blocked (allowlist)</em> lists addresses and networks
+(<code>203.0.113.7</code>, <code>198.51.100.0/24</code>) the gateway never blocks and never rate limits — your office, your VPN, a
+monitoring service; <em>Add my address</em> adds the one you are connected from, and a block recorded earlier for
+such an address stops applying at once. People signed in to the panel are protected automatically: the panel
+tells the gateway their address (for 12 hours, renewed while they are active), and the gateway then doesn't
+block it — not for exceeding a rate limit in your own apps either; over a limit they still get 429. A client
+is blocked for exceeding a rate limit only when it keeps sending at least twice the limit for a whole minute.</p>
 <p>Server → Gateway shows every route with its health check, certificate and rate limit, the latest requests over
 all domains (filter by domain, status class or client IP; block an IP from its row), certificates and blocked IPs.</p>
 <h2 id="your-own-domain-editing-and-paths-to-other-apps">Your own domain, editing, and paths to other apps<a class="headerlink" href="#your-own-domain-editing-and-paths-to-other-apps" title="Permanent link">&para;</a></h2>

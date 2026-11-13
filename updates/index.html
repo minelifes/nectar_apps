@@ -756,6 +756,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Updates
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -767,6 +780,34 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#signed-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Signed updates
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1010,6 +1051,23 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#signed-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Signed updates
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1042,6 +1100,25 @@ with the panel ("new version, reload").</p>
 upgrade plans (follow a channel in the maintenance window, or upgrade to a version now).</p>
 <p>The panel reads a small <code>updates.json</code> feed published on GitHub Pages by each repository's release workflow and
 falls back to the GitHub Releases API.</p>
+<h2 id="signed-updates">Signed updates<a class="headerlink" href="#signed-updates" title="Permanent link">&para;</a></h2>
+<p>When the panel knows a signing key, it only applies panel and gateway updates whose image is signed with it
+(<a href="https://docs.sigstore.dev/cosign/">cosign</a>, key based). Releases are pinned by digest, the release workflow
+signs that digest, and before an update starts the panel reads the signature from the registry
+(<code>sha256-&lt;digest&gt;.sig</code> next to the image) and checks it with the public key — an image that is unsigned, signed
+with another key, or whose signature belongs to another image is not installed (manual and automatic updates
+alike; the reason is shown, and announced once for automatic ones). Rolling back to the previous version is
+never blocked. Settings → Updates shows whether updates are verified.</p>
+<ul>
+<li>The keys compiled into the build are in <code>internal/update/release_keys.pem</code>. <code>NECTAR_UPDATE_PUBLIC_KEYS</code>
+  (PEM, one or more <code>cosign.pub</code> keys) replaces them — needed when you build and sign your own images or use
+  your own feed; <code>off</code> turns verification off.</li>
+<li>To sign your releases: <code>cosign generate-key-pair</code>, put <code>cosign.key</code> and its password into the repository
+  secrets <code>COSIGN_PRIVATE_KEY</code> and <code>COSIGN_PASSWORD</code> of <strong>both</strong> repositories (the workflows then sign every
+  release), and paste <code>cosign.pub</code> into <code>release_keys.pem</code>. Releases made before the key existed are not
+  signed: ship the public key in a release first, sign from the next one on. To rotate, keep both keys in the
+  file for a while.</li>
+<li>The panel needs to reach the registry (ghcr.io) anonymously; only public images can be verified.</li>
+</ul>
 
 
 
