@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.27",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:f6a90bfc3c7e3b3f84c925d638ee2b5b38ff64ee9a1962368331c6c974b6d066",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- fixed bug if logged user stay long in admin part and do a lot of requests his ip is bunned. added white list ips",
+          "previous": "1.0.26",
+          "published_at": "2026-11-13T16:38:56+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.26",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:7d9c60be67609ce1fc9196f642d1a58c0341852957b43f9f68e6c5977e67fe5e",
@@ -545,6 +565,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.27",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:f6a90bfc3c7e3b3f84c925d638ee2b5b38ff64ee9a1962368331c6c974b6d066",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": true,
+          "notes": "- fixed bug if logged user stay long in admin part and do a lot of requests his ip is bunned. added white list ips",
+          "previous": "1.0.26",
+          "published_at": "2026-11-13T16:38:56+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.26",
@@ -1088,5 +1128,5 @@
       ]
     }
   },
-  "updated_at": "2026-11-10T19:37:26+00:00"
+  "updated_at": "2026-11-13T16:38:56+00:00"
 }
