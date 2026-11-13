@@ -92,6 +92,8 @@ const (
 	FeatureDNS01        = "dns-01"
 	// FeatureRateLimit429: over a rate limit the gateway answers 429 (blocks only sustained abuse).
 	FeatureRateLimit429 = "rate-limit-429"
+	// FeatureAllowIPs: setting allow_ips (never blocked or rate limited) and POST /api/trusted.
+	FeatureAllowIPs = "allow-ips"
 )
 
 // StatusError is a non-2xx answer from the gateway.
@@ -240,6 +242,12 @@ func (c *Client) FallbackHits(ctx context.Context) ([]FallbackHit, error) {
 // Block adds an IP to the gateway blocklist (ttl 0 = practically permanent).
 func (c *Client) Block(ctx context.Context, ip, reason string, ttl time.Duration) error {
 	return c.do(ctx, http.MethodPost, "/api/blocked", map[string]any{"ip": ip, "reason": reason, "ttl_seconds": int64(ttl.Seconds())}, nil)
+}
+
+// Trust keeps an IP from being blocked by the gateway for ttl (someone signed in to the panel). Needs
+// FeatureAllowIPs.
+func (c *Client) Trust(ctx context.Context, ip string, ttl time.Duration) error {
+	return c.do(ctx, http.MethodPost, "/api/trusted", map[string]any{"ip": ip, "ttl_seconds": int64(ttl.Seconds())}, nil)
 }
 
 // Create creates a route.

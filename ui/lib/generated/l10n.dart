@@ -9420,6 +9420,271 @@ class S {
       args: [],
     );
   }
+
+  /// `Image vulnerabilities`
+  String get scanTitle {
+    return Intl.message(
+      'Image vulnerabilities',
+      name: 'scanTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Scan`
+  String get scanNow {
+    return Intl.message('Scan', name: 'scanNow', desc: '', args: []);
+  }
+
+  /// `Scan again`
+  String get scanAgain {
+    return Intl.message('Scan again', name: 'scanAgain', desc: '', args: []);
+  }
+
+  /// `Deploy the app first: the scan checks the image it runs.`
+  String get scanNotDeployed {
+    return Intl.message(
+      'Deploy the app first: the scan checks the image it runs.',
+      name: 'scanNotDeployed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Not scanned yet. A scan checks the image's system packages and app dependencies against known vulnerabilities (Trivy). It takes a few minutes and does not touch the running app.`
+  String get scanNever {
+    return Intl.message(
+      'Not scanned yet. A scan checks the image\'s system packages and app dependencies against known vulnerabilities (Trivy). It takes a few minutes and does not touch the running app.',
+      name: 'scanNever',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Scanning… this takes a few minutes.`
+  String get scanRunning {
+    return Intl.message(
+      'Scanning… this takes a few minutes.',
+      name: 'scanRunning',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The scan failed`
+  String get scanFailed {
+    return Intl.message(
+      'The scan failed',
+      name: 'scanFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `no known vulnerabilities`
+  String get scanClean {
+    return Intl.message(
+      'no known vulnerabilities',
+      name: 'scanClean',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{count} found`
+  String scanFound(String count) {
+    return Intl.message(
+      '$count found',
+      name: 'scanFound',
+      desc: '',
+      args: [count],
+    );
+  }
+
+  /// `{count} fixed in a newer version`
+  String scanHaveFix(String count) {
+    return Intl.message(
+      '$count fixed in a newer version',
+      name: 'scanHaveFix',
+      desc: '',
+      args: [count],
+    );
+  }
+
+  /// `The app now runs another image than the scanned one. Scan again.`
+  String get scanStale {
+    return Intl.message(
+      'The app now runs another image than the scanned one. Scan again.',
+      name: 'scanStale',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `critical`
+  String get scanCritical {
+    return Intl.message('critical', name: 'scanCritical', desc: '', args: []);
+  }
+
+  /// `high`
+  String get scanHigh {
+    return Intl.message('high', name: 'scanHigh', desc: '', args: []);
+  }
+
+  /// `medium`
+  String get scanMedium {
+    return Intl.message('medium', name: 'scanMedium', desc: '', args: []);
+  }
+
+  /// `low`
+  String get scanLow {
+    return Intl.message('low', name: 'scanLow', desc: '', args: []);
+  }
+
+  /// `With a fix only`
+  String get scanFixableOnly {
+    return Intl.message(
+      'With a fix only',
+      name: 'scanFixableOnly',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `…and {count} less severe ones not listed`
+  String scanMore(String count) {
+    return Intl.message(
+      '…and $count less severe ones not listed',
+      name: 'scanMore',
+      desc: '',
+      args: [count],
+    );
+  }
+
+  /// `no fix yet`
+  String get scanNoFix {
+    return Intl.message('no fix yet', name: 'scanNoFix', desc: '', args: []);
+  }
+
+  /// `fixed in {version}`
+  String scanFixedIn(String version) {
+    return Intl.message(
+      'fixed in $version',
+      name: 'scanFixedIn',
+      desc: '',
+      args: [version],
+    );
+  }
+
+  /// `Updates are verified: only images signed with the release key are installed.`
+  String get updateSignaturesOn {
+    return Intl.message(
+      'Updates are verified: only images signed with the release key are installed.',
+      name: 'updateSignaturesOn',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Update signatures are not verified (no signing key configured).`
+  String get updateSignaturesOff {
+    return Intl.message(
+      'Update signatures are not verified (no signing key configured).',
+      name: 'updateSignaturesOff',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `{count} critical`
+  String scanBadge(String count) {
+    return Intl.message(
+      '$count critical',
+      name: 'scanBadge',
+      desc: '',
+      args: [count],
+    );
+  }
+
+  /// `Never blocked (allowlist)`
+  String get gatewayAllowList {
+    return Intl.message(
+      'Never blocked (allowlist)',
+      name: 'gatewayAllowList',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Addresses and networks the gateway never blocks and never rate limits: your office, your VPN, a monitoring service. People signed in to this panel are not blocked either while they work (their rate limits still apply).`
+  String get gatewayAllowListHelp {
+    return Intl.message(
+      'Addresses and networks the gateway never blocks and never rate limits: your office, your VPN, a monitoring service. People signed in to this panel are not blocked either while they work (their rate limits still apply).',
+      name: 'gatewayAllowListHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The allowlist needs the latest nectar-gateway (update it).`
+  String get gatewayAllowListNeedsUpdate {
+    return Intl.message(
+      'The allowlist needs the latest nectar-gateway (update it).',
+      name: 'gatewayAllowListNeedsUpdate',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `IP address or network (CIDR)`
+  String get gatewayAllowListAdd {
+    return Intl.message(
+      'IP address or network (CIDR)',
+      name: 'gatewayAllowListAdd',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add`
+  String get gatewayAllowListAddButton {
+    return Intl.message(
+      'Add',
+      name: 'gatewayAllowListAddButton',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Add my address ({ip})`
+  String gatewayAllowListAddMine(String ip) {
+    return Intl.message(
+      'Add my address ($ip)',
+      name: 'gatewayAllowListAddMine',
+      desc: '',
+      args: [ip],
+    );
+  }
+
+  /// `This app serves /wp-admin, /phpmyadmin …`
+  String get webAllowScannerPaths {
+    return Intl.message(
+      'This app serves /wp-admin, /phpmyadmin …',
+      name: 'webAllowScannerPaths',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Elsewhere a visitor asking for such paths is blocked for a day as a scanner. Turn on for WordPress, phpMyAdmin and similar apps.`
+  String get webAllowScannerPathsHelp {
+    return Intl.message(
+      'Elsewhere a visitor asking for such paths is blocked for a day as a scanner. Turn on for WordPress, phpMyAdmin and similar apps.',
+      name: 'webAllowScannerPathsHelp',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

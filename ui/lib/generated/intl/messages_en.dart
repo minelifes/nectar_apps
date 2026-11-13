@@ -330,6 +330,13 @@ class MessageLookup extends MessageLookupByLibrary {
   static String m137(v) => "Update k3s to ${v}?";
 
   static String m138(summary) => "Updating · ${summary}";
+  static String m_scanFound(count) => "${count} found";
+  static String m_scanHaveFix(count) => "${count} fixed in a newer version";
+  static String m_scanMore(count) =>
+      "…and ${count} less severe ones not listed";
+  static String m_scanFixedIn(version) => "fixed in ${version}";
+  static String m_scanBadge(count) => "${count} critical";
+  static String m_gatewayAllowListAddMine(ip) => "Add my address (${ip})";
 
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
@@ -2385,5 +2392,61 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "widgetNothingYet": MessageLookupByLibrary.simpleMessage("Nothing yet."),
     "widgetRetry": MessageLookupByLibrary.simpleMessage("Retry"),
+    "scanTitle": MessageLookupByLibrary.simpleMessage("Image vulnerabilities"),
+    "scanNow": MessageLookupByLibrary.simpleMessage("Scan"),
+    "scanAgain": MessageLookupByLibrary.simpleMessage("Scan again"),
+    "scanNotDeployed": MessageLookupByLibrary.simpleMessage(
+      "Deploy the app first: the scan checks the image it runs.",
+    ),
+    "scanNever": MessageLookupByLibrary.simpleMessage(
+      "Not scanned yet. A scan checks the image's system packages and app dependencies against known vulnerabilities (Trivy). It takes a few minutes and does not touch the running app.",
+    ),
+    "scanRunning": MessageLookupByLibrary.simpleMessage(
+      "Scanning… this takes a few minutes.",
+    ),
+    "scanFailed": MessageLookupByLibrary.simpleMessage("The scan failed"),
+    "scanClean": MessageLookupByLibrary.simpleMessage(
+      "no known vulnerabilities",
+    ),
+    "scanFound": m_scanFound,
+    "scanHaveFix": m_scanHaveFix,
+    "scanStale": MessageLookupByLibrary.simpleMessage(
+      "The app now runs another image than the scanned one. Scan again.",
+    ),
+    "scanCritical": MessageLookupByLibrary.simpleMessage("critical"),
+    "scanHigh": MessageLookupByLibrary.simpleMessage("high"),
+    "scanMedium": MessageLookupByLibrary.simpleMessage("medium"),
+    "scanLow": MessageLookupByLibrary.simpleMessage("low"),
+    "scanFixableOnly": MessageLookupByLibrary.simpleMessage("With a fix only"),
+    "scanMore": m_scanMore,
+    "scanNoFix": MessageLookupByLibrary.simpleMessage("no fix yet"),
+    "scanFixedIn": m_scanFixedIn,
+    "updateSignaturesOn": MessageLookupByLibrary.simpleMessage(
+      "Updates are verified: only images signed with the release key are installed.",
+    ),
+    "updateSignaturesOff": MessageLookupByLibrary.simpleMessage(
+      "Update signatures are not verified (no signing key configured).",
+    ),
+    "scanBadge": m_scanBadge,
+    "gatewayAllowList": MessageLookupByLibrary.simpleMessage(
+      "Never blocked (allowlist)",
+    ),
+    "gatewayAllowListHelp": MessageLookupByLibrary.simpleMessage(
+      "Addresses and networks the gateway never blocks and never rate limits: your office, your VPN, a monitoring service. People signed in to this panel are not blocked either while they work (their rate limits still apply).",
+    ),
+    "gatewayAllowListNeedsUpdate": MessageLookupByLibrary.simpleMessage(
+      "The allowlist needs the latest nectar-gateway (update it).",
+    ),
+    "gatewayAllowListAdd": MessageLookupByLibrary.simpleMessage(
+      "IP address or network (CIDR)",
+    ),
+    "gatewayAllowListAddButton": MessageLookupByLibrary.simpleMessage("Add"),
+    "gatewayAllowListAddMine": m_gatewayAllowListAddMine,
+    "webAllowScannerPaths": MessageLookupByLibrary.simpleMessage(
+      "This app serves /wp-admin, /phpmyadmin …",
+    ),
+    "webAllowScannerPathsHelp": MessageLookupByLibrary.simpleMessage(
+      "Elsewhere a visitor asking for such paths is blocked for a day as a scanner. Turn on for WordPress, phpMyAdmin and similar apps.",
+    ),
   };
 }

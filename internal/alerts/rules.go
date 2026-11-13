@@ -26,6 +26,8 @@ const (
 	// events (one notification each, no incident)
 	DeployOK     = "deploy_succeeded"
 	DeployFailed = "deploy_failed"
+	// ImageVulnerable: a scan found critical vulnerabilities that were not there at the last scan.
+	ImageVulnerable = "image_vulnerable"
 )
 
 // Severities.
@@ -66,6 +68,7 @@ var Catalog = []RuleDef{
 	{UpdateFailed, "Update failed", "The last update failed its checks and was rolled back, or the rollback needs attention.", Critical, "", 0, 0, false, false},
 	{Kind: DeployFailed, Title: "Deploy failed", Description: "A deploy did not become healthy (the previous release keeps serving).", Severity: Critical, Event: true},
 	{Kind: DeployOK, Title: "Deploy finished", Description: "A new release of an app is live.", Severity: Warning, Event: true, Off: true},
+	{Kind: ImageVulnerable, Title: "Critical vulnerabilities", Description: "A scan of an app's image found critical vulnerabilities that the last scan did not (a new image, or newly published ones).", Severity: Warning, Event: true},
 	{GatewayDown, "Gateway unreachable", "The panel cannot reach nectar-gateway, so domains may not be served.", Critical, "", 0, 120, false, false},
 }
 

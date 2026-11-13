@@ -24,3 +24,26 @@ k3s kubectl -n nectar-system exec deploy/nectar-apps -- nectar-apps admin clear-
 ```
 
 Report vulnerabilities privately to support@techbrain.llc.
+
+## Image vulnerability scans
+
+App → **Security** → *Scan* checks the image the app runs for known vulnerabilities with
+[Trivy](https://trivy.dev): the image's system packages and the app's dependencies (npm, pip, Maven, Go, …).
+You get the counts by severity, how many are fixed in a newer version (update the base image or the
+dependency and redeploy), and the worst 300 findings with the package, the installed version and the version
+with the fix. Viewing needs `app.view`, scanning `app.deploy`.
+
+- The scan is a short Job in the `nectar-scans` namespace that reads the image from its registry — the
+  running app is not touched. Private registries use the saved logins; images built by Nectar are read from
+  the built-in registry. One scan runs at a time; it takes a few minutes and up to 1.5 GB of memory for
+  large images.
+- Each scan downloads Trivy's vulnerability database (from `mirror.gcr.io` / `ghcr.io`), so the server needs
+  outbound HTTPS.
+- After a deploy of another image the result is marked as out of date. To re-scan every deployed app
+  regularly — new vulnerabilities are found in unchanged images too — set `NECTAR_IMAGE_SCAN_HOURS` (e.g.
+  `24`) on the panel; `0` (default) scans only on request. `NECTAR_TRIVY_IMAGE` replaces the pinned Trivy
+  image (e.g. a copy in your own registry).
+- Apps with critical findings get a shield badge with their number in the project's app list. When a scan
+  finds critical vulnerabilities that the last one did not (another image, or newly published ones), the
+  alert rule **Critical vulnerabilities** notifies your channels once (Alerts → Rules; on by default).
+- A finding is a known vulnerability in an installed package, not proof the app can be attacked through it.

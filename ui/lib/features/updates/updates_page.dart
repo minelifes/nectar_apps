@@ -131,6 +131,25 @@ class _Versions extends ConsumerWidget {
               manage: manage,
             ),
           ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(
+                o.signatures
+                    ? Icons.verified_user_outlined
+                    : Icons.gpp_maybe_outlined,
+                size: 16,
+                color: o.signatures ? c.running : c.muted,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  o.signatures ? s.updateSignaturesOn : s.updateSignaturesOff,
+                  style: TextStyle(fontSize: 12.5, color: c.muted),
+                ),
+              ),
+            ],
+          ),
           if (o.bad.isNotEmpty) ...[
             const SizedBox(height: 10),
             for (final e in o.bad.entries)

@@ -27,6 +27,7 @@ import 'app_actions.dart';
 import 'app_database.dart';
 import 'builds_tab.dart';
 import 'env_tab.dart';
+import 'image_scan.dart';
 import 'ops_widgets.dart';
 import 'settings_tab.dart';
 import 'terminal_tab.dart';
@@ -133,6 +134,10 @@ class _AppPageState extends ConsumerState<AppPage> {
           ),
         ),
       ('Events', () => EventsCard(path: '/apps/${app.id}')),
+      (
+        'Security',
+        () => ImageScanCard(key: ValueKey('scan-${app.id}'), app: app),
+      ),
       if (can('env.view'))
         ('Environment', () => EnvTab(key: ValueKey('env-${app.id}'), app: app)),
       (

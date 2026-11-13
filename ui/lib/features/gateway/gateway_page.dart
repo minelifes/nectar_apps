@@ -77,6 +77,8 @@ class _GatewayPageState extends ConsumerState<GatewayPage> {
               if (session.can('settings.manage')) ...[
                 const SizedBox(height: NectarTokens.gap),
                 const _RateLimitBlocking(),
+                const SizedBox(height: NectarTokens.gap),
+                const _AllowList(),
               ],
             ],
           ),
@@ -735,6 +737,147 @@ class _RateLimitBlocking extends ConsumerWidget {
                     ),
                 ],
               ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Addresses and networks the gateway never blocks or rate limits (gateway setting allow_ips).
+class _AllowList extends ConsumerStatefulWidget {
+  const _AllowList();
+
+  @override
+  ConsumerState<_AllowList> createState() => _AllowListState();
+}
+
+class _AllowListState extends ConsumerState<_AllowList> {
+  final _add = TextEditingController();
+  bool _busy = false;
+  String _myIp = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMyIp();
+  }
+
+  @override
+  void dispose() {
+    _add.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadMyIp() async {
+    try {
+      final res = await ref.read(apiProvider).get('/gateway/client-ip');
+      if (mounted && res is Map) setState(() => _myIp = '${res['ip'] ?? ''}');
+    } on Object catch (_) {
+      // the button is just not offered
+    }
+  }
+
+  Future<void> _save(List<String> list) async {
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(apiProvider)
+          .put('/gateway/settings', data: {'allow_ips': list});
+      ref.invalidate(gatewaySettingsProvider);
+      _add.clear();
+    } on Object catch (e) {
+      if (mounted) showSnack(context, describeError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final c = NectarColors.of(context);
+    final settings = ref.watch(gatewaySettingsProvider);
+    return NCard(
+      title: s.gatewayAllowList,
+      child: AsyncBlock(
+        value: settings,
+        onRetry: () => ref.invalidate(gatewaySettingsProvider),
+        data: (m) {
+          if (!m.containsKey('allow_ips')) {
+            return Text(
+              s.gatewayAllowListNeedsUpdate,
+              style: TextStyle(color: c.muted),
+            );
+          }
+          final list = [
+            for (final a in (m['allow_ips'] as List? ?? const [])) '$a',
+          ];
+          void add(String v) {
+            v = v.trim();
+            if (v.isEmpty || list.contains(v)) return;
+            _save([...list, v]);
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                s.gatewayAllowListHelp,
+                style: TextStyle(color: c.muted, fontSize: 13),
+              ),
+              if (list.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final a in list)
+                      InputChip(
+                        label: Text(a, style: monoStyle(context, size: 12.5)),
+                        onDeleted: _busy
+                            ? null
+                            : () => _save([
+                                for (final x in list)
+                                  if (x != a) x,
+                              ]),
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _add,
+                      enabled: !_busy,
+                      onSubmitted: add,
+                      style: monoStyle(context, size: 13),
+                      decoration: InputDecoration(
+                        labelText: s.gatewayAllowListAdd,
+                        hintText: '203.0.113.7  ·  198.51.100.0/24',
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonal(
+                    onPressed: _busy ? null : () => add(_add.text),
+                    child: Text(s.gatewayAllowListAddButton),
+                  ),
+                ],
+              ),
+              if (_myIp.isNotEmpty && !list.contains(_myIp))
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _busy ? null : () => add(_myIp),
+                    icon: const Icon(Icons.my_location_rounded, size: 18),
+                    label: Text(s.gatewayAllowListAddMine(_myIp)),
+                  ),
+                ),
             ],
           );
         },

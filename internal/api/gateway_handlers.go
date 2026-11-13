@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"sort"
 	"strconv"
@@ -128,6 +129,8 @@ func (s *Server) putGatewaySettings(w http.ResponseWriter, r *http.Request, p *p
 		DNSAPIToken *string `json:"dns_api_token"`
 		// how long a client that keeps exceeding a rate limit is blocked (0 = never; gateway with rate-limit-429)
 		RateLimitBlockMinutes *int `json:"rate_limit_block_minutes"`
+		// addresses and networks the gateway never blocks or rate limits (gateway with allow-ips)
+		AllowIPs *[]string `json:"allow_ips"`
 	}
 	if !decode(w, r, &in) {
 		return
@@ -150,6 +153,22 @@ func (s *Server) putGatewaySettings(w http.ResponseWriter, r *http.Request, p *p
 	}
 	if in.RateLimitBlockMinutes != nil {
 		body["rate_limit_block_minutes"] = *in.RateLimitBlockMinutes
+	}
+	if in.AllowIPs != nil {
+		ctx, cancel := gwCtx(r)
+		v, err := s.gateway.Version(ctx)
+		cancel()
+		if err != nil || !v.Has(gateway.FeatureAllowIPs) {
+			writeError(w, http.StatusConflict, "the allowlist needs the latest nectar-gateway (update it)")
+			return
+		}
+		list := []string{}
+		for _, a := range *in.AllowIPs {
+			if a = strings.TrimSpace(a); a != "" {
+				list = append(list, a)
+			}
+		}
+		body["allow_ips"] = list
 	}
 	ctx, cancel := gwCtx(r)
 	defer cancel()
@@ -422,4 +441,61 @@ func (s *Server) certificateAction(w http.ResponseWriter, r *http.Request, p *pr
 	}
 	s.audit(r, p, "gateway.certificate.renew", c.Domain, nil)
 	writeJSON(w, http.StatusAccepted, c)
+}
+
+// gatewayClientIP tells the address the gateway sees the caller under ("Add my address" in the allowlist).
+func (s *Server) gatewayClientIP(w http.ResponseWriter, r *http.Request, _ *principal) {
+	writeJSON(w, http.StatusOK, map[string]string{"ip": clientIP(r)})
+}
+
+// TrustEvery is how often the panel reports a signed-in person's address to the gateway again; TrustFor is
+// how long the gateway then keeps it from being blocked.
+const (
+	TrustEvery = 10 * time.Minute
+	TrustFor   = 12 * time.Hour
+)
+
+// trustClient tells the gateway that the caller is signed in to the panel, so its abuse detection (rate
+// limit abuse, scanner paths, unknown hosts) doesn't block the address while the person works in the
+// panel or in their own apps. In the background, at most once per TrustEvery and address.
+func (s *Server) trustClient(r *http.Request) {
+	if s.gateway == nil {
+		return
+	}
+	ip := clientIP(r)
+	addr, err := netip.ParseAddr(ip)
+	if err != nil || addr.IsLoopback() || addr.IsPrivate() || addr.IsUnspecified() {
+		return // in-cluster callers and port-forwards: not an address the gateway sees
+	}
+	now := time.Now()
+	s.trustMu.Lock()
+	if last, ok := s.trustSent[ip]; ok && now.Sub(last) < TrustEvery {
+		s.trustMu.Unlock()
+		return
+	}
+	if s.trustSent == nil {
+		s.trustSent = map[string]time.Time{}
+	}
+	if len(s.trustSent) > 5000 {
+		for k, t := range s.trustSent {
+			if now.Sub(t) >= TrustEvery {
+				delete(s.trustSent, k)
+			}
+		}
+	}
+	s.trustSent[ip] = now
+	s.trustMu.Unlock()
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if v, err := s.gateway.Version(ctx); err != nil || !v.Has(gateway.FeatureAllowIPs) {
+			return
+		}
+		if err := s.gateway.Trust(ctx, ip, TrustFor); err != nil {
+			s.log.Debug("gateway: trust", "ip", ip, "err", err)
+			s.trustMu.Lock()
+			delete(s.trustSent, ip) // try again at the next request
+			s.trustMu.Unlock()
+		}
+	}()
 }

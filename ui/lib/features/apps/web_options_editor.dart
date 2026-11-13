@@ -20,6 +20,7 @@ class WebOptionsForm {
     corsOrigins.text = o.corsOrigins.join('\n');
     corsCredentials = o.corsCredentials;
     compress = o.compress;
+    allowScannerPaths = o.allowScannerPaths;
     hsts = o.hsts;
     hstsSubdomains = o.hstsSubdomains;
     _initial = jsonKey;
@@ -34,6 +35,7 @@ class WebOptionsForm {
   bool cors = false;
   bool corsCredentials = false;
   bool compress = false;
+  bool allowScannerPaths = false;
   int hsts = 0;
   bool hstsSubdomains = false;
   late final String _initial;
@@ -58,6 +60,7 @@ class WebOptionsForm {
     responseHeaders: _parseHeaders(responseHeaders.text),
     requestHeaders: _parseHeaders(requestHeaders.text),
     backendHost: backendHost.text.trim().toLowerCase(),
+    allowScannerPaths: allowScannerPaths,
     corsOrigins: cors ? _lines(corsOrigins.text) : const [],
     corsCredentials: cors && corsCredentials,
     compress: compress,
@@ -318,6 +321,16 @@ class WebOptionsFields extends StatelessWidget {
           },
           title: Text(s.appCompressTextResponsesGzip),
           subtitle: Text(s.appHtmlCssJsJsonThat),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: form.allowScannerPaths,
+          onChanged: (v) {
+            form.allowScannerPaths = v;
+            onChanged();
+          },
+          title: Text(s.webAllowScannerPaths),
+          subtitle: Text(s.webAllowScannerPathsHelp),
         ),
         DropdownButtonFormField<int>(
           initialValue:

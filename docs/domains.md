@@ -40,6 +40,20 @@ In the domain dialog:
 
 ## Gateway page
 
+**WordPress, phpMyAdmin and similar.** The gateway blocks a visitor for a day when it asks for a path only
+vulnerability scanners request on other sites — `/wp-admin`, `/wp-login.php`, `/xmlrpc.php`, `/phpmyadmin`,
+`/.env`, `/.git` … If your app really serves such paths, turn on **This app serves /wp-admin, /phpmyadmin …**
+in the domain's web options: on that domain they are passed to the app and nobody is blocked for them (all
+other domains keep the protection).
+
+**Who is never blocked.** Server → Gateway → *Never blocked (allowlist)* lists addresses and networks
+(`203.0.113.7`, `198.51.100.0/24`) the gateway never blocks and never rate limits — your office, your VPN, a
+monitoring service; *Add my address* adds the one you are connected from, and a block recorded earlier for
+such an address stops applying at once. People signed in to the panel are protected automatically: the panel
+tells the gateway their address (for 12 hours, renewed while they are active), and the gateway then doesn't
+block it — not for exceeding a rate limit in your own apps either; over a limit they still get 429. A client
+is blocked for exceeding a rate limit only when it keeps sending at least twice the limit for a whole minute.
+
 Server → Gateway shows every route with its health check, certificate and rate limit, the latest requests over
 all domains (filter by domain, status class or client IP; block an IP from its row), certificates and blocked IPs.
 

@@ -39,6 +39,8 @@ type ComponentState struct {
 type State struct {
 	CheckedAt  time.Time                  `json:"checked_at"`
 	Components map[string]*ComponentState `json:"components"`
+	// Signatures: update images are verified against the trusted keys before they are applied.
+	Signatures bool `json:"signatures"`
 }
 
 // GatewayVersioner reports the running gateway version (the gateway client adapted in main).
@@ -62,6 +64,10 @@ type Manager struct {
 	GatewayAdminURL string
 	ServiceAccount  string // of the updater Job, default nectar-apps
 	SecretName      string // holds gateway-api-token, default nectar-secrets
+
+	// Verifier checks the cosign signature of update images before they are applied (nil or without keys:
+	// no check).
+	Verifier *Verifier
 
 	// Notify announces finished runs (alerts channels); may be nil.
 	Notify func(ctx context.Context, title, message string, ok bool)
@@ -124,6 +130,7 @@ func (m *Manager) State(ctx context.Context) State {
 	if err := m.Store.GetSetting(ctx, StateKey, &st); err != nil || st.Components == nil {
 		st.Components = map[string]*ComponentState{}
 	}
+	st.Signatures = m.Verifier.Enabled()
 	return st
 }
 
@@ -375,6 +382,17 @@ func (m *Manager) Start(ctx context.Context, plan Plan, trigger string, restore 
 		return store.UpdateRun{}, err
 	} else if len(active) > 0 {
 		return store.UpdateRun{}, ErrBusy
+	}
+	// a rollback returns to an image that already ran here
+	if trigger != "rollback" && m.Verifier.Enabled() {
+		for _, s := range plan.Steps {
+			vctx, cancel := context.WithTimeout(ctx, time.Minute)
+			err := m.Verifier.Verify(vctx, s.ToImage)
+			cancel()
+			if err != nil {
+				return store.UpdateRun{}, fmt.Errorf("%s %s: %w", s.Component, s.To, err)
+			}
+		}
 	}
 	jobImage := m.deploymentImage(ctx, Panel)
 	if jobImage == "" {
@@ -736,6 +754,14 @@ func (m *Manager) autoUpdate(ctx context.Context, set Settings, st State) error 
 	m.lastAuto = now
 	m.mu.Unlock()
 	_, err = m.Start(ctx, plan, "auto", nil, nil)
+	if errors.Is(err, ErrSignature) {
+		known := (pc.Auto != nil && pc.Waiting == err.Error()) || (gc.Auto != nil && gc.Waiting == err.Error())
+		m.setWaiting(ctx, err.Error(), pc, gc)
+		if m.Notify != nil && !known { // once, not at every retry
+			m.Notify(ctx, "Update not installed", err.Error(), false)
+		}
+		return nil
+	}
 	return err
 }
 

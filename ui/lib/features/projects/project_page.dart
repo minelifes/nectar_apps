@@ -15,6 +15,7 @@ import '../../widgets/common.dart';
 import '../../widgets/gauge.dart';
 import '../access/members_card.dart';
 import '../addons/addons_section.dart';
+import '../apps/image_scan.dart';
 import 'external_workloads.dart';
 import 'helm_section.dart';
 import 'blueprint_dialogs.dart';
@@ -195,7 +196,7 @@ class ProjectPage extends ConsumerWidget {
   }
 }
 
-class _AppsSection extends StatelessWidget {
+class _AppsSection extends ConsumerWidget {
   const _AppsSection({
     required this.projectId,
     required this.canCreate,
@@ -209,8 +210,12 @@ class _AppsSection extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final s = S.of(context);
+    // critical vulnerabilities from the last image scans (a badge on the tile)
+    final critical =
+        ref.watch(projectCriticalProvider(projectId)).value ??
+        const <int, int>{};
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -239,7 +244,11 @@ class _AppsSection extends StatelessWidget {
                   runSpacing: 12,
                   children: [
                     for (final a in list)
-                      AppTile(app: a, onTap: () => context.go('/apps/${a.id}')),
+                      AppTile(
+                        app: a,
+                        critical: critical[a.id] ?? 0,
+                        onTap: () => context.go('/apps/${a.id}'),
+                      ),
                   ],
                 ),
         ),
