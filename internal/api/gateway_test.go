@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -43,6 +44,7 @@ type fakeGateway struct {
 	foreign  map[string]bool      // names with records someone else created
 	replicas []map[string]any     // GET /api/replicas
 	lastSeen map[string]time.Time // host → newest request (metrics last_seen)
+	trusted  []string             // POST /api/trusted: "ip ttl"
 }
 
 func (f *fakeGateway) handler(t *testing.T) http.Handler {
@@ -211,6 +213,12 @@ func (f *fakeGateway) handler(t *testing.T) http.Handler {
 		var in map[string]any
 		json.NewDecoder(r.Body).Decode(&in)
 		f.block = append(f.block, in)
+		w.WriteHeader(204)
+	}))
+	mux.HandleFunc("POST /api/trusted", auth(func(w http.ResponseWriter, r *http.Request) {
+		var in map[string]any
+		json.NewDecoder(r.Body).Decode(&in)
+		f.trusted = append(f.trusted, fmt.Sprintf("%v %v", in["ip"], in["ttl_seconds"])) // auth holds f.mu
 		w.WriteHeader(204)
 	}))
 	mux.HandleFunc("DELETE /api/blocked/{ip}", auth(func(w http.ResponseWriter, r *http.Request) {

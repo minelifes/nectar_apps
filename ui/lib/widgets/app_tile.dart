@@ -2,13 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../api/models.dart';
 import '../core/format.dart';
+import '../generated/l10n.dart';
 import '../theme/tokens.dart';
 import 'hex.dart';
 import 'status.dart';
 
 /// App tile: runtime hex badge, name, runtime + version, status pill, replicas and resources.
 class AppTile extends StatefulWidget {
-  const AppTile({super.key, required this.app, this.onTap, this.width = 280});
+  const AppTile({
+    super.key,
+    required this.app,
+    this.onTap,
+    this.width = 280,
+    this.critical = 0,
+  });
+
+  /// Critical vulnerabilities found by the last image scan (0 = none or not scanned).
+  final int critical;
 
   final App app;
   final VoidCallback? onTap;
@@ -88,6 +98,27 @@ class _AppTileState extends State<AppTile> {
                 message: app.statusMessage,
                 child: StatusPill(status: app.status),
               ),
+              if (widget.critical > 0) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: S.of(context).scanBadge('${widget.critical}'),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.shield_outlined, size: 15, color: c.failed),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${widget.critical}',
+                        style: TextStyle(
+                          color: c.failed,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const Spacer(),
               if (app.kind == 'web' || app.kind == 'worker')
                 Text(

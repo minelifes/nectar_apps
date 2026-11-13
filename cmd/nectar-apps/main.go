@@ -343,6 +343,21 @@ func serve() error {
 		Notify: func(ctx context.Context, title, message string, ok bool) {
 			alertEngine.Announce(ctx, title, message, "/updates", ok)
 		}}
+	// cosign: update images must be signed with a trusted key (compiled in, or NECTAR_UPDATE_PUBLIC_KEYS)
+	if cfg.UpdatePublicKeys != "off" {
+		pemKeys := cfg.UpdatePublicKeys
+		if pemKeys == "" {
+			pemKeys = update.ReleaseKeys
+		}
+		keys, err := update.ParsePublicKeys(pemKeys)
+		switch {
+		case err != nil:
+			return fmt.Errorf("NECTAR_UPDATE_PUBLIC_KEYS: %w", err)
+		case len(keys) > 0:
+			updates.Verifier = &update.Verifier{Keys: keys}
+			log.Info("update images are verified (cosign)", "keys", len(keys))
+		}
+	}
 	if kc != nil {
 		updates.Kube = kc
 	}
@@ -369,7 +384,10 @@ func serve() error {
 	srv := api.New(api.Deps{Config: cfg, Store: st, Kube: kc, Deployer: dep, Catalog: catalog,
 		Artifacts: arts, EnvBox: envBox, Gateway: gw, Syncer: syncer, IngressSync: ingSync, Log: log, Web: web.Handler(),
 		AlertBox: alertBox, AlertSender: alertEngine.Sender, Keeper: keeper, Backups: backups, MFABox: mfaBox, Mailer: mailr,
-		Updates: updates, Builder: builder, Registry: reg, RegistryBox: registryBox, ArtifactKey: artifactKey, LogStore: logStore})
+		Updates: updates, Builder: builder, Registry: reg, RegistryBox: registryBox, ArtifactKey: artifactKey, LogStore: logStore,
+		ScanEvent: func(ctx context.Context, subject, message, path string) {
+			alertEngine.Event(ctx, alerts.ImageVulnerable, subject, message, path)
+		}})
 	if err := srv.SyncBuiltinRoles(ctx); err != nil {
 		return err
 	}
@@ -393,11 +411,12 @@ func serve() error {
 	if kc != nil {
 		go dep.RunVolumeMeter(ctx, 10*time.Minute)
 	}
-	alertEngine.Sender.Push = srv.SendPush // alert channels of kind "push" (Firebase; Settings → Push notifications)
-	go srv.RunEdge(ctx)                    // gateway replicas on extra edge nodes follow the primary's image
-	go srv.RunPreviews(ctx)                // delete pull request previews without activity
-	go srv.RunSleeper(ctx)                 // scale idle apps with sleep_after_minutes to zero
-	go srv.RunAdoptRequests(ctx)           // namespaces install.sh --adopt asked to adopt as projects
+	alertEngine.Sender.Push = srv.SendPush                                 // alert channels of kind "push" (Firebase; Settings → Push notifications)
+	go srv.RunEdge(ctx)                                                    // gateway replicas on extra edge nodes follow the primary's image
+	go srv.RunPreviews(ctx)                                                // delete pull request previews without activity
+	go srv.RunSleeper(ctx)                                                 // scale idle apps with sleep_after_minutes to zero
+	go srv.RunImageScans(ctx, time.Duration(cfg.ImageScanHours)*time.Hour) // NECTAR_IMAGE_SCAN_HOURS
+	go srv.RunAdoptRequests(ctx)                                           // namespaces install.sh --adopt asked to adopt as projects
 
 	httpSrv := &http.Server{
 		Addr:              cfg.HTTPAddr,

@@ -868,7 +868,11 @@ class WebOptions {
     this.hsts = 0,
     this.hstsSubdomains = false,
     this.backendHost = '',
+    this.allowScannerPaths = false,
   });
+
+  /// The app really serves /wp-admin, /wp-login.php, /phpmyadmin …: don't block visitors asking for them.
+  final bool allowScannerPaths;
 
   /// The site name the backend sees (Host header and TLS server name); empty = the visitor's host.
   final String backendHost;
@@ -893,6 +897,7 @@ class WebOptions {
       responseHeaders.isEmpty &&
       requestHeaders.isEmpty &&
       backendHost.isEmpty &&
+      !allowScannerPaths &&
       corsOrigins.isEmpty &&
       !compress &&
       hsts == 0;
@@ -904,6 +909,7 @@ class WebOptions {
     if (allowIps.isNotEmpty) 'IP allowlist',
     if (responseHeaders.isNotEmpty || requestHeaders.isNotEmpty) 'headers',
     if (backendHost.isNotEmpty) 'host → $backendHost',
+    if (allowScannerPaths) 'scanner paths allowed',
     if (corsOrigins.isNotEmpty) 'CORS',
     if (compress) 'gzip',
     if (hsts > 0) 'HSTS',
@@ -926,6 +932,7 @@ class WebOptions {
       hsts: _int(m['hsts']),
       hstsSubdomains: _bool(m['hsts_subdomains']),
       backendHost: _str(m['backend_host']),
+      allowScannerPaths: _bool(m['allow_scanner_paths']),
     );
   }
 
@@ -937,6 +944,7 @@ class WebOptions {
     if (responseHeaders.isNotEmpty) 'response_headers': responseHeaders,
     if (requestHeaders.isNotEmpty) 'request_headers': requestHeaders,
     if (backendHost.isNotEmpty) 'backend_host': backendHost,
+    if (allowScannerPaths) 'allow_scanner_paths': true,
     if (corsOrigins.isNotEmpty)
       'cors': {
         'origins': corsOrigins,
@@ -2619,7 +2627,11 @@ class UpdatesOverview {
     this.active,
     this.checkedAt,
     this.nextCheck,
+    this.signatures = false,
   });
+
+  /// Update images are verified against the trusted signing keys before they are applied.
+  final bool signatures;
 
   final Map<String, dynamic> settings; // raw, edited by the settings card
   final Map<String, ComponentUpdate> components;
@@ -2647,6 +2659,7 @@ class UpdatesOverview {
       checkedAt: _time(state['checked_at']),
       nextCheck: _time(m['next_check']),
       windowOpen: _bool(m['window_open']),
+      signatures: _bool(state['signatures']),
     );
   }
 }

@@ -335,6 +335,13 @@ class MessageLookup extends MessageLookupByLibrary {
   static String m137(v) => "Оновити k3s до ${v}?";
 
   static String m138(summary) => "Оновлення · ${summary}";
+  static String m_scanFound(count) => "знайдено ${count}";
+  static String m_scanHaveFix(count) => "${count} виправлено в новішій версії";
+  static String m_scanMore(count) =>
+      "…і ще ${count} менш серйозних не показано";
+  static String m_scanFixedIn(version) => "виправлено у ${version}";
+  static String m_scanBadge(count) => "${count} критичних";
+  static String m_gatewayAllowListAddMine(ip) => "Додати мою адресу (${ip})";
 
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
@@ -2502,5 +2509,63 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "widgetNothingYet": MessageLookupByLibrary.simpleMessage("Поки нічого."),
     "widgetRetry": MessageLookupByLibrary.simpleMessage("Повторити"),
+    "scanTitle": MessageLookupByLibrary.simpleMessage("Вразливості образу"),
+    "scanNow": MessageLookupByLibrary.simpleMessage("Сканувати"),
+    "scanAgain": MessageLookupByLibrary.simpleMessage("Сканувати знову"),
+    "scanNotDeployed": MessageLookupByLibrary.simpleMessage(
+      "Спершу розгорніть застосунок: сканується образ, який він запускає.",
+    ),
+    "scanNever": MessageLookupByLibrary.simpleMessage(
+      "Ще не сканувалося. Сканування перевіряє системні пакети образу та залежності застосунку на відомі вразливості (Trivy). Це займає кілька хвилин і не зачіпає запущений застосунок.",
+    ),
+    "scanRunning": MessageLookupByLibrary.simpleMessage(
+      "Сканування… це займе кілька хвилин.",
+    ),
+    "scanFailed": MessageLookupByLibrary.simpleMessage("Сканування не вдалося"),
+    "scanClean": MessageLookupByLibrary.simpleMessage(
+      "відомих вразливостей немає",
+    ),
+    "scanFound": m_scanFound,
+    "scanHaveFix": m_scanHaveFix,
+    "scanStale": MessageLookupByLibrary.simpleMessage(
+      "Застосунок тепер запускає інший образ, ніж просканований. Проскануйте знову.",
+    ),
+    "scanCritical": MessageLookupByLibrary.simpleMessage("критичних"),
+    "scanHigh": MessageLookupByLibrary.simpleMessage("високих"),
+    "scanMedium": MessageLookupByLibrary.simpleMessage("середніх"),
+    "scanLow": MessageLookupByLibrary.simpleMessage("низьких"),
+    "scanFixableOnly": MessageLookupByLibrary.simpleMessage(
+      "Лише з виправленням",
+    ),
+    "scanMore": m_scanMore,
+    "scanNoFix": MessageLookupByLibrary.simpleMessage("виправлення ще немає"),
+    "scanFixedIn": m_scanFixedIn,
+    "updateSignaturesOn": MessageLookupByLibrary.simpleMessage(
+      "Оновлення перевіряються: встановлюються лише образи, підписані ключем релізів.",
+    ),
+    "updateSignaturesOff": MessageLookupByLibrary.simpleMessage(
+      "Підписи оновлень не перевіряються (ключ підпису не налаштовано).",
+    ),
+    "scanBadge": m_scanBadge,
+    "gatewayAllowList": MessageLookupByLibrary.simpleMessage(
+      "Ніколи не блокуються (білий список)",
+    ),
+    "gatewayAllowListHelp": MessageLookupByLibrary.simpleMessage(
+      "Адреси та мережі, які шлюз ніколи не блокує і не обмежує за частотою: ваш офіс, VPN, сервіс моніторингу. Користувачі, які увійшли в цю панель, теж не блокуються, поки працюють (обмеження частоти для них діють).",
+    ),
+    "gatewayAllowListNeedsUpdate": MessageLookupByLibrary.simpleMessage(
+      "Для білого списку потрібен найновіший nectar-gateway (оновіть його).",
+    ),
+    "gatewayAllowListAdd": MessageLookupByLibrary.simpleMessage(
+      "IP-адреса або мережа (CIDR)",
+    ),
+    "gatewayAllowListAddButton": MessageLookupByLibrary.simpleMessage("Додати"),
+    "gatewayAllowListAddMine": m_gatewayAllowListAddMine,
+    "webAllowScannerPaths": MessageLookupByLibrary.simpleMessage(
+      "Цей застосунок обслуговує /wp-admin, /phpmyadmin …",
+    ),
+    "webAllowScannerPathsHelp": MessageLookupByLibrary.simpleMessage(
+      "На інших доменах відвідувача, який запитує такі шляхи, блокують на добу як сканер. Увімкніть для WordPress, phpMyAdmin і подібних застосунків.",
+    ),
   };
 }

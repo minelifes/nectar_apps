@@ -36,6 +36,7 @@ import (
 	"nectar_apps/internal/registry"
 	"nectar_apps/internal/routing"
 	"nectar_apps/internal/runtimes"
+	"nectar_apps/internal/scan"
 	"nectar_apps/internal/secretbox"
 	"nectar_apps/internal/sso"
 	"nectar_apps/internal/store"
@@ -89,6 +90,8 @@ type Deps struct {
 	RegistryBox *secretbox.Box
 	// LogStore keeps app log history (nil = off).
 	LogStore *logstore.Store
+	// ScanEvent announces new critical vulnerabilities found by an image scan (alerts); may be nil.
+	ScanEvent func(ctx context.Context, subject, message, path string)
 }
 
 // Server holds the API dependencies.
@@ -134,6 +137,14 @@ type Server struct {
 	zips        zipUploads     // .zip files being uploaded into volumes and unpacked
 	helmRunner  *helm.Runner   // nil: one on s.kube (tests set their own)
 	helmWG      sync.WaitGroup // running helm operations (tests wait for them)
+	scanner     *scan.Scanner  // nil: one on s.kube (tests set their own)
+	scanWG      sync.WaitGroup // running image scans (tests wait for them)
+	scanMu      sync.Mutex     // one scan at a time
+	// scanEvent announces new critical vulnerabilities (alerts); may be nil.
+	scanEvent func(ctx context.Context, subject, message, path string)
+
+	trustMu   sync.Mutex
+	trustSent map[string]time.Time // client IP → when it was last reported to the gateway (trustClient)
 }
 
 // New creates the API server.
@@ -176,7 +187,7 @@ func New(d Deps) *Server {
 		artifacts: d.Artifacts, artKey: d.ArtifactKey, envBox: d.EnvBox, gateway: d.Gateway, syncer: d.Syncer, ingSync: d.IngressSync,
 		cluster: d.Cluster, log: d.Log, limiter: newLoginLimiter(10, 15*time.Minute), web: d.Web,
 		alertBox: d.AlertBox, alertSender: d.AlertSender, keeper: d.Keeper, backups: d.Backups, mfaBox: d.MFABox, mailer: d.Mailer, updates: d.Updates,
-		builder: d.Builder, registry: d.Registry, registryBox: d.RegistryBox, logs: d.LogStore}
+		builder: d.Builder, registry: d.Registry, registryBox: d.RegistryBox, logs: d.LogStore, scanEvent: d.ScanEvent}
 	if d.Builder != nil {
 		d.Builder.OnFinish = srv.previewBuildFinished // commit status + the newest commit of a preview
 	}
@@ -185,6 +196,9 @@ func New(d Deps) *Server {
 	}
 	if err := d.Store.FailInterruptedHelmOps(context.Background()); err != nil {
 		d.Log.Warn("helm: can't mark interrupted operations", "err", err)
+	}
+	if err := d.Store.FailInterruptedImageScans(context.Background()); err != nil {
+		d.Log.Warn("image scans: can't mark interrupted scans", "err", err)
 	}
 	return srv
 }
@@ -409,6 +423,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/apps/{id}/stop", s.onApp("app.restart", s.stopApp))
 	mux.Handle("POST /api/apps/{id}/restart", s.onApp("app.restart", s.restartApp))
 	mux.Handle("POST /api/apps/{id}/wake", s.onApp("app.restart", s.wakeApp))
+	mux.Handle("GET /api/projects/{pid}/scans", s.inProject("app.view", s.projectScans))
+	mux.Handle("GET /api/apps/{id}/scan", s.onApp("app.view", s.getScan))
+	mux.Handle("POST /api/apps/{id}/scan", s.onApp("app.deploy", s.startScan))
 	mux.Handle("GET /api/apps/{id}/volumes", s.onApp("app.view", s.listVolumes))
 	mux.Handle("DELETE /api/apps/{id}/volumes/{name}", s.onApp("volume.manage", s.deleteVolume))
 	mux.Handle("GET /api/apps/{id}/volumes/{name}/files", s.onApp("volume.manage", s.listFiles))
@@ -489,6 +506,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/gateway/routes", s.can("server.view", s.relay("/api/routes", "managed_by")))
 	mux.Handle("GET /api/gateway/settings", s.can("settings.manage", s.relay("/api/settings")))
 	mux.Handle("PUT /api/gateway/settings", s.can("settings.manage", s.putGatewaySettings))
+	mux.Handle("GET /api/gateway/client-ip", s.can("settings.manage", s.gatewayClientIP))
 	mux.Handle("GET /api/gateway/certificates", s.can("server.view", s.listCertificates))
 	mux.Handle("POST /api/gateway/certificates", s.can("settings.manage", s.createCertificate))
 	mux.Handle("POST /api/gateway/certificates/{cid}/renew", s.can("settings.manage", s.certificateAction))
@@ -681,6 +699,7 @@ func (s *Server) authed(h handlerWithPrincipal) http.Handler {
 			s.serverError(w, r, err)
 			return
 		}
+		s.trustClient(r)
 		h(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, p)), p)
 	})
 }

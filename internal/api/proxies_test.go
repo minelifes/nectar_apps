@@ -102,6 +102,20 @@ func TestProxyDomains(t *testing.T) {
 		t.Fatalf("bad backend host: %d", code)
 	}
 
+	// the target really serves /wp-admin & co.: the gateway must not block visitors for them (newer gateways)
+	if code, v, _ := e.do(o, "PATCH", "/api/proxies/"+id, map[string]any{"web": map[string]any{"backend_host": "shop.example.org",
+		"allow_scanner_paths": true}}); code != 200 {
+		t.Fatalf("allow scanner paths: %d %v", code, v)
+	}
+	if rt := route("nas.example.com", "/"); rt["web"].(map[string]any)["allow_scanner_paths"] != nil {
+		t.Fatalf("allow_scanner_paths sent to a gateway without the feature: %v", rt)
+	}
+	fg.setFeatures("web-options", "strip-prefix", "backend-host", "scanner-switch")
+	e.api.syncer.Sync(context.Background())
+	if rt := route("nas.example.com", "/"); rt["web"].(map[string]any)["allow_scanner_paths"] != true {
+		t.Fatalf("allow scanner paths route: %v", rt)
+	}
+
 	// a redirect without an app
 	if code, rd, _ := e.do(o, "POST", "/api/proxies", map[string]any{"host": "www.nas.example.com", "kind": "redirect",
 		"redirect_to": "nas.example.com"}); code != 201 || rd["kind"] != "redirect" {

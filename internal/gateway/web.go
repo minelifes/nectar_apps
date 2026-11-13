@@ -28,7 +28,10 @@ type Web struct {
 	// BackendHost replaces the site name the backend sees (Host header, and the TLS server name of an
 	// HTTPS backend); empty: the visitor's host. Needs FeatureBackendHost.
 	BackendHost string `json:"backend_host,omitempty"`
-	CORS        *CORS  `json:"cors,omitempty"`
+	// AllowScannerPaths: the app really serves /wp-admin, /wp-login.php, /phpmyadmin …, so the gateway must
+	// not block visitors for asking for them on this domain. Needs FeatureScannerSwitch.
+	AllowScannerPaths bool  `json:"allow_scanner_paths,omitempty"`
+	CORS              *CORS `json:"cors,omitempty"`
 	// Compress gzip-compresses text responses (HTML, CSS, JS, JSON, SVG, XML, plain text) when the client
 	// accepts it and the backend did not compress them already.
 	Compress bool `json:"compress,omitempty"`
@@ -71,7 +74,7 @@ type CORS struct {
 // IsZero reports whether no option is set.
 func (w *Web) IsZero() bool {
 	return w == nil || (len(w.Redirects) == 0 && len(w.AllowIPs) == 0 && len(w.ResponseHeaders) == 0 &&
-		len(w.RequestHeaders) == 0 && w.BackendHost == "" && w.CORS == nil && !w.Compress && w.HSTS == 0 && !w.StripPrefix && w.Wake == nil)
+		len(w.RequestHeaders) == 0 && w.BackendHost == "" && !w.AllowScannerPaths && w.CORS == nil && !w.Compress && w.HSTS == 0 && !w.StripPrefix && w.Wake == nil)
 }
 
 var headerNameRe = regexp.MustCompile("^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,100}$")
@@ -235,6 +238,9 @@ const FeatureWebOptions = "web-options"
 
 // FeatureStripPrefix is the nectar-gateway feature for the web option strip_prefix.
 const FeatureStripPrefix = "strip-prefix"
+
+// FeatureScannerSwitch: the gateway supports web.allow_scanner_paths.
+const FeatureScannerSwitch = "scanner-switch"
 
 // FeatureBackendHost: the gateway supports web.backend_host and sends HTTPS backends the site's name (SNI).
 const FeatureBackendHost = "backend-host"

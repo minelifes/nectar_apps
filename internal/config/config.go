@@ -56,6 +56,13 @@ type Config struct {
 	// MaxZipBytes limits a .zip uploaded into a volume to be unpacked there (NECTAR_MAX_ZIP_MB, default
 	// 10240). It is stored under DataDir while it is unpacked, so the panel's disk needs that much room.
 	MaxZipBytes int64
+	// TrivyImage runs image scans (NECTAR_TRIVY_IMAGE, default scan.Image). ImageScanHours re-scans every
+	// deployed app's image that often (NECTAR_IMAGE_SCAN_HOURS, default 0 = only on request).
+	TrivyImage     string
+	ImageScanHours int
+	// UpdatePublicKeys are the cosign public keys (PEM) panel and gateway update images must be signed with
+	// (NECTAR_UPDATE_PUBLIC_KEYS; "" = the keys compiled into the build, "off" = don't verify).
+	UpdatePublicKeys string
 	// Dev enables development mode: text logs, insecure cookies, a fixed dev master key (NECTAR_DEV=1).
 	Dev bool
 	// LogLevel is debug|info|warn|error (NECTAR_LOG_LEVEL, default info).
@@ -114,6 +121,11 @@ func Load() (Config, error) {
 		return c, errors.New("NECTAR_MAX_ZIP_MB must be a positive number")
 	}
 	c.MaxZipBytes = zmb << 20
+	c.TrivyImage = strings.TrimSpace(env("NECTAR_TRIVY_IMAGE", ""))
+	c.UpdatePublicKeys = strings.TrimSpace(env("NECTAR_UPDATE_PUBLIC_KEYS", ""))
+	if c.ImageScanHours, err = strconv.Atoi(env("NECTAR_IMAGE_SCAN_HOURS", "0")); err != nil || c.ImageScanHours < 0 {
+		return c, errors.New("NECTAR_IMAGE_SCAN_HOURS must be 0 (off) or a number of hours")
+	}
 
 	if v := strings.TrimSpace(env("NECTAR_INGRESS_SYNC", "nectar")); v != "off" && v != "" {
 		for _, cl := range strings.Split(v, ",") {

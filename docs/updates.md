@@ -17,3 +17,23 @@ upgrade plans (follow a channel in the maintenance window, or upgrade to a versi
 
 The panel reads a small `updates.json` feed published on GitHub Pages by each repository's release workflow and
 falls back to the GitHub Releases API.
+
+## Signed updates
+
+When the panel knows a signing key, it only applies panel and gateway updates whose image is signed with it
+([cosign](https://docs.sigstore.dev/cosign/), key based). Releases are pinned by digest, the release workflow
+signs that digest, and before an update starts the panel reads the signature from the registry
+(`sha256-<digest>.sig` next to the image) and checks it with the public key — an image that is unsigned, signed
+with another key, or whose signature belongs to another image is not installed (manual and automatic updates
+alike; the reason is shown, and announced once for automatic ones). Rolling back to the previous version is
+never blocked. Settings → Updates shows whether updates are verified.
+
+- The keys compiled into the build are in `internal/update/release_keys.pem`. `NECTAR_UPDATE_PUBLIC_KEYS`
+  (PEM, one or more `cosign.pub` keys) replaces them — needed when you build and sign your own images or use
+  your own feed; `off` turns verification off.
+- To sign your releases: `cosign generate-key-pair`, put `cosign.key` and its password into the repository
+  secrets `COSIGN_PRIVATE_KEY` and `COSIGN_PASSWORD` of **both** repositories (the workflows then sign every
+  release), and paste `cosign.pub` into `release_keys.pem`. Releases made before the key existed are not
+  signed: ship the public key in a release first, sign from the next one on. To rotate, keep both keys in the
+  file for a while.
+- The panel needs to reach the registry (ghcr.io) anonymously; only public images can be verified.
