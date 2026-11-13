@@ -5,6 +5,26 @@
       "stable": [
         {
           "component": "panel",
+          "version": "1.0.28",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:92bfcbd4a39c29bf6cb964c2324930769dceb5e2f6d13c2734913d4c0fcdd48e",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- New flutter version",
+          "previous": "1.0.27",
+          "published_at": "2026-11-13T17:28:57+00:00"
+        },
+        {
+          "component": "panel",
           "version": "1.0.27",
           "channel": "stable",
           "image": "ghcr.io/minelifes/nectar-apps@sha256:f6a90bfc3c7e3b3f84c925d638ee2b5b38ff64ee9a1962368331c6c974b6d066",
@@ -565,6 +585,26 @@
         }
       ],
       "beta": [
+        {
+          "component": "panel",
+          "version": "1.0.28",
+          "channel": "stable",
+          "image": "ghcr.io/minelifes/nectar-apps@sha256:92bfcbd4a39c29bf6cb964c2324930769dceb5e2f6d13c2734913d4c0fcdd48e",
+          "kind": "patch",
+          "security": false,
+          "breaking": false,
+          "api_version": 1,
+          "requires": {
+            "gateway_api": [
+              1
+            ],
+            "min_gateway": "0.2.0"
+          },
+          "migrations": false,
+          "notes": "- New flutter version",
+          "previous": "1.0.27",
+          "published_at": "2026-11-13T17:28:57+00:00"
+        },
         {
           "component": "panel",
           "version": "1.0.27",
@@ -1128,5 +1168,5 @@
       ]
     }
   },
-  "updated_at": "2026-11-13T16:38:56+00:00"
+  "updated_at": "2026-11-13T17:28:57+00:00"
 }
