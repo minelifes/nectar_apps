@@ -25,6 +25,7 @@ dependencies:
   # native push (optional, configured in Settings → Push notifications; Android, iOS, macOS)
   firebase_core: ^4.0.0
   firebase_messaging: ^16.0.0
+  material_ui: ^1.11.0
 
 dev_dependencies:
   flutter_test:

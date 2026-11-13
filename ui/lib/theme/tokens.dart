@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Brand tokens (PLAN.md §9). Dark-first; the light palette mirrors it.
 abstract final class NectarTokens {

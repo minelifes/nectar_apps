@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -86,6 +86,7 @@ class SettingsPage extends ConsumerWidget {
           const SizedBox(height: NectarTokens.gap),
           const SessionsCard(),
         ],
+        const SizedBox(height: NectarTokens.gap),
         NCard(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(
@@ -115,7 +116,6 @@ class SettingsPage extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: NectarTokens.gap),
         if (session.can('backup.manage') || session.can('server.view')) ...[
           const SizedBox(height: NectarTokens.gap),
           NCard(

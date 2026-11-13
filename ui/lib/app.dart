@@ -1,7 +1,5 @@
 import 'dart:async';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api/session.dart';
@@ -54,11 +52,9 @@ class _NectarAppState extends ConsumerState<NectarApp> {
       themeMode: ref.watch(themeModeProvider),
       locale: ref.watch(localeProvider),
       supportedLocales: S.delegate.supportedLocales,
-      localizationsDelegates: const [
+      localizationsDelegates: [
+        ...GlobalMaterialLocalizations.delegates,
         S.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: ref.watch(routerProvider),
     );

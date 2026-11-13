@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// 1500 → "1.5 cores", 250 → "250m".
 String formatCpu(int millicores) {

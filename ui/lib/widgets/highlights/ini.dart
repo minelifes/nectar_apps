@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nectar_apps_ui/widgets/highlights/syntax_rule.dart';
 
 final iniSyntaxRules = <SyntaxRule>[
