@@ -7,7 +7,8 @@ Checked every 30 seconds (Alerts → Rules sets thresholds and durations):
 - app or database down, crash loop, out-of-memory kills;
 - node not ready, high CPU / memory, disk almost full, volume almost full;
 - certificates about to expire, failed backups, an unreachable gateway, available updates;
-- events: **deploy failed**, **deploy finished**.
+- events: **deploy failed**, **deploy finished**, **critical vulnerabilities** (an image scan found new ones),
+  **newer image available** (apps with [image updates](runtimes.md#image-updates-docker-image-apps) on).
 
 Each alert notifies when it fires and when it clears; optional reminders repeat while it keeps firing.
 

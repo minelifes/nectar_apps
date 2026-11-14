@@ -9685,6 +9685,231 @@ class S {
       args: [],
     );
   }
+
+  /// `Image updates`
+  String get imageUpdatesTitle {
+    return Intl.message(
+      'Image updates',
+      name: 'imageUpdatesTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Follows the image's tag: when it points to a newer image (a new postgres:17 patch, a rebuilt :latest), Nectar can tell you or deploy it. Checked every few hours. Automatic updates never ship undeployed settings or variables.`
+  String get imageUpdatesHelp {
+    return Intl.message(
+      'Follows the image\'s tag: when it points to a newer image (a new postgres:17 patch, a rebuilt :latest), Nectar can tell you or deploy it. Checked every few hours. Automatic updates never ship undeployed settings or variables.',
+      name: 'imageUpdatesHelp',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Off`
+  String get imageUpdatesOff {
+    return Intl.message('Off', name: 'imageUpdatesOff', desc: '', args: []);
+  }
+
+  /// `Notify`
+  String get imageUpdatesNotify {
+    return Intl.message(
+      'Notify',
+      name: 'imageUpdatesNotify',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Deploy automatically`
+  String get imageUpdatesAuto {
+    return Intl.message(
+      'Deploy automatically',
+      name: 'imageUpdatesAuto',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `The app runs the newest image of its tag.`
+  String get imageUpdatesCurrent {
+    return Intl.message(
+      'The app runs the newest image of its tag.',
+      name: 'imageUpdatesCurrent',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `A newer image is available ({digest}).`
+  String imageUpdatesNewer(String digest) {
+    return Intl.message(
+      'A newer image is available ($digest).',
+      name: 'imageUpdatesNewer',
+      desc: '',
+      args: [digest],
+    );
+  }
+
+  /// `Not known which image the app runs: it has no running pods.`
+  String get imageUpdatesUnknown {
+    return Intl.message(
+      'Not known which image the app runs: it has no running pods.',
+      name: 'imageUpdatesUnknown',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Not checked yet.`
+  String get imageUpdatesNeverChecked {
+    return Intl.message(
+      'Not checked yet.',
+      name: 'imageUpdatesNeverChecked',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `checked {when}`
+  String imageUpdatesChecked(String when) {
+    return Intl.message(
+      'checked $when',
+      name: 'imageUpdatesChecked',
+      desc: '',
+      args: [when],
+    );
+  }
+
+  /// `running {digest}`
+  String imageUpdatesRunning(String digest) {
+    return Intl.message(
+      'running $digest',
+      name: 'imageUpdatesRunning',
+      desc: '',
+      args: [digest],
+    );
+  }
+
+  /// `Check now`
+  String get imageUpdatesCheck {
+    return Intl.message(
+      'Check now',
+      name: 'imageUpdatesCheck',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Deploy the newer image`
+  String get imageUpdatesDeploy {
+    return Intl.message(
+      'Deploy the newer image',
+      name: 'imageUpdatesDeploy',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Deploying the newer image`
+  String get imageUpdatesDeploying {
+    return Intl.message(
+      'Deploying the newer image',
+      name: 'imageUpdatesDeploying',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Reserved vs. used`
+  String get sizingTitle {
+    return Intl.message(
+      'Reserved vs. used',
+      name: 'sizingTitle',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Usage hints after a day of metrics ({hours} h so far).`
+  String sizingCollecting(String hours) {
+    return Intl.message(
+      'Usage hints after a day of metrics ($hours h so far).',
+      name: 'sizingCollecting',
+      desc: '',
+      args: [hours],
+    );
+  }
+
+  /// `Its reservation fits what it uses (last 14 days).`
+  String get sizingFine {
+    return Intl.message(
+      'Its reservation fits what it uses (last 14 days).',
+      name: 'sizingFine',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Use {cpu} · {memory}`
+  String sizingApply(String cpu, String memory) {
+    return Intl.message(
+      'Use $cpu · $memory',
+      name: 'sizingApply',
+      desc: '',
+      args: [cpu, memory],
+    );
+  }
+
+  /// `From the last 14 days: memory = the busiest pod's peak + 25 %, CPU = 95th percentile + 30 %. Save and redeploy to apply.`
+  String get sizingBasis {
+    return Intl.message(
+      'From the last 14 days: memory = the busiest pod\'s peak + 25 %, CPU = 95th percentile + 30 %. Save and redeploy to apply.',
+      name: 'sizingBasis',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Apps reserve {cpu} and {memory} in total.`
+  String sizingSummary(String cpu, String memory) {
+    return Intl.message(
+      'Apps reserve $cpu and $memory in total.',
+      name: 'sizingSummary',
+      desc: '',
+      args: [cpu, memory],
+    );
+  }
+
+  /// `The suggestions below would free {memory} and {cpu}.`
+  String sizingSaving(String memory, String cpu) {
+    return Intl.message(
+      'The suggestions below would free $memory and $cpu.',
+      name: 'sizingSaving',
+      desc: '',
+      args: [memory, cpu],
+    );
+  }
+
+  /// `No hints yet: {count} apps have less than a day of metrics.`
+  String sizingNoneYet(String count) {
+    return Intl.message(
+      'No hints yet: $count apps have less than a day of metrics.',
+      name: 'sizingNoneYet',
+      desc: '',
+      args: [count],
+    );
+  }
+
+  /// `Every app's reservation fits what it uses.`
+  String get sizingAllFine {
+    return Intl.message(
+      'Every app\'s reservation fits what it uses.',
+      name: 'sizingAllFine',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {

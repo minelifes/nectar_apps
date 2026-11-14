@@ -28,6 +28,8 @@ const (
 	DeployFailed = "deploy_failed"
 	// ImageVulnerable: a scan found critical vulnerabilities that were not there at the last scan.
 	ImageVulnerable = "image_vulnerable"
+	// ImageUpdated: an app's image tag points to a newer image (announced, or deployed automatically).
+	ImageUpdated = "image_updated"
 )
 
 // Severities.
@@ -69,6 +71,7 @@ var Catalog = []RuleDef{
 	{Kind: DeployFailed, Title: "Deploy failed", Description: "A deploy did not become healthy (the previous release keeps serving).", Severity: Critical, Event: true},
 	{Kind: DeployOK, Title: "Deploy finished", Description: "A new release of an app is live.", Severity: Warning, Event: true, Off: true},
 	{Kind: ImageVulnerable, Title: "Critical vulnerabilities", Description: "A scan of an app's image found critical vulnerabilities that the last scan did not (a new image, or newly published ones).", Severity: Warning, Event: true},
+	{Kind: ImageUpdated, Title: "Newer image available", Description: "The tag of an app's image points to a newer image (apps with image updates set to notify or automatic).", Severity: Warning, Event: true},
 	{GatewayDown, "Gateway unreachable", "The panel cannot reach nectar-gateway, so domains may not be served.", Critical, "", 0, 120, false, false},
 }
 

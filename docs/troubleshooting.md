@@ -83,3 +83,30 @@ sudo apparmor_parser -R /etc/apparmor.d/mosquitto
 Panels before this fix also blocked opened ports in the project's NetworkPolicy (k3s checks it with the
 client's address, not the node's): redeploy the app after updating, which adds the NetworkPolicy
 `<app>-ports` allowing those ports from anywhere.
+
+## An app behind the gateway loads its scripts over http:// ("blocked: mixed-content")
+
+Typical with Keycloak (`/resources/master/admin/en/…` blocked in the admin console), but any app that builds
+absolute URLs does it: the app thinks it is served over plain HTTP. The gateway terminates HTTPS and passes
+the visit on with `X-Forwarded-Proto: https`, `X-Forwarded-Host` and `X-Forwarded-Port`; the app has to be
+told to trust them — or simply told its public address.
+
+**Keycloak** (Environment tab, then redeploy):
+
+```
+KC_PROXY_HEADERS=xforwarded
+KC_HOSTNAME=${keycloak.public_url}     # your app's slug; becomes https://<its default domain>
+KC_HTTP_ENABLED=true
+```
+
+`${<app>.public_url}` is `https://` + the app's default domain (`${<app>.public_host}` without the scheme),
+filled in at every deploy; empty while the app has no domain (redeploy after adding one). The Keycloak template sets all three. Other apps have their own switch — Grafana
+`GF_SERVER_ROOT_URL`, n8n `WEBHOOK_URL`, WordPress `WP_HOME`/`WP_SITEURL`, Spring
+`server.forward-headers-strategy=framework`.
+
+**A proxy domain to another server** (the gateway → that server's nginx → the app): that nginx usually sets
+`proxy_set_header X-Forwarded-Proto $scheme;`, and its `$scheme` is `http` because the gateway talks plain
+HTTP to it. Either tick *The target uses HTTPS* on the proxy domain (the gateway then connects over HTTPS
+with the site's name), or let nginx pass the gateway's header on:
+`proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;`
+

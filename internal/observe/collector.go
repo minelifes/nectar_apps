@@ -175,6 +175,8 @@ func (c *Collector) usage(ctx context.Context, nodes []string, label, prefix str
 		}
 		s.CPUm += cpuM
 		s.MemB += memB
+		s.Pods++ // add is called once per pod
+		s.CPUPeak, s.MemPeak = max(s.CPUPeak, cpuM), max(s.MemPeak, memB)
 	}
 	err := c.Kube.Get(ctx, "/apis/metrics.k8s.io/v1beta1/pods?labelSelector="+url.QueryEscape(label), &pm)
 	var se *kube.StatusError

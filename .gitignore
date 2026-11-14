@@ -22,6 +22,7 @@ PROGRESS.md
 /ui/**/ephemeral/
 /ui/android/.gradle/
 /ui/android/local.properties
+/ui/android/build/
 /ui/ios/Flutter/Generated.xcconfig
 /ui/macos/Flutter/GeneratedPluginRegistrant.swift
 # web UI build output (make ui); the .keep file keeps go:embed working without it

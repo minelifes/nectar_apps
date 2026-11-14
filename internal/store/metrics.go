@@ -28,6 +28,9 @@ type MetricSample struct {
 	TxBps     int64
 	Conns     int64 // databases: open client connections
 	ConnsMax  int64 // databases: the server's connection limit (0 = not measured)
+	Pods      int64 // apps/databases: pods the sample covers
+	CPUPeak   int64 // the busiest pod's CPU (millicores)
+	MemPeak   int64 // the busiest pod's memory (bytes)
 }
 
 // MetricPoint is an averaged point of a series.
@@ -52,21 +55,22 @@ func (s *Store) AddMetricSamples(ctx context.Context, t time.Time, samples []Met
 	roll := t.Unix() / MetricRollup * MetricRollup
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		for _, m := range samples {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO metric_points (series, res, ts, n, cpu_m, mem_b, disk_used, disk_total, rx_bps, tx_bps, conns, conns_max)
-				VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)
+			if _, err := tx.ExecContext(ctx, `INSERT INTO metric_points (series, res, ts, n, cpu_m, mem_b, disk_used, disk_total, rx_bps, tx_bps, conns, conns_max, pods, cpu_peak, mem_peak)
+				VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(series, res, ts) DO UPDATE SET n = 1, cpu_m = excluded.cpu_m, mem_b = excluded.mem_b,
 					disk_used = excluded.disk_used, disk_total = excluded.disk_total, rx_bps = excluded.rx_bps, tx_bps = excluded.tx_bps,
-					conns = excluded.conns, conns_max = excluded.conns_max`,
-				m.Series, MetricRaw, raw, m.CPUm, m.MemB, m.DiskUsed, m.DiskTotal, m.RxBps, m.TxBps, m.Conns, m.ConnsMax); err != nil {
+					conns = excluded.conns, conns_max = excluded.conns_max, pods = excluded.pods, cpu_peak = excluded.cpu_peak, mem_peak = excluded.mem_peak`,
+				m.Series, MetricRaw, raw, m.CPUm, m.MemB, m.DiskUsed, m.DiskTotal, m.RxBps, m.TxBps, m.Conns, m.ConnsMax, m.Pods, m.CPUPeak, m.MemPeak); err != nil {
 				return err
 			}
-			if _, err := tx.ExecContext(ctx, `INSERT INTO metric_points (series, res, ts, n, cpu_m, mem_b, disk_used, disk_total, rx_bps, tx_bps, conns, conns_max)
-				VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)
+			if _, err := tx.ExecContext(ctx, `INSERT INTO metric_points (series, res, ts, n, cpu_m, mem_b, disk_used, disk_total, rx_bps, tx_bps, conns, conns_max, pods, cpu_peak, mem_peak)
+				VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				ON CONFLICT(series, res, ts) DO UPDATE SET n = n + 1, cpu_m = cpu_m + excluded.cpu_m, mem_b = mem_b + excluded.mem_b,
 					disk_used = disk_used + excluded.disk_used, disk_total = disk_total + excluded.disk_total,
 					rx_bps = rx_bps + excluded.rx_bps, tx_bps = tx_bps + excluded.tx_bps,
-					conns = conns + excluded.conns, conns_max = conns_max + excluded.conns_max`,
-				m.Series, MetricRollup, roll, m.CPUm, m.MemB, m.DiskUsed, m.DiskTotal, m.RxBps, m.TxBps, m.Conns, m.ConnsMax); err != nil {
+					conns = conns + excluded.conns, conns_max = conns_max + excluded.conns_max, pods = pods + excluded.pods,
+					cpu_peak = MAX(cpu_peak, excluded.cpu_peak), mem_peak = MAX(mem_peak, excluded.mem_peak)`,
+				m.Series, MetricRollup, roll, m.CPUm, m.MemB, m.DiskUsed, m.DiskTotal, m.RxBps, m.TxBps, m.Conns, m.ConnsMax, m.Pods, m.CPUPeak, m.MemPeak); err != nil {
 				return err
 			}
 		}
@@ -107,6 +111,39 @@ func (s *Store) MetricHistory(ctx context.Context, series string, from, to time.
 		}
 		out = append(out, MetricPoint{T: time.Unix(b, 0).UTC(), CPUm: cpu / n, MemB: mem / n, DiskUsed: du / n, DiskTotal: dt / n, RxBps: rx / n, TxBps: txb / n,
 			Conns: (cn + n/2) / n, ConnsMax: cm / n})
+	}
+	return out, rows.Err()
+}
+
+// UsagePoint is one 15-minute rollup of an app's pods: average use per pod and the busiest pod's peak.
+type UsagePoint struct {
+	T          time.Time
+	CPUPerPod  int64 // millicores, averaged over the pods and the 15 minutes
+	MemPerPod  int64 // bytes
+	CPUPeak    int64 // the busiest pod at its busiest sample
+	MemPeak    int64
+	PodsAvg    float64
+	HasSamples bool
+}
+
+// UsageSince returns the 15-minute rollups of a series since from, only the buckets that saw pods.
+func (s *Store) UsageSince(ctx context.Context, series string, from time.Time) ([]UsagePoint, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT ts, n, cpu_m, mem_b, pods, cpu_peak, mem_peak FROM metric_points
+		WHERE series = ? AND res = ? AND ts >= ? AND pods > 0 ORDER BY ts`, series, MetricRollup, from.Unix())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []UsagePoint
+	for rows.Next() {
+		var ts, n, cpu, mem, pods, cpuPeak, memPeak int64
+		if err := rows.Scan(&ts, &n, &cpu, &mem, &pods, &cpuPeak, &memPeak); err != nil {
+			return nil, err
+		}
+		// cpu and mem are sums over the samples of the app's total; pods the sum of the pod counts: the
+		// ratio is the average use of one pod
+		out = append(out, UsagePoint{T: time.Unix(ts, 0).UTC(), CPUPerPod: cpu / pods, MemPerPod: mem / pods,
+			CPUPeak: cpuPeak, MemPeak: memPeak, PodsAvg: float64(pods) / float64(max(n, 1)), HasSamples: true})
 	}
 	return out, rows.Err()
 }

@@ -4,6 +4,7 @@ package kubefake
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"strings"
 	"sync"
 
@@ -12,8 +13,10 @@ import (
 
 // Fake is an in-memory Kubernetes API for tests (implements deploy.Kube).
 type Fake struct {
-	mu      sync.Mutex
-	objects map[string]kube.Object // kind/ns/name
+	// ImageDigests: image (tag) → the digest a synthesized pod reports as running (imageID).
+	ImageDigests map[string]string
+	mu           sync.Mutex
+	objects      map[string]kube.Object // kind/ns/name
 	// Applied and Deleted record calls as "Kind/name".
 	Applied []string
 	Deleted []string
@@ -62,6 +65,8 @@ func (f *Fake) GetObject(_ context.Context, kind, ns, name string, out any) erro
 	if !ok {
 		return &kube.StatusError{Code: 404, Message: "not found"}
 	}
+	// the status goes on a copy: callers hold the stored object (Get, List) without the lock
+	o = maps.Clone(o)
 	switch kind {
 	case "Deployment":
 		replicas := kube.Int(o, "spec", "replicas")
@@ -139,6 +144,18 @@ func (f *Fake) List(_ context.Context, kind, ns, sel string) ([]kube.Object, err
 			pod := kube.Object{"kind": "Pod", "metadata": map[string]any{"name": kube.Str(o, "metadata", "name") + "-pod", "namespace": kube.Str(o, "metadata", "namespace"), "labels": labels},
 				"spec":   kube.Field(o, "spec", "template", "spec"),
 				"status": map[string]any{"phase": "Running"}}
+			// the digest a node would record: a pinned image's own, or ImageDigests[tag]
+			if cs, _ := kube.Field(o, "spec", "template", "spec", "containers").([]any); len(cs) > 0 {
+				c, _ := cs[0].(map[string]any)
+				img, _ := c["image"].(string)
+				d := f.ImageDigests[img]
+				if repo, pinned, ok := strings.Cut(img, "@"); ok {
+					img, d = repo, pinned
+				}
+				if d != "" {
+					pod["status"].(map[string]any)["containerStatuses"] = []any{map[string]any{"name": c["name"], "imageID": img + "@" + d}}
+				}
+			}
 			if f.PodIssue != "" {
 				pod["status"] = map[string]any{"phase": "Pending", "containerStatuses": []any{map[string]any{"name": "app",
 					"state": map[string]any{"waiting": map[string]any{"reason": f.PodIssue, "message": "boom"}}}}}
