@@ -754,6 +754,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#reserved-vs-used-right-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reserved vs. used (right-sizing)
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1102,6 +1111,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#reserved-vs-used-right-sizing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reserved vs. used (right-sizing)
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1165,6 +1183,20 @@ node your DNS points to. To serve traffic from more nodes:</p>
 <p>The node card shows whether the replica is in sync. DNS records the panel manages then list <strong>every edge
 node</strong> (round-robin DNS). If an edge node goes down for long, choose <strong>Stop serving traffic</strong> so the panel takes
 it out of DNS. Needs nectar-gateway with the <code>replicas</code> feature (the latest release).</p>
+<h2 id="reserved-vs-used-right-sizing">Reserved vs. used (right-sizing)<a class="headerlink" href="#reserved-vs-used-right-sizing" title="Permanent link">&para;</a></h2>
+<p>Each app reserves CPU and memory per replica (Settings → Resources); the server schedules by those
+reservations, not by what apps really use. From the stored metrics of the last 14 days Nectar compares the two:</p>
+<ul>
+<li><strong>App → Settings → Resources</strong> shows what the app uses and, when the reservation doesn't fit, a hint —
+  "Reserves 1.0 GB, uses 180 MB (peak 210 MB): 288 MB would be enough" — with a button that fills in the
+  suggestion (save and redeploy to apply).</li>
+<li><strong>Server → Reserved vs. used</strong> lists the apps with a hint, the ones that need <em>more</em> first (close to their
+  memory limit, so a pod risks being killed; or slowed down at their CPU limit), then the biggest savings, and
+  how much all suggestions together would free.</li>
+</ul>
+<p>Suggestions: memory = the busiest pod's peak + 25 % (a pod over its memory limit is killed), CPU = the 95th
+percentile of the 15-minute average + 30 % (more only slows a pod down). Hints appear after a day of
+metrics; apps with <em>No limit</em> are only told when they reserve nothing at all or far too much.</p>
 
 
 

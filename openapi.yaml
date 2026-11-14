@@ -475,6 +475,13 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Node" } } } } }
         "503": { $ref: "#/components/responses/Error" }
 
+  /server/sizing:
+    get:
+      tags: [server]
+      summary: Apps whose reservation doesn't fit their use (needing more first, then the biggest savings) and totals
+      x-permission: server.view
+      responses:
+        "200": { description: OK }
   /server/metrics:
     get:
       tags: [server]
@@ -810,6 +817,59 @@ paths:
                     critical: { type: integer }
                     high: { type: integer }
                     fixable: { type: integer }
+  /apps/{id}/image-updates:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [apps]
+      summary: Image update watcher state (config.image_updates; the last check)
+      x-permission: app.view
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy: { type: string, enum: ["", notify, auto] }
+                  supported: { type: boolean }
+                  reason: { type: string, description: why the image can't be watched (pinned, built by Nectar, not an image app) }
+                  watch:
+                    type: object
+                    properties:
+                      image: { type: string }
+                      running_digest: { type: string }
+                      latest_digest: { type: string }
+                      status: { type: string, enum: [current, update, error, unknown] }
+                      message: { type: string }
+                      seen_at: { type: string, format: date-time }
+                      checked_at: { type: string, format: date-time }
+  /apps/{id}/image-updates/check:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [apps]
+      summary: Ask the registry now (records the result; announcing and deploying is left to the watcher)
+      x-permission: app.view
+      responses:
+        "200": { description: OK }
+        "409": { $ref: "#/components/responses/Error" }
+  /apps/{id}/image-updates/deploy:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    post:
+      tags: [apps]
+      summary: Deploy the newer image (pinned to its digest, with the app's current settings)
+      x-permission: app.deploy
+      responses:
+        "202": { description: Deploying, content: { application/json: { schema: { $ref: "#/components/schemas/Release" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /apps/{id}/sizing:
+    parameters: [{ $ref: "#/components/parameters/Id" }]
+    get:
+      tags: [apps]
+      summary: Reserved vs. used per replica (last 14 days) with a suggestion and hints
+      x-permission: app.view
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Sizing" } } } }
   /apps/{id}/scan:
     parameters: [{ $ref: "#/components/parameters/Id" }]
     get:
@@ -3600,6 +3660,10 @@ components:
           type: object
           additionalProperties: { type: string }
           description: The app's pods run only on nodes with all these labels (at most 10). A PATCH with node_selector replaces the whole set.
+        image_updates:
+          type: string
+          enum: ["", notify, auto]
+          description: Image apps — when the tag points to a newer image, announce it or deploy it (pinned to its digest). A setting, applied without a deploy.
         sleep_after_minutes:
           type: integer
           description: >-
@@ -3815,6 +3879,31 @@ components:
         values: { type: string, description: values.yaml }
         repo_username: { type: string }
         repo_password: { type: string, writeOnly: true }
+    Sizing:
+      type: object
+      description: "memory suggestion = the busiest pod's peak × 1.25 (32 MB steps), CPU = 95th percentile of the 15-minute per-pod average × 1.3 (50m steps)"
+      properties:
+        ready: { type: boolean, description: at least a day of metrics with running pods }
+        data_hours: { type: number }
+        request_cpu_m: { type: integer }
+        request_memory_mb: { type: integer }
+        limited: { type: boolean }
+        cpu_p95_m: { type: integer }
+        cpu_peak_m: { type: integer }
+        memory_p95_mb: { type: integer }
+        memory_peak_mb: { type: integer }
+        suggest_cpu_m: { type: integer }
+        suggest_memory_mb: { type: integer }
+        saving_cpu_m: { type: integer, description: "all replicas; negative = the app needs more" }
+        saving_memory_mb: { type: integer }
+        replicas: { type: integer }
+        hints:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string, enum: [memory_too_high, memory_too_low, cpu_too_high, cpu_too_low, no_request] }
+              message: { type: string }
     ImageScan:
       type: object
       properties:

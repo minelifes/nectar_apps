@@ -892,6 +892,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#an-app-behind-the-gateway-loads-its-scripts-over-http-blocked-mixed-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      An app behind the gateway loads its scripts over http:// ("blocked: mixed-content")
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1102,6 +1111,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#an-app-behind-the-gateway-loads-its-scripts-over-http-blocked-mixed-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      An app behind the gateway loads its scripts over http:// ("blocked: mixed-content")
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1187,6 +1205,25 @@ sudo<span class="w"> </span>apparmor_parser<span class="w"> </span>-R<span class
 <p>Panels before this fix also blocked opened ports in the project's NetworkPolicy (k3s checks it with the
 client's address, not the node's): redeploy the app after updating, which adds the NetworkPolicy
 <code>&lt;app&gt;-ports</code> allowing those ports from anywhere.</p>
+<h2 id="an-app-behind-the-gateway-loads-its-scripts-over-http-blocked-mixed-content">An app behind the gateway loads its scripts over http:// ("blocked: mixed-content")<a class="headerlink" href="#an-app-behind-the-gateway-loads-its-scripts-over-http-blocked-mixed-content" title="Permanent link">&para;</a></h2>
+<p>Typical with Keycloak (<code>/resources/master/admin/en/…</code> blocked in the admin console), but any app that builds
+absolute URLs does it: the app thinks it is served over plain HTTP. The gateway terminates HTTPS and passes
+the visit on with <code>X-Forwarded-Proto: https</code>, <code>X-Forwarded-Host</code> and <code>X-Forwarded-Port</code>; the app has to be
+told to trust them — or simply told its public address.</p>
+<p><strong>Keycloak</strong> (Environment tab, then redeploy):</p>
+<div class="highlight"><pre><span></span><code>KC_PROXY_HEADERS=xforwarded
+KC_HOSTNAME=${keycloak.public_url}     # your app's slug; becomes https://&lt;its default domain&gt;
+KC_HTTP_ENABLED=true
+</code></pre></div>
+<p><code>${&lt;app&gt;.public_url}</code> is <code>https://</code> + the app's default domain (<code>${&lt;app&gt;.public_host}</code> without the scheme),
+filled in at every deploy; empty while the app has no domain (redeploy after adding one). The Keycloak template sets all three. Other apps have their own switch — Grafana
+<code>GF_SERVER_ROOT_URL</code>, n8n <code>WEBHOOK_URL</code>, WordPress <code>WP_HOME</code>/<code>WP_SITEURL</code>, Spring
+<code>server.forward-headers-strategy=framework</code>.</p>
+<p><strong>A proxy domain to another server</strong> (the gateway → that server's nginx → the app): that nginx usually sets
+<code>proxy_set_header X-Forwarded-Proto $scheme;</code>, and its <code>$scheme</code> is <code>http</code> because the gateway talks plain
+HTTP to it. Either tick <em>The target uses HTTPS</em> on the proxy domain (the gateway then connects over HTTPS
+with the site's name), or let nginx pass the gateway's header on:
+<code>proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;</code></p>
 
 
 
