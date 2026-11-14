@@ -39,6 +39,23 @@ func TestResolveRefs(t *testing.T) {
 	if err := e.d.ResolveRefs(ctx, e.p, other); err != nil || other["PW"] != "s3cr3t" {
 		t.Fatalf("app variable: %v %v", other, err)
 	}
+	// the public address: empty without a domain, then the default domain first
+	pub := "${" + a.Slug + ".public_url}"
+	if none := map[string]string{"KC_HOSTNAME": pub}; e.d.ResolveRefs(ctx, e.p, none) != nil || none["KC_HOSTNAME"] != "" {
+		t.Fatalf("public_url without a domain: %v", none)
+	}
+	e.st.CreateDomain(ctx, store.Domain{AppID: a.ID, Host: "auth.example.com", PathPrefix: "/", Status: "active"})
+	e.st.CreateDomain(ctx, store.Domain{AppID: a.ID, Host: "aaa.example.com", PathPrefix: "/kc", Status: "active"})
+	e.st.CreateDomain(ctx, store.Domain{AppID: a.ID, Host: "a.example.com", PathPrefix: "/", DomainOptions: store.DomainOptions{Kind: store.DomainRedirect, RedirectTo: "https://auth.example.com"}, Status: "active"})
+	pubs := map[string]string{"URL": pub, "HOST": "${" + a.Slug + ".public_host}"}
+	if err := e.d.ResolveRefs(ctx, e.p, pubs); err != nil || pubs["URL"] != "https://aaa.example.com/kc" || pubs["HOST"] != "aaa.example.com/kc" {
+		t.Fatalf("public url: %v %v", pubs, err)
+	}
+	e.st.CreateDomain(ctx, store.Domain{AppID: a.ID, Host: "default.example.com", PathPrefix: "/", IsDefault: true, Status: "active"})
+	pubs = map[string]string{"URL": pub}
+	if err := e.d.ResolveRefs(ctx, e.p, pubs); err != nil || pubs["URL"] != "https://default.example.com" {
+		t.Fatalf("default domain first: %v %v", pubs, err)
+	}
 	err := e.d.ResolveRefs(ctx, e.p, map[string]string{"X": "${cache.REDIS_URL}", "Y": "${db.NOPE}"})
 	if err == nil || !strings.Contains(err.Error(), "${cache.REDIS_URL}") || !strings.Contains(err.Error(), "${db.NOPE}") {
 		t.Fatalf("missing refs: %v", err)

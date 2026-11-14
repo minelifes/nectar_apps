@@ -47,6 +47,9 @@ type AppConfig struct {
 	// SleepAfterMinutes scales a web app to zero after that many minutes without requests through its
 	// domains; the gateway wakes it on the next request (0 = always on).
 	SleepAfterMinutes int `json:"sleep_after_minutes,omitempty"`
+	// ImageUpdates: what to do when the app's image tag points to a newer image — "" (off) | "notify" |
+	// "auto" (deploy it). Image apps only; a setting, applied without a deploy.
+	ImageUpdates string `json:"image_updates,omitempty"`
 	// NodeSelector: the app's pods run only on nodes with all these labels (Server → node → Labels).
 	NodeSelector map[string]string `json:"node_selector,omitempty"`
 	// SecurityContext overrides the runtime's security settings.

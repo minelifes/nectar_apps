@@ -387,6 +387,9 @@ func serve() error {
 		Updates: updates, Builder: builder, Registry: reg, RegistryBox: registryBox, ArtifactKey: artifactKey, LogStore: logStore,
 		ScanEvent: func(ctx context.Context, subject, message, path string) {
 			alertEngine.Event(ctx, alerts.ImageVulnerable, subject, message, path)
+		},
+		ImageEvent: func(ctx context.Context, subject, message, path string) {
+			alertEngine.Event(ctx, alerts.ImageUpdated, subject, message, path)
 		}})
 	if err := srv.SyncBuiltinRoles(ctx); err != nil {
 		return err
@@ -411,12 +414,13 @@ func serve() error {
 	if kc != nil {
 		go dep.RunVolumeMeter(ctx, 10*time.Minute)
 	}
-	alertEngine.Sender.Push = srv.SendPush                                 // alert channels of kind "push" (Firebase; Settings → Push notifications)
-	go srv.RunEdge(ctx)                                                    // gateway replicas on extra edge nodes follow the primary's image
-	go srv.RunPreviews(ctx)                                                // delete pull request previews without activity
-	go srv.RunSleeper(ctx)                                                 // scale idle apps with sleep_after_minutes to zero
-	go srv.RunImageScans(ctx, time.Duration(cfg.ImageScanHours)*time.Hour) // NECTAR_IMAGE_SCAN_HOURS
-	go srv.RunAdoptRequests(ctx)                                           // namespaces install.sh --adopt asked to adopt as projects
+	alertEngine.Sender.Push = srv.SendPush                                  // alert channels of kind "push" (Firebase; Settings → Push notifications)
+	go srv.RunEdge(ctx)                                                     // gateway replicas on extra edge nodes follow the primary's image
+	go srv.RunPreviews(ctx)                                                 // delete pull request previews without activity
+	go srv.RunSleeper(ctx)                                                  // scale idle apps with sleep_after_minutes to zero
+	go srv.RunImageScans(ctx, time.Duration(cfg.ImageScanHours)*time.Hour)  // NECTAR_IMAGE_SCAN_HOURS
+	go srv.RunImageWatch(ctx, time.Duration(cfg.ImageWatchHours)*time.Hour) // NECTAR_IMAGE_WATCH_HOURS
+	go srv.RunAdoptRequests(ctx)                                            // namespaces install.sh --adopt asked to adopt as projects
 
 	httpSrv := &http.Server{
 		Addr:              cfg.HTTPAddr,

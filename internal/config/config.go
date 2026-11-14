@@ -60,6 +60,9 @@ type Config struct {
 	// deployed app's image that often (NECTAR_IMAGE_SCAN_HOURS, default 0 = only on request).
 	TrivyImage     string
 	ImageScanHours int
+	// ImageWatchHours: how often apps with image updates on are checked for a newer image
+	// (NECTAR_IMAGE_WATCH_HOURS, default 6; 0 = never automatically, "Check now" still works).
+	ImageWatchHours int
 	// UpdatePublicKeys are the cosign public keys (PEM) panel and gateway update images must be signed with
 	// (NECTAR_UPDATE_PUBLIC_KEYS; "" = the keys compiled into the build, "off" = don't verify).
 	UpdatePublicKeys string
@@ -125,6 +128,9 @@ func Load() (Config, error) {
 	c.UpdatePublicKeys = strings.TrimSpace(env("NECTAR_UPDATE_PUBLIC_KEYS", ""))
 	if c.ImageScanHours, err = strconv.Atoi(env("NECTAR_IMAGE_SCAN_HOURS", "0")); err != nil || c.ImageScanHours < 0 {
 		return c, errors.New("NECTAR_IMAGE_SCAN_HOURS must be 0 (off) or a number of hours")
+	}
+	if c.ImageWatchHours, err = strconv.Atoi(env("NECTAR_IMAGE_WATCH_HOURS", "6")); err != nil || c.ImageWatchHours < 0 {
+		return c, errors.New("NECTAR_IMAGE_WATCH_HOURS must be 0 (off) or a number of hours")
 	}
 
 	if v := strings.TrimSpace(env("NECTAR_INGRESS_SYNC", "nectar")); v != "off" && v != "" {

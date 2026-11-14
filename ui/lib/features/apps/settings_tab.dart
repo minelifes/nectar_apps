@@ -19,6 +19,8 @@ import 'app_actions.dart';
 import 'builds_tab.dart';
 import 'resources.dart';
 import 'volume_files_dialog.dart';
+import 'image_updates.dart';
+import '../observe/sizing.dart';
 
 /// Edits the app settings (saved with PATCH; most take effect with the next deploy).
 class SettingsTab extends ConsumerStatefulWidget {
@@ -186,7 +188,9 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
   Map<String, dynamic>? _body() {
     final app = widget.app;
     String? err;
-    final cfg = Map<String, dynamic>.from(_cfg);
+    final cfg = Map<String, dynamic>.from(_cfg)
+      // saved by its own card: a stale copy here would undo it
+      ..remove('image_updates');
     if (app.runtime == 'image') cfg['image'] = _image.text.trim();
     if (app.isWeb) {
       final port = _int(_port);
@@ -451,6 +455,7 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
             ],
           ),
         ),
+      if (widget.app.runtime == 'image') ImageUpdatesCard(app: widget.app),
       _placementCard(context, canEdit),
       NCard(
         title: l.appResourcesPerReplica,
@@ -512,6 +517,17 @@ class _SettingsTabState extends ConsumerState<SettingsTab> {
                   ),
                 ),
               ],
+            ),
+            // what the app really uses (stored metrics): a suggestion to fill in
+            SizingHint(
+              appId: widget.app.id,
+              onApply: canEdit
+                  ? (cpu, mem) => setState(() {
+                      _cpu.text = '$cpu';
+                      _mem.text = '$mem';
+                      _dirty = true;
+                    })
+                  : null,
             ),
           ],
         ),

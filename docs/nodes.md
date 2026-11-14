@@ -48,3 +48,20 @@ The panel labels the node `nectar.dev/edge-replica=true` and runs a **gateway re
 The node card shows whether the replica is in sync. DNS records the panel manages then list **every edge
 node** (round-robin DNS). If an edge node goes down for long, choose **Stop serving traffic** so the panel takes
 it out of DNS. Needs nectar-gateway with the `replicas` feature (the latest release).
+
+## Reserved vs. used (right-sizing)
+
+Each app reserves CPU and memory per replica (Settings → Resources); the server schedules by those
+reservations, not by what apps really use. From the stored metrics of the last 14 days Nectar compares the two:
+
+- **App → Settings → Resources** shows what the app uses and, when the reservation doesn't fit, a hint —
+  "Reserves 1.0 GB, uses 180 MB (peak 210 MB): 288 MB would be enough" — with a button that fills in the
+  suggestion (save and redeploy to apply).
+- **Server → Reserved vs. used** lists the apps with a hint, the ones that need *more* first (close to their
+  memory limit, so a pod risks being killed; or slowed down at their CPU limit), then the biggest savings, and
+  how much all suggestions together would free.
+
+Suggestions: memory = the busiest pod's peak + 25 % (a pod over its memory limit is killed), CPU = the 95th
+percentile of the 15-minute average + 30 % (more only slows a pod down). Hints appear after a day of
+metrics; apps with *No limit* are only told when they reserve nothing at all or far too much.
+

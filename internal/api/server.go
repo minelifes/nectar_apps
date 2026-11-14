@@ -32,6 +32,7 @@ import (
 	"nectar_apps/internal/kube"
 	"nectar_apps/internal/logstore"
 	"nectar_apps/internal/mail"
+	"nectar_apps/internal/oci"
 	"nectar_apps/internal/push"
 	"nectar_apps/internal/registry"
 	"nectar_apps/internal/routing"
@@ -92,6 +93,8 @@ type Deps struct {
 	LogStore *logstore.Store
 	// ScanEvent announces new critical vulnerabilities found by an image scan (alerts); may be nil.
 	ScanEvent func(ctx context.Context, subject, message, path string)
+	// ImageEvent announces a newer image for an app (alerts); may be nil.
+	ImageEvent func(ctx context.Context, subject, message, path string)
 }
 
 // Server holds the API dependencies.
@@ -142,6 +145,10 @@ type Server struct {
 	scanMu      sync.Mutex     // one scan at a time
 	// scanEvent announces new critical vulnerabilities (alerts); may be nil.
 	scanEvent func(ctx context.Context, subject, message, path string)
+	// imageEvent announces a newer image (alerts); oci reads registries (tests set their own).
+	imageEvent func(ctx context.Context, subject, message, path string)
+	oci        *oci.Client
+	watchMu    sync.Mutex // one image check at a time per panel
 
 	trustMu   sync.Mutex
 	trustSent map[string]time.Time // client IP → when it was last reported to the gateway (trustClient)
@@ -187,7 +194,7 @@ func New(d Deps) *Server {
 		artifacts: d.Artifacts, artKey: d.ArtifactKey, envBox: d.EnvBox, gateway: d.Gateway, syncer: d.Syncer, ingSync: d.IngressSync,
 		cluster: d.Cluster, log: d.Log, limiter: newLoginLimiter(10, 15*time.Minute), web: d.Web,
 		alertBox: d.AlertBox, alertSender: d.AlertSender, keeper: d.Keeper, backups: d.Backups, mfaBox: d.MFABox, mailer: d.Mailer, updates: d.Updates,
-		builder: d.Builder, registry: d.Registry, registryBox: d.RegistryBox, logs: d.LogStore, scanEvent: d.ScanEvent}
+		builder: d.Builder, registry: d.Registry, registryBox: d.RegistryBox, logs: d.LogStore, scanEvent: d.ScanEvent, imageEvent: d.ImageEvent}
 	if d.Builder != nil {
 		d.Builder.OnFinish = srv.previewBuildFinished // commit status + the newest commit of a preview
 	}
@@ -283,6 +290,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/server/nodes", s.can("server.view", s.listNodes))
 	mux.Handle("GET /api/audit", s.can("audit.view", s.listAudit))
 	mux.Handle("GET /api/server/metrics", s.can("server.view", s.serverMetrics))
+	mux.Handle("GET /api/server/sizing", s.can("server.view", s.serverSizing))
 	mux.Handle("GET /api/server/join", s.can("server.manage", s.joinInfo))
 	mux.Handle("POST /api/server/nodes/{name}/{action}", s.can("server.manage", s.nodeAction))
 	mux.Handle("PUT /api/server/nodes/{name}/labels", s.can("server.manage", s.setNodeLabels))
@@ -425,6 +433,10 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/apps/{id}/wake", s.onApp("app.restart", s.wakeApp))
 	mux.Handle("GET /api/projects/{pid}/scans", s.inProject("app.view", s.projectScans))
 	mux.Handle("GET /api/apps/{id}/scan", s.onApp("app.view", s.getScan))
+	mux.Handle("GET /api/apps/{id}/sizing", s.onApp("app.view", s.getAppSizing))
+	mux.Handle("GET /api/apps/{id}/image-updates", s.onApp("app.view", s.getImageWatch))
+	mux.Handle("POST /api/apps/{id}/image-updates/check", s.onApp("app.view", s.checkImageNow))
+	mux.Handle("POST /api/apps/{id}/image-updates/deploy", s.onApp("app.deploy", s.deployNewerImage))
 	mux.Handle("POST /api/apps/{id}/scan", s.onApp("app.deploy", s.startScan))
 	mux.Handle("GET /api/apps/{id}/volumes", s.onApp("app.view", s.listVolumes))
 	mux.Handle("DELETE /api/apps/{id}/volumes/{name}", s.onApp("volume.manage", s.deleteVolume))

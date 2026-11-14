@@ -136,14 +136,16 @@ func (d *Deployer) Pending(ctx context.Context, a store.App) ([]string, error) {
 	}
 	out := []string{}
 	norm := func(c store.AppConfig) string {
-		c.Replicas, c.ResumeReplicas = 0, 0 // scaling is applied live
+		c.Replicas, c.ResumeReplicas = 0, 0         // scaling is applied live
+		c.SleepAfterMinutes, c.ImageUpdates = 0, "" // settings that need no deploy
 		b, _ := json.Marshal(c)
 		return string(b)
 	}
 	if norm(a.Config) != norm(live.Config) {
 		out = append(out, "settings")
 	}
-	if img, err := d.Image(a); err == nil && img != live.Image {
+	// an image pinned to a digest by an image update (tag@sha256:…) is still the app's tag
+	if img, err := d.Image(a); err == nil && img != live.Image && !strings.HasPrefix(live.Image, img+"@sha256:") {
 		out = append(out, "image")
 	}
 	if t, err := d.store.EnvChangedAt(ctx, a.ID); err == nil && t.After(live.CreatedAt) {
@@ -369,4 +371,31 @@ func (d *Deployer) releaseClaim(ctx context.Context, namespace, claim string) er
 		}
 	}
 	return nil
+}
+
+// RunningDigest is the image digest most of the app's running pods report ("" = no pod reports one).
+func (d *Deployer) RunningDigest(ctx context.Context, a store.App, p store.Project) string {
+	pods, err := d.kube.List(ctx, "Pod", p.Namespace, LabelApp+"="+a.Slug)
+	if err != nil {
+		return ""
+	}
+	counts := map[string]int{}
+	best := ""
+	for _, pod := range pods {
+		sts, _ := kube.Field(pod, "status", "containerStatuses").([]any)
+		for _, st := range sts {
+			m, _ := st.(map[string]any)
+			if m["name"] != "app" {
+				continue
+			}
+			id, _ := m["imageID"].(string)
+			if _, dg, ok := strings.Cut(id, "@"); ok && strings.HasPrefix(dg, "sha256:") {
+				counts[dg]++
+				if counts[dg] > counts[best] {
+					best = dg
+				}
+			}
+		}
+	}
+	return best
 }

@@ -604,7 +604,7 @@ templates:
     icon: keycloak
     description: Identity and access management (SSO, OpenID Connect, SAML, social login), on PostgreSQL.
     docs: https://www.keycloak.org/documentation
-    notes: "Admin console: open the domain, sign in as admin / KC_BOOTSTRAP_ADMIN_PASSWORD (Environment tab) and create a permanent admin user. The first start takes a minute or two (it builds its configuration)."
+    notes: "KC_HOSTNAME follows the app's default domain (change the domain, then redeploy). Admin console: open the domain, sign in as admin / KC_BOOTSTRAP_ADMIN_PASSWORD (Environment tab) and create a permanent admin user. The first start takes a minute or two (it builds its configuration)."
     blueprint:
       addons:
         - { slug: "[[name]]-db", name: "[[name]] database", kind: postgres, version: "17", size_mb: 1024 }
@@ -621,7 +621,10 @@ templates:
             KC_DB_USERNAME: "${[[name]]-db.PGUSER}"
             KC_HTTP_ENABLED: "true"
             KC_PROXY_HEADERS: xforwarded
-            KC_HOSTNAME_STRICT: "false"
+            # its own https address: links and the admin console's scripts never fall back to http://
+            # (blocked as mixed content) when a proxy in between does not say the visit was https
+            KC_HOSTNAME: "${[[name]].public_url}"
+            KC_HOSTNAME_STRICT: "false" # no domain yet: KC_HOSTNAME is empty, Keycloak goes by the request
             KC_HEALTH_ENABLED: "true"
             KC_BOOTSTRAP_ADMIN_USERNAME: admin
           secrets:

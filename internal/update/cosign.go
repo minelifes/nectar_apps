@@ -13,12 +13,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
+
+	"nectar_apps/internal/oci"
 )
 
 // Signature verification of update images (cosign, key based).
@@ -101,14 +101,10 @@ func (v *Verifier) Verify(ctx context.Context, image string) error {
 	}
 	host, repo, digest := m[1], m[2], m[3]
 	if host == "docker.io" || host == "index.docker.io" {
-		host = "registry-1.docker.io"
+		host = oci.DockerHubHost
 	}
-	scheme := v.Scheme
-	if scheme == "" {
-		scheme = "https"
-	}
-	rc := &registryClient{http: v.client(), base: scheme + "://" + host, repo: repo}
-	body, code, err := rc.get(ctx, "/v2/"+repo+"/manifests/sha256-"+digest+".sig", 1<<20)
+	rc := &oci.Client{HTTP: v.client(), Scheme: v.Scheme}
+	body, code, err := rc.Get(ctx, host, repo, "/v2/"+repo+"/manifests/sha256-"+digest+".sig", 1<<20)
 	if err != nil {
 		return fmt.Errorf("signature of %s: %w", image, err)
 	}
@@ -136,7 +132,7 @@ func (v *Verifier) Verify(ctx context.Context, image string) error {
 		if err != nil || len(sig) == 0 || !strings.HasPrefix(l.Digest, "sha256:") {
 			continue
 		}
-		payload, code, err := rc.get(ctx, "/v2/"+repo+"/blobs/"+l.Digest, 64<<10)
+		payload, code, err := rc.Get(ctx, host, repo, "/v2/"+repo+"/blobs/"+l.Digest, 64<<10)
 		if err != nil {
 			return fmt.Errorf("signature of %s: %w", image, err)
 		}
@@ -172,91 +168,4 @@ func (v *Verifier) Verify(ctx context.Context, image string) error {
 		why = "it is signed, but not with a trusted key"
 	}
 	return fmt.Errorf("%w: %s: %s", ErrSignature, image, why)
-}
-
-// registryClient reads from an OCI registry, with the anonymous token flow (ghcr.io, Docker Hub).
-type registryClient struct {
-	http  *http.Client
-	base  string
-	repo  string
-	token string
-}
-
-func (c *registryClient) get(ctx context.Context, path string, limit int64) ([]byte, int, error) {
-	for attempt := 0; ; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+path, nil)
-		if err != nil {
-			return nil, 0, err
-		}
-		req.Header.Set("Accept", "application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, */*")
-		req.Header.Set("User-Agent", "nectar-apps-updater")
-		if c.token != "" {
-			req.Header.Set("Authorization", "Bearer "+c.token)
-		}
-		resp, err := c.http.Do(req)
-		if err != nil {
-			return nil, 0, err
-		}
-		body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
-		resp.Body.Close()
-		if err != nil {
-			return nil, 0, err
-		}
-		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 {
-			if err := c.login(ctx, resp.Header.Get("WWW-Authenticate")); err != nil {
-				return nil, 0, err
-			}
-			continue
-		}
-		if int64(len(body)) > limit {
-			return nil, 0, errors.New("the registry's answer is too large")
-		}
-		return body, resp.StatusCode, nil
-	}
-}
-
-var challengeRe = regexp.MustCompile(`(realm|service|scope)="([^"]*)"`)
-
-// login gets an anonymous pull token as the registry's challenge describes.
-func (c *registryClient) login(ctx context.Context, challenge string) error {
-	if !strings.HasPrefix(strings.ToLower(challenge), "bearer ") {
-		return errors.New("the registry wants a login (only public images can be verified)")
-	}
-	p := map[string]string{}
-	for _, m := range challengeRe.FindAllStringSubmatch(challenge, -1) {
-		p[m[1]] = m[2]
-	}
-	realm, err := url.Parse(p["realm"])
-	if err != nil || realm.Host == "" || (realm.Scheme != "https" && !strings.HasPrefix(c.base, "http://")) {
-		return errors.New("the registry's token service is not usable")
-	}
-	q := realm.Query()
-	if p["service"] != "" {
-		q.Set("service", p["service"])
-	}
-	q.Set("scope", "repository:"+c.repo+":pull")
-	realm.RawQuery = q.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, realm.String(), nil)
-	if err != nil {
-		return err
-	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	var out struct {
-		Token       string `json:"token"`
-		AccessToken string `json:"access_token"`
-	}
-	if resp.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&out) != nil {
-		return fmt.Errorf("the registry's token service answered HTTP %d", resp.StatusCode)
-	}
-	if c.token = out.Token; c.token == "" {
-		c.token = out.AccessToken
-	}
-	if c.token == "" {
-		return errors.New("the registry gave no token")
-	}
-	return nil
 }

@@ -13,7 +13,10 @@ import (
 
 // References in env values: "${db.PGHOST}" is the variable PGHOST that the project's add-on "db" gives
 // linked apps, "${api.host}" / "${api.port}" / "${api.url}" the in-cluster address of the project's app
-// "api" and "${api.KEY}" one of its own variables (as set on the app, not resolved again) — for an app marked
+// "api", "${api.public_url}" / "${api.public_host}" its public address (https://, its default domain or
+// else its first one — what an app must call itself behind the gateway, e.g. Keycloak's KC_HOSTNAME; "" while
+// it has none) and
+// "${api.KEY}" one of its own variables (as set on the app, not resolved again) — for an app marked
 // as a database also its connection variables (${mydb.DATABASE_URL}, ${mydb.PGHOST}, …) —, "${shared.KEY}"
 // a variable of the project's env group "shared". "$${…}" is a literal "${…}".
 // References are resolved at every deploy, so a rotated password or a moved port is picked up.
@@ -81,6 +84,12 @@ func (r *refSource) value(name, field string) (string, bool) {
 			return port, a.Config.Port > 0
 		case "url":
 			return "http://" + host + ":" + port, a.Config.Port > 0
+		case "public_url", "public_host":
+			h := r.publicHost(a)
+			if field == "public_url" && h != "" {
+				h = "https://" + h
+			}
+			return h, true // "" while the app has no domain (apps treat an empty setting as unset)
 		}
 		if r.appEnv == nil {
 			r.appEnv = map[string]map[string]string{}
@@ -103,6 +112,21 @@ func (r *refSource) value(name, field string) (string, bool) {
 		return "", false
 	}
 	return "", false
+}
+
+// publicHost is host[/path] of the app's default domain (else its first app domain; "" = none).
+func (r *refSource) publicHost(a store.App) string {
+	ds, err := r.d.store.ListDomains(context.Background(), a.ID) // the default domain first
+	if err != nil {
+		return ""
+	}
+	for _, d := range ds {
+		if d.Kind == store.DomainRedirect {
+			continue
+		}
+		return d.Host + strings.TrimSuffix(d.PathPrefix, "/")
+	}
+	return ""
 }
 
 // ResolveRefs replaces the references in env (in place). Unknown references are an error, so a typo does

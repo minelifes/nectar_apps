@@ -336,6 +336,14 @@ func validateConfig(rt runtimes.Runtime, kind string, c store.AppConfig) string 
 			return msg
 		}
 	}
+	switch c.ImageUpdates {
+	case "", "notify", "auto":
+		if c.ImageUpdates != "" && rt.Artifact.Kind != runtimes.ArtifactNone {
+			return "image updates are for apps that run an image"
+		}
+	default:
+		return `image_updates must be "" (off), "notify" or "auto"`
+	}
 	if c.SleepAfterMinutes != 0 {
 		if kind != runtimes.KindWeb {
 			return "only web apps can sleep when idle"
